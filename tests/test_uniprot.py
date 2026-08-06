@@ -1,12 +1,25 @@
 from __future__ import annotations
 
-from experimental_glycosylation_sites.uniprot import parse_glycosylation_column
+import gzip
+
+from experimental_glycosylation_sites.uniprot import (
+    load_uniprot_features,
+    parse_glycosylation_column,
+)
 
 
 def parse_one(text: str):
     features = parse_glycosylation_column(text, "P00001")
     assert len(features) == 1
     return features[0]
+
+
+def _write_tsv(path, rows, opener=open, **open_kwargs):
+    """Write a minimal UniProt-style TSV: an Entry/Glycosylation header plus rows."""
+    with opener(path, "wt", encoding="utf-8", newline="", **open_kwargs) as handle:
+        handle.write("Entry\tGlycosylation\n")
+        for entry, glycosylation in rows:
+            handle.write(f"{entry}\t{glycosylation}\n")
 
 
 def test_parses_exact_n_linked_asparagine_site():
@@ -69,3 +82,73 @@ def test_empty_and_null_input():
 def test_n_linked_without_asparagine_is_other():
     text = 'CARBOHYD 15; /note="N-linked (GlcNAc...) tryptophan"'
     assert parse_one(text).glyco_type == "N-linked-other"
+
+
+def test_load_uniprot_features_parses_plain_tsv(tmp_path):
+    tsv_path = tmp_path / "snapshot.tsv"
+    _write_tsv(
+        tsv_path,
+        [("P00001", 'CARBOHYD 64; /note="N-linked (GlcNAc...) asparagine"; /evidence="ECO:0000269"')],
+    )
+
+    features, missing = load_uniprot_features(tsv_path, {"P00001"})
+
+    assert len(features) == 1
+    assert features[0].accession == "P00001"
+    assert features[0].position == 64
+    assert missing == set()
+
+
+def test_load_uniprot_features_parses_gzipped_tsv(tmp_path):
+    tsv_path = tmp_path / "snapshot.tsv.gz"
+    _write_tsv(
+        tsv_path,
+        [("P00002", 'CARBOHYD 10; /note="N-linked (GlcNAc...) asparagine"; /evidence="ECO:0000269"')],
+        opener=gzip.open,
+    )
+
+    features, missing = load_uniprot_features(tsv_path, {"P00002"})
+
+    assert len(features) == 1
+    assert features[0].accession == "P00002"
+    assert features[0].position == 10
+    assert missing == set()
+
+
+def test_load_uniprot_features_skips_unrequested_accessions(tmp_path):
+    tsv_path = tmp_path / "snapshot.tsv"
+    _write_tsv(
+        tsv_path,
+        [
+            ("P00001", 'CARBOHYD 64; /note="N-linked (GlcNAc...) asparagine"'),
+            ("P99999", 'CARBOHYD 5; /note="N-linked (GlcNAc...) asparagine"'),
+        ],
+    )
+
+    features, missing = load_uniprot_features(tsv_path, {"P00001"})
+
+    assert [f.accession for f in features] == ["P00001"]
+    assert missing == set()
+
+
+def test_load_uniprot_features_reports_missing_accessions(tmp_path):
+    tsv_path = tmp_path / "snapshot.tsv"
+    _write_tsv(
+        tsv_path,
+        [("P00001", 'CARBOHYD 64; /note="N-linked (GlcNAc...) asparagine"')],
+    )
+
+    features, missing = load_uniprot_features(tsv_path, {"P00001", "P00002"})
+
+    assert [f.accession for f in features] == ["P00001"]
+    assert missing == {"P00002"}
+
+
+def test_load_uniprot_features_empty_glycosylation_marks_seen_not_missing(tmp_path):
+    tsv_path = tmp_path / "snapshot.tsv"
+    _write_tsv(tsv_path, [("P00001", "")])
+
+    features, missing = load_uniprot_features(tsv_path, {"P00001"})
+
+    assert features == []
+    assert missing == set()
