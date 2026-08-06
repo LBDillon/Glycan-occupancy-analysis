@@ -50,3 +50,11 @@ def test_config_hash_is_stable_and_content_sensitive(tmp_path):
     different = load_config(write_config(tmp_path / "c", "other.csv")).config_hash
     assert first == again
     assert first != different
+
+
+def test_output_directories_resolve_to_the_module_root(tmp_path):
+    """cache_dir and results_dir must land beside src/, not inside config/."""
+    module_root = Path(__file__).resolve().parents[1]
+    config = load_config(module_root / "config" / "default.toml")
+    assert config.paths["cache_dir"] == module_root / "data" / "cache"
+    assert config.paths["results_dir"] == module_root / "results"

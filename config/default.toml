@@ -6,8 +6,11 @@ uniprot_tsv = "../../../data/raw/uniprot/uniprot_reviewed_glycoproteins_2026-04-
 structure_manifest = "../../ortholog_sequon_conservation/results/database_current/structures/pdb_structure_download_manifest.csv"
 structure_dir = "../../ortholog_sequon_conservation/results/database_current/structures/pdb"
 existing_structural_context = "../../ortholog_sequon_conservation/results/database_current/analyses/pdb_structure_comparison/pdb_site_structural_context.csv"
-cache_dir = "data/cache"
-results_dir = "results"
+# Output directories. Like every other path here these resolve relative to THIS
+# file's directory, so they need "../" to land at the module root rather than
+# creating config/data/cache and config/results.
+cache_dir = "../data/cache"
+results_dir = "../results"
 
 [layers]
 uniprot = true
