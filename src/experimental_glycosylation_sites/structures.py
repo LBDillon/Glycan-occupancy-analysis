@@ -15,6 +15,13 @@ from Bio.SeqUtils import seq1
 GLYCAN_RESNAMES = {"NAG", "NDG", "BGC", "GLC", "MAN", "BMA", "FUC", "GAL", "XYS"}
 MMCIF_SUFFIXES = {".cif", ".mmcif"}
 
+# A chain counts as "the same protein" when its alignment identity is within this
+# much of the best-matching chain's. Copies in a homodimer align at essentially
+# identical identity while differing in coverage, so identity — not coverage — is
+# what distinguishes a genuine copy from an unrelated chain that local alignment
+# happened to match.
+SAME_PROTEIN_IDENTITY_TOLERANCE = 0.02
+
 
 @dataclass(frozen=True)
 class GlycanLink:
@@ -178,20 +185,29 @@ def assess_site(
     if not scored:
         return {**blank, "tier": "structure_residue_unresolved", "detail": "position_not_in_model"}
 
-    # Local alignment always returns SOME block, so an unrelated chain will happily
-    # map the position. Rank by alignment quality first — taking the first chain in
-    # file order attributes glycans to the wrong chain, and silently upgrades
-    # unresolved positions to resolved. Mirrors choose_chain in the canonical
-    # scripts/08_structure.py.
-    scored.sort(key=lambda item: item[0], reverse=True)
-    best_rank = scored[0][0]
-    # Copies of the same protein (homodimers) tie exactly on these metrics. Among
-    # equals prefer one carrying a glycan, since it may be modelled in one copy only.
-    equivalent = [item for item in scored if item[0] == best_rank]
-    for _, has_link, candidate in equivalent:
+    # Two failure modes to avoid, and they pull in opposite directions.
+    #
+    # Taking the first chain in file order is wrong: local alignment always returns
+    # SOME block, so an unrelated chain captures the position, misattributing the
+    # residue and silently upgrading unresolved positions to resolved.
+    #
+    # But restricting to chains that tie on the FULL metric tuple is also wrong:
+    # homodimer copies of the same protein have identical identity yet different
+    # coverage (unresolved loops and termini), so a coverage-sensitive tie drops the
+    # copy that may carry the only modelled glycan.
+    #
+    # Identity is the "is this the same protein" test; coverage is not. So gate on
+    # identity, then prefer a linked chain, then rank the rest by coverage.
+    best_identity = max(item[0][0] for item in scored)
+    same_protein = [
+        item for item in scored
+        if item[0][0] >= best_identity - SAME_PROTEIN_IDENTITY_TOLERANCE
+    ]
+    same_protein.sort(key=lambda item: item[0], reverse=True)
+    for _, has_link, candidate in same_protein:
         if has_link:
             return candidate
-    return equivalent[0][2]
+    return same_protein[0][2]
 
 
 def load_manifest(path: Path) -> dict[str, dict]:

@@ -21,6 +21,55 @@ def write_link(tmp_path: Path, name: str, line: str) -> Path:
     return path
 
 
+def homodimer_structure() -> str:
+    """Two copies of the same short protein (an 1AVD-style avidin homodimer).
+    Chain A is missing its last two C-terminal residues (unresolved) but
+    carries a glycan LINK on its Asn. Chain B is fully resolved (higher
+    coverage) but has no LINK. Both chains resolve the query position, so a
+    coverage-sensitive tie would incorrectly drop chain A even though it is
+    unambiguously the same protein and the one actually carrying the glycan.
+    """
+    lines = [link_line("ASN", "A", 2, "NAG", "A", 101)]
+    serial = 1
+    for offset, resname in enumerate(["MET", "ASN", "LYS", "THR", "ALA", "LEU", "TRP", "ASP"]):
+        lines.append(atom_line(
+            serial, "CA", resname, "A", offset + 1, 10.0 + serial, 10.0, 10.0, "C",
+        ))
+        serial += 1
+    for offset, resname in enumerate(
+        ["MET", "ASN", "LYS", "THR", "ALA", "LEU", "TRP", "ASP", "GLY", "TYR"]
+    ):
+        lines.append(atom_line(
+            serial, "CA", resname, "B", offset + 1, 50.0 + serial, 10.0, 10.0, "C",
+        ))
+        serial += 1
+    lines.append("END")
+    return "\n".join(lines) + "\n"
+
+
+def linked_but_unrelated_chain_structure() -> str:
+    """Chain A: an unrelated sequence (one substitution away from the query)
+    that carries a synthetic glycan LINK on its own residue 2. Chain B: an
+    exact match to the query, with no LINK. The identity gate must still
+    reject chain A's link rather than trusting a glycan link found on any
+    chain regardless of whether it is actually the queried protein.
+    """
+    lines = [link_line("ASN", "A", 2, "NAG", "A", 101)]
+    serial = 1
+    for offset, resname in enumerate(["MET", "ASP", "LYS", "THR", "ALA"]):
+        lines.append(atom_line(
+            serial, "CA", resname, "A", offset + 1, 10.0 + serial, 10.0, 10.0, "C",
+        ))
+        serial += 1
+    for offset, resname in enumerate(["MET", "ASN", "LYS", "THR", "ALA"]):
+        lines.append(atom_line(
+            serial, "CA", resname, "B", offset + 1, 60.0 + serial, 10.0, 10.0, "C",
+        ))
+        serial += 1
+    lines.append("END")
+    return "\n".join(lines) + "\n"
+
+
 def two_chain_structure() -> str:
     """Chain A: an unrelated sequence sharing only one residue type with the
     query. Chain B: an exact match to the query sequence "MNKTA". Chain A is
@@ -123,3 +172,22 @@ def test_chain_selection_prefers_alignment_quality_over_file_order(tmp_path):
     assert result["chain_id"] == "B"
     assert result["resseq"] == 2
     assert result["observed_residue"] == "N"
+
+
+def test_glycan_link_on_lower_coverage_homodimer_copy_still_wins(tmp_path):
+    path = tmp_path / "homodimer.pdb"
+    path.write_text(homodimer_structure())
+    links = parse_link_records(path)
+    result = assess_site("MNKTALWDGY", 2, path, "DIMER", links)
+    assert result["tier"] == "structure_linked_glycan"
+    assert result["chain_id"] == "A"
+    assert result["resseq"] == 2
+
+
+def test_identity_gate_excludes_linked_but_unrelated_chain(tmp_path):
+    path = tmp_path / "linked_unrelated.pdb"
+    path.write_text(linked_but_unrelated_chain_structure())
+    links = parse_link_records(path)
+    result = assess_site("MNKTA", 2, path, "MULTI2", links)
+    assert result["tier"] == "structure_residue_resolved"
+    assert result["chain_id"] == "B"
