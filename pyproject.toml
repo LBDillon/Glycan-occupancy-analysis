@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "experimental-glycosylation-sites"
+version = "0.1.0"
+description = "Site-level N-linked glycosylation occupancy evidence derived from the ortholog sequon-conservation database"
+requires-python = ">=3.12"
+dependencies = ["pandas>=2.0", "biopython>=1.80", "numpy>=1.24"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# "tests" is on the path so test helpers (tests/pdb_lines.py) import directly.
+pythonpath = ["src", "tests"]

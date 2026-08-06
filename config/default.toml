@@ -1,0 +1,36 @@
+[paths]
+pairs_master = "../../ortholog_sequon_conservation/results/database_current/pairs_master.csv"
+proteins_master = "../../ortholog_sequon_conservation/results/database_current/proteins_master.csv"
+homology_qc = "../../ortholog_sequon_conservation/results/database_current/homology_qc/pairs_master_homology_qc.csv"
+uniprot_tsv = "../../../data/raw/uniprot/uniprot_reviewed_glycoproteins_2026-04-27.tsv.gz"
+structure_manifest = "../../ortholog_sequon_conservation/results/database_current/structures/pdb_structure_download_manifest.csv"
+structure_dir = "../../ortholog_sequon_conservation/results/database_current/structures/pdb"
+existing_structural_context = "../../ortholog_sequon_conservation/results/database_current/analyses/pdb_structure_comparison/pdb_site_structural_context.csv"
+cache_dir = "data/cache"
+results_dir = "results"
+
+[layers]
+uniprot = true
+glygen = true
+glyconnect = false
+structure = true
+
+[policy]
+qualifying_uniprot_tiers = ["manual_experimental", "manual_combinatorial"]
+qualifying_glygen_tiers = ["glygen_reported_with_glycan", "glygen_reported_independent"]
+qualifying_structure_tiers = ["structure_linked_glycan"]
+# GlyConnect is corroboration only by default: GlyGen already ingests it, and
+# its coverage is 183 of 2,591 non-qualifying accessions.
+glyconnect_qualifies = false
+curator_inferred_sensitivity = true
+require_analysis_ready = true
+strict_buckets = ["strict_ortholog_like"]
+plausible_buckets = ["plausible_ortholog_like"]
+
+[api]
+glygen_url = "https://api.glygen.org/protein/detail/{accession}/"
+glyconnect_search_url = "https://glyconnect.expasy.org/api/proteins?uniprot={accession}"
+glyconnect_detail_url = "https://glyconnect.expasy.org/api/proteins/{protein_id}"
+delay_seconds = 0.4
+timeout_seconds = 60
+max_retries = 3
