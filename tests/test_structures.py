@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
 from experimental_glycosylation_sites.structures import (
     GlycanLink,
@@ -11,7 +10,7 @@ from experimental_glycosylation_sites.structures import (
     build_site_evidence,
     parse_link_records,
 )
-from pdb_lines import link_line
+from pdb_lines import atom_line, link_line
 
 FIXTURE = Path(__file__).parent / "fixtures" / "mini_link.pdb"
 
@@ -20,6 +19,28 @@ def write_link(tmp_path: Path, name: str, line: str) -> Path:
     path = tmp_path / name
     path.write_text(line + "\n")
     return path
+
+
+def two_chain_structure() -> str:
+    """Chain A: an unrelated sequence sharing only one residue type with the
+    query. Chain B: an exact match to the query sequence "MNKTA". Chain A is
+    written first, so file-order-wins chain selection would pick it over the
+    chain that actually matches the query.
+    """
+    lines = []
+    serial = 1
+    for offset, resname in enumerate(["TRP", "TRP", "ASN", "TRP", "TRP"]):
+        lines.append(atom_line(
+            serial, "CA", resname, "A", offset + 1, 30.0 + serial, 10.0, 10.0, "C",
+        ))
+        serial += 1
+    for offset, resname in enumerate(["MET", "ASN", "LYS", "THR", "ALA"]):
+        lines.append(atom_line(
+            serial, "CA", resname, "B", offset + 1, 40.0 + serial, 10.0, 10.0, "C",
+        ))
+        serial += 1
+    lines.append("END")
+    return "\n".join(lines) + "\n"
 
 
 def test_parses_asn_first_link_order():
@@ -93,3 +114,12 @@ def test_build_site_evidence_uses_the_manifest(tmp_path):
                        "output_path": str(FIXTURE), "status": "already_present"}}
     frame = build_site_evidence(candidates, {"P1": "MNKTA"}, manifest)
     assert frame.iloc[0].structure_tier == "structure_linked_glycan"
+
+
+def test_chain_selection_prefers_alignment_quality_over_file_order(tmp_path):
+    path = tmp_path / "two_chain.pdb"
+    path.write_text(two_chain_structure())
+    result = assess_site("MNKTA", 2, path, "MULTI", [])
+    assert result["chain_id"] == "B"
+    assert result["resseq"] == 2
+    assert result["observed_residue"] == "N"

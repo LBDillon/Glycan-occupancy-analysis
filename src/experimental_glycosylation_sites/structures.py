@@ -145,27 +145,53 @@ def assess_site(
         return {**blank, "detail": "no_protein_chain"}
 
     linked = {(link.chain_id, link.resseq, link.icode) for link in links}
-    best = None
+    scored: list[tuple[tuple[float, float, float, int], bool, dict]] = []
+
     for chain in chains:
         pairs = _alignment_pairs(uniprot_sequence, chain.sequence)
-        mapped = {u: c for u, c in pairs}
-        index = mapped.get(position)
+        if not pairs:
+            continue
+        index = {u: c for u, c in pairs}.get(position)
         if index is None or not 1 <= index <= len(chain.residue_ids):
             continue
-        resseq, icode = chain.residue_ids[index - 1]
-        candidate = {
-            "tier": "structure_residue_resolved", "pdb_id": pdb_id,
-            "chain_id": chain.chain_id, "resseq": resseq, "icode": icode,
-            "observed_residue": chain.sequence[index - 1], "detail": "",
-        }
-        if (chain.chain_id, resseq, icode) in linked:
-            candidate["tier"] = "structure_linked_glycan"
-            return candidate
-        best = best or candidate
 
-    if best is not None:
-        return best
-    return {**blank, "tier": "structure_residue_unresolved", "detail": "position_not_in_model"}
+        matches = sum(
+            1 for u, c in pairs if uniprot_sequence[u - 1] == chain.sequence[c - 1]
+        )
+        identity = matches / len(pairs)
+        coverage_chain = len({c for _, c in pairs}) / len(chain.sequence)
+        coverage_uniprot = len({u for u, _ in pairs}) / len(uniprot_sequence)
+
+        resseq, icode = chain.residue_ids[index - 1]
+        has_link = (chain.chain_id, resseq, icode) in linked
+        scored.append((
+            (identity, coverage_chain, coverage_uniprot, len(pairs)),
+            has_link,
+            {
+                "tier": "structure_linked_glycan" if has_link else "structure_residue_resolved",
+                "pdb_id": pdb_id, "chain_id": chain.chain_id,
+                "resseq": resseq, "icode": icode,
+                "observed_residue": chain.sequence[index - 1], "detail": "",
+            },
+        ))
+
+    if not scored:
+        return {**blank, "tier": "structure_residue_unresolved", "detail": "position_not_in_model"}
+
+    # Local alignment always returns SOME block, so an unrelated chain will happily
+    # map the position. Rank by alignment quality first — taking the first chain in
+    # file order attributes glycans to the wrong chain, and silently upgrades
+    # unresolved positions to resolved. Mirrors choose_chain in the canonical
+    # scripts/08_structure.py.
+    scored.sort(key=lambda item: item[0], reverse=True)
+    best_rank = scored[0][0]
+    # Copies of the same protein (homodimers) tie exactly on these metrics. Among
+    # equals prefer one carrying a glycan, since it may be modelled in one copy only.
+    equivalent = [item for item in scored if item[0] == best_rank]
+    for _, has_link, candidate in equivalent:
+        if has_link:
+            return candidate
+    return equivalent[0][2]
 
 
 def load_manifest(path: Path) -> dict[str, dict]:
@@ -221,6 +247,10 @@ def build_site_evidence(
             "structure_chain_id": result.get("chain_id", ""),
             "structure_resseq": result.get("resseq"),
             "structure_icode": result.get("icode", ""),
+            # Carried through so a consumer can detect a mis-mapped residue: an
+            # N-linked site must map to an asparagine, and anything else is a
+            # mapping failure that would otherwise be invisible.
+            "structure_observed_residue": result.get("observed_residue", ""),
             "structure_detail": result.get("detail", ""),
         })
 
