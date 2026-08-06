@@ -1,0 +1,15 @@
+{
+  "_comment": "Snapshot expectations, not biological constants. Obtained from the UniProt snapshot uniprot_reviewed_glycoproteins_2026-04-27.tsv.gz joined to pairs_master.csv filtered to analysis_ready == True, keyed on (pos_accession, best_loss_positive_position), requiring an exact N-linked CARBOHYD feature with ECO:0000269 or ECO:0007744, deduplicated after the pair join. A mismatch means upstream data changed - investigate the inputs before editing this file.",
+  "snapshot_date": "2026-04-27",
+  "uniprot_snapshot": "uniprot_reviewed_glycoproteins_2026-04-27.tsv.gz",
+  "layers_enabled": ["uniprot"],
+  "counts": {
+    "candidate_sites": 4307,
+    "all_sites": 505,
+    "all_proteins": 401,
+    "strict_plus_plausible_sites": 357,
+    "strict_plus_plausible_proteins": 303,
+    "strict_sites": 321,
+    "strict_proteins": 278
+  }
+}
