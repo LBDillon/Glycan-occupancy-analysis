@@ -1,0 +1,144 @@
+{
+ "uniprot_canonical_ac": null,
+ "glycosylation": [
+  {
+   "type": "N-linked",
+   "subtype": "other",
+   "site_category": "predicted",
+   "site_category_dict": {
+    "predicted": true
+   },
+   "site_seq": "N",
+   "relation": "attached",
+   "comment": "N-linked (GlcNAc...) asparagine",
+   "start_pos": 162,
+   "start_aa": "Asn",
+   "end_pos": 162,
+   "end_aa": "Asn",
+   "residue": "Asn",
+   "site_lbl": "Asn162",
+   "evidence": [
+    {
+     "id": "O43570",
+     "database": "UniProtKB",
+     "url": "https://www.uniprot.org/uniprotkb/O43570#ptm_processing"
+    }
+   ],
+   "filter_code": "00100000000000000000.00010000000000.0.01001"
+  },
+  {
+   "type": "N-linked",
+   "subtype": "other",
+   "site_category": "reported",
+   "site_category_dict": {
+    "reported": true,
+    "automatic_literature_mining": true
+   },
+   "site_seq": "N",
+   "relation": "attached",
+   "comment": "N-linked (GlcNAc...) asparagine",
+   "start_pos": 28,
+   "start_aa": "Asn",
+   "end_pos": 28,
+   "end_aa": "Asn",
+   "residue": "Asn",
+   "site_lbl": "Asn28",
+   "evidence": [
+    {
+     "id": "O43570",
+     "database": "UniProtKB",
+     "url": "https://www.uniprot.org/uniprotkb/O43570#ptm_processing"
+    },
+    {
+     "id": "26486891",
+     "database": "PubMed",
+     "url": "https://glygen.org/publication/PubMed/26486891"
+    },
+    {
+     "id": "GLY_000481",
+     "database": "GlyGen",
+     "url": "https://data.glygen.org/GLY_000481"
+    }
+   ],
+   "mining_tool": "GlycoSiteMiner_1.0",
+   "mining_tool_list": [
+    {
+     "label": "GlycoSiteMiner_1.0"
+    }
+   ],
+   "filter_code": "00100000000000000000.00010000000000.00.01001"
+  },
+  {
+   "glytoucan_ac": "G47518TP",
+   "type": "N-linked",
+   "subtype": "other",
+   "site_category": "reported_with_glycan",
+   "site_category_dict": {
+    "reported_with_glycan": true
+   },
+   "site_seq": "N",
+   "relation": "attached",
+   "start_pos": 80,
+   "start_aa": "Asn",
+   "end_pos": 80,
+   "end_aa": "Asn",
+   "residue": "Asn",
+   "site_lbl": "Asn80",
+   "evidence": [
+    {
+     "id": "29741879",
+     "database": "PubMed",
+     "url": "https://glygen.org/publication/PubMed/29741879"
+    },
+    {
+     "id": "1064",
+     "database": "GlyConnect",
+     "url": "https://glyconnect.expasy.org/browser/proteins/1064"
+    }
+   ],
+   "filter_code": "00100000000000000000.0000000.00010000000000.0010000.1100100000.0101000011101100.00100.01001"
+  },
+  {
+   "type": "N-linked",
+   "subtype": "other",
+   "site_category": "reported",
+   "site_category_dict": {
+    "reported": true,
+    "automatic_literature_mining": true
+   },
+   "site_seq": "N",
+   "relation": "attached",
+   "comment": "N-linked (GlcNAc...) asparagine",
+   "start_pos": 80,
+   "start_aa": "Asn",
+   "end_pos": 80,
+   "end_aa": "Asn",
+   "residue": "Asn",
+   "site_lbl": "Asn80",
+   "evidence": [
+    {
+     "id": "O43570",
+     "database": "UniProtKB",
+     "url": "https://www.uniprot.org/uniprotkb/O43570#ptm_processing"
+    },
+    {
+     "id": "26486891",
+     "database": "PubMed",
+     "url": "https://glygen.org/publication/PubMed/26486891"
+    },
+    {
+     "id": "GLY_000481",
+     "database": "GlyGen",
+     "url": "https://data.glygen.org/GLY_000481"
+    }
+   ],
+   "mining_tool": "GlycoSiteMiner_1.0",
+   "mining_tool_list": [
+    {
+     "label": "GlycoSiteMiner_1.0"
+    }
+   ],
+   "filter_code": "00100000000000000000.00010000000000.00.01001"
+  }
+ ]
+}
