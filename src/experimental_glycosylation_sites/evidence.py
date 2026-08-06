@@ -35,3 +35,62 @@ def classify_uniprot_tier(codes: frozenset[str]) -> str:
         if tier in tiers:
             return tier
     return NO_QUALIFYING_EVIDENCE
+
+
+EXCLUSION_BY_TIER = {
+    "manual_curator_inference": "curator_inference_only",
+    "manual_sequence_model": "sequence_model_only",
+    "automatic_sequence_model": "sequence_model_only",
+    "sequence_similarity": "sequence_similarity_only",
+    "annotation_without_qualifying_evidence": "annotation_without_qualifying_evidence",
+}
+
+
+def join_uniprot_evidence(
+    candidates: "pd.DataFrame",
+    features: "list[UniProtFeature]",
+    missing_accessions: set[str],
+    qualifying_tiers: list[str],
+) -> "pd.DataFrame":
+    """Attach exact-position UniProt evidence to each candidate site.
+
+    Only an N-linked asparagine feature at exactly the candidate position
+    counts. Nearby features are never accepted. Every candidate appears in the
+    output exactly once, either qualifying or with an exclusion reason.
+    """
+    import pandas as pd
+
+    exact: dict[tuple[str, int], frozenset[str]] = {}
+    for feature in features:
+        if feature.parse_status != "ok" or feature.position is None:
+            continue
+        if feature.glyco_type != "N-linked":
+            continue
+        key = (feature.accession, feature.position)
+        exact[key] = exact.get(key, frozenset()) | feature.evidence_codes
+
+    qualifying = set(qualifying_tiers)
+    rows = []
+    for accession, position in zip(candidates["accession"], candidates["position"]):
+        accession, position = str(accession), int(position)
+        codes = exact.get((accession, position))
+
+        if accession in missing_accessions:
+            tier, reason, qualifies = "", "accession_absent_from_snapshot", False
+        elif codes is None:
+            tier, reason, qualifies = "exact_feature_absent", "exact_feature_absent", False
+        else:
+            tier = classify_uniprot_tier(codes)
+            qualifies = tier in qualifying
+            reason = "" if qualifies else EXCLUSION_BY_TIER.get(tier, "annotation_without_qualifying_evidence")
+
+        rows.append({
+            "accession": accession,
+            "position": position,
+            "uniprot_tier": tier,
+            "uniprot_evidence_codes": "|".join(sorted(codes)) if codes else "",
+            "uniprot_qualifies": qualifies,
+            "exclusion_reason": reason,
+        })
+
+    return pd.DataFrame(rows).sort_values(["accession", "position"]).reset_index(drop=True)
