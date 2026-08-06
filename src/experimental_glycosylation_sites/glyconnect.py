@@ -47,6 +47,7 @@ def extract_positions(detail: dict) -> dict[int, dict]:
 
 
 def _get_json(url: str, timeout: int, retries: int, delay: float):
+    error = ""  # bound before the loop: retries<=0 must degrade, not raise NameError
     for attempt in range(retries):
         try:
             with urllib.request.urlopen(url, timeout=timeout) as response:
