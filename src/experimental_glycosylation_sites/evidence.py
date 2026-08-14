@@ -94,3 +94,70 @@ def join_uniprot_evidence(
         })
 
     return pd.DataFrame(rows).sort_values(["accession", "position"]).reset_index(drop=True)
+
+
+LAYER_ORDER: tuple[str, ...] = ("uniprot", "glygen", "glyconnect", "structure")
+
+OCCUPIED = "occupied_supported"
+UNKNOWN = "unknown"
+# Reserved. Populating it requires evidence that a site was examined and found
+# bare; no current source provides that. Phase 1 must never emit it.
+OBSERVED_UNMODIFIED = "observed_unmodified"
+
+
+def combine_layers(
+    uniprot: "pd.DataFrame",
+    glygen: "pd.DataFrame | None",
+    glyconnect: "pd.DataFrame | None",
+    structure: "pd.DataFrame | None",
+    policy: dict,
+) -> "pd.DataFrame":
+    """Merge evidence layers into per-site positivity and occupancy status.
+
+    Layers are independent: any one of them may support a site on its own, and a
+    site rejected by UniProt can still be supported by GlyGen or by a structural
+    glycan linkage. A site with no supporting layer is `unknown` - never a
+    biological negative, because absence of annotation overwhelmingly means
+    nobody looked.
+    """
+    import pandas as pd
+
+    merged = uniprot.copy()
+    for frame in (glygen, glyconnect, structure):
+        if frame is not None:
+            merged = merged.merge(frame, on=["accession", "position"], how="left")
+
+    qualifying_glygen = set(policy.get("qualifying_glygen_tiers", []))
+    qualifying_structure = set(policy.get("qualifying_structure_tiers", []))
+
+    support = {
+        "uniprot": merged["uniprot_qualifies"].fillna(False).astype(bool),
+        "glygen": (
+            merged["glygen_tier"].fillna("").isin(qualifying_glygen)
+            if "glygen_tier" in merged.columns
+            else pd.Series(False, index=merged.index)
+        ),
+        "glyconnect": (
+            merged["glyconnect_supported"].fillna(False).astype(bool)
+            if "glyconnect_supported" in merged.columns and policy.get("glyconnect_qualifies", False)
+            else pd.Series(False, index=merged.index)
+        ),
+        "structure": (
+            merged["structure_tier"].fillna("").isin(qualifying_structure)
+            if "structure_tier" in merged.columns
+            else pd.Series(False, index=merged.index)
+        ),
+    }
+
+    merged["support_sources"] = [
+        "|".join(layer for layer in LAYER_ORDER if support[layer].iloc[i])
+        for i in range(len(merged))
+    ]
+    merged["support_count"] = sum(series.astype(int) for series in support.values())
+    merged["experimental_positive"] = merged["support_count"] > 0
+    merged["occupancy_status"] = merged["experimental_positive"].map(
+        {True: OCCUPIED, False: UNKNOWN}
+    )
+    merged.loc[merged["experimental_positive"], "exclusion_reason"] = ""
+
+    return merged.sort_values(["accession", "position"]).reset_index(drop=True)
