@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import urllib.error
+import urllib.request
+
 import pandas as pd
 
 from experimental_glycosylation_sites.glyconnect import (
@@ -82,3 +85,37 @@ def test_get_json_with_zero_retries_degrades_without_raising():
     )
     assert result is None
     assert error == ""
+
+
+def test_get_json_does_not_retry_a_permanent_http_error(monkeypatch):
+    # Same reasoning as GlyGen: an HTTP status from this API means "no entry
+    # here", which is permanent, so one request should be made, not `retries`.
+    calls = []
+
+    def fake_urlopen(url, timeout=None):
+        calls.append(url)
+        raise urllib.error.HTTPError(url, 500, "Internal Server Error", None, None)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    result, error = _get_json(
+        "http://example.invalid/permanent", timeout=1, retries=3, delay=0.0
+    )
+    assert len(calls) == 1
+    assert result is None
+    assert "HTTPError" in error
+
+
+def test_get_json_retries_a_transient_url_error(monkeypatch):
+    calls = []
+
+    def fake_urlopen(url, timeout=None):
+        calls.append(url)
+        raise urllib.error.URLError("connection refused")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    result, error = _get_json(
+        "http://example.invalid/transient", timeout=1, retries=3, delay=0.0
+    )
+    assert len(calls) == 3
+    assert result is None
+    assert "URLError" in error

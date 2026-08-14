@@ -52,6 +52,12 @@ def _get_json(url: str, timeout: int, retries: int, delay: float):
         try:
             with urllib.request.urlopen(url, timeout=timeout) as response:
                 return json.load(response), ""
+        except urllib.error.HTTPError as exc:
+            # An HTTP status from this API means "no entry here". That is
+            # permanent, so retrying triples the cost of every miss for no
+            # benefit. HTTPError subclasses URLError, so it must be caught first.
+            error = f"HTTPError: {exc}"
+            break
         except (urllib.error.URLError, TimeoutError, ValueError) as exc:
             error = f"{type(exc).__name__}: {exc}"
             time.sleep(delay * (attempt + 1))

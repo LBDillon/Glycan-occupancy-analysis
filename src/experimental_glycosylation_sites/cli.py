@@ -14,14 +14,35 @@ from .pipeline import run_full
 DEFAULT_CONFIG = Path(__file__).resolve().parents[2] / "config" / "default.toml"
 
 
-def _accessions(config) -> list[str]:
+def _accessions(config, xref_column: str | None = None) -> list[str]:
+    """Candidate accessions, optionally restricted to those a source indexes.
+
+    GlyGen answers HTTP 500 — not 404 — for an accession it has no entry for, so
+    requesting every candidate spends most of the run on responses that can never
+    succeed. Only 1,714 of 2,878 candidates carry a GlyGen cross-reference.
+    """
+    import csv
+    import gzip
+
     import pandas as pd
 
     pairs = pd.read_csv(config.paths["pairs_master"], low_memory=False)
     sites = build_candidate_sites(
         pairs, bool(config.policy.get("require_analysis_ready", True))
     )
-    return sorted(set(sites["accession"]))
+    accessions = set(sites["accession"])
+    if xref_column is None:
+        return sorted(accessions)
+
+    tsv_path = config.paths["uniprot_tsv"]
+    opener = gzip.open if str(tsv_path).endswith(".gz") else open
+    indexed = set()
+    with opener(tsv_path, "rt", encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle, delimiter="\t"):
+            accession = (row.get("Entry") or "").strip()
+            if accession in accessions and (row.get(xref_column) or "").strip():
+                indexed.add(accession)
+    return sorted(indexed)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -48,10 +69,10 @@ def main(argv: list[str] | None = None) -> int:
         print("All configured inputs resolve.")
         return 0
     if args.command == "fetch-glygen":
-        print("cache:", fetch_glygen(_accessions(config), config))
+        print("cache:", fetch_glygen(_accessions(config, "GlyGen"), config))
         return 0
     if args.command == "fetch-glyconnect":
-        print("cache:", fetch_glyconnect(_accessions(config), config))
+        print("cache:", fetch_glyconnect(_accessions(config, "GlyConnect"), config))
         return 0
 
     print(json.dumps(run_full(config, fetch=args.fetch), indent=2))

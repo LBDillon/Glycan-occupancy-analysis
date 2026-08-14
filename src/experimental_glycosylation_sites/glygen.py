@@ -119,6 +119,13 @@ def fetch_details(accessions: list[str], config: Config) -> Path:
                     ) as response:
                         payload = json.load(response)
                     break
+                except urllib.error.HTTPError as exc:
+                    # An HTTP status from this API means "no entry for this
+                    # accession" (it answers 500, not 404). That is permanent, so
+                    # retrying triples the cost of every miss for no benefit.
+                    # HTTPError subclasses URLError, so it must be caught first.
+                    error = f"HTTPError: {exc}"
+                    break
                 except (urllib.error.URLError, TimeoutError, ValueError) as exc:
                     error = f"{type(exc).__name__}: {exc}"
                     time.sleep(delay * (attempt + 1))
