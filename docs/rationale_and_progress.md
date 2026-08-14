@@ -7,9 +7,9 @@ database can and cannot establish.*
 
 ---
 
-## The problem in catalouging sequons by motif
+## The problem in cataloguing sequons by motif
 
-The ortholog sequon-conservation database asks an evolutionary question. It finds pairs of orthologous proteins where one member carries an N-linked sequon, which is the N-X-S/T motif is nesacarry (but not sufficentt) for N-linked glycosylation, and the other has lost it. Each such comparison is one row.
+The ortholog sequon-conservation database asks an evolutionary question. It finds pairs of orthologous proteins where one member carries an N-linked sequon, which is the N-X-S/T motif that is necessary (but not sufficient) for N-linked glycosylation, and the other has lost it. Each such comparison is one row.
 
 Storing the data as one row per comparison suits the question the database was built to
 answer — how often sequons are lost across evolution — but it causes two problems as soon as
@@ -37,8 +37,8 @@ The module therefore reorganises the evidence around one protein and one residue
 Ortholog pairs are still kept, but in a separate table, so they provide context without
 inflating any count.
 
-For every candidate site for a protien in the database we ask if there is
-experimental evidence that the asparagine specificaly carries a glycan. To check if it does we use data for the protein from UniProt and GlyGen, as well as looking at depositied structures and GlyConnect for supporting evidence.
+For every candidate site for a protein in the database we ask if there is
+experimental evidence that the asparagine specifically carries a glycan. To check if it does we use data for the protein from UniProt and GlyGen, as well as looking at deposited structures and GlyConnect for supporting evidence.
 
 **UniProt** is the primary source, because it is the only one with site-level annotations for per-feature evidence codes. Its glycosylation features are read at exact residue positions only and a range or an uncertain position is rejected.
 
