@@ -152,6 +152,24 @@ glycan-blind is the premise that motivates glycan-aware modelling. Note that 32 
 establish a null on their own; that claim needs equivalence testing against a pre-specified
 effect size, or more negatives.
 
+**3b. Bring in the negative controls.** The 32 are too few to carry a null on their own,
+so two further sets of sequons that cannot be N-glycosylated now exist alongside them:
+19,337 in cytosolic eukaryotic proteins, which never enter the secretory pathway and so
+never meet OST, and 5,865 in bacterial periplasmic and outer-membrane proteins, which
+cross a membrane into an oxidising compartment but whose clades have no OST. These are
+mechanistic negatives — positive knowledge from the biology, not inference from missing
+annotation.
+
+Their value is that their confounds do not overlap. The cytosolic set matches the
+positives on taxonomy but differs in compartment; the bacterial set matches on
+compartment but differs in taxonomy; the 32 match on both but are tiny. A model that
+separates occupied sites from the cytosolic set and not the 32 has learned where proteins
+live; one that separates them from the bacterial set and not the cytosolic set has learned
+taxonomy. The gap between the comparisons is the measurement. Both sets sit at neutral
+sequon density for their composition, which is the assumption they rest on and a direct
+check that it holds. See `negative_controls.md`; they are labelled by `control_set`, never
+pooled with the 4,307, and never counted in a site total.
+
 **4. Treat the 32 as a calibration probe, not a training class.** The intended approach is
 positive-unlabelled learning, as in the KinoPlex kinase atlas, which faced the same shortage
 and never asserted a negative: roughly 116,000 known phosphosites against 1.7 million
