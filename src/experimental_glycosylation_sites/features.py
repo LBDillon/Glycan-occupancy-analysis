@@ -14,11 +14,12 @@ that correlates with the label being tested.
 from __future__ import annotations
 
 import warnings
+from collections import OrderedDict
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from Bio.PDB import PDBParser
+from Bio.PDB import MMCIFParser, PDBParser
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 from Bio.PDB.Polypeptide import is_aa
 from Bio.PDB.SASA import ShrakeRupley
@@ -47,7 +48,12 @@ def _rsa_bin(rsa: float | None) -> str:
     return "exposed"
 
 
-_MODEL_CACHE: dict[str, object] = {}
+# Bounded deliberately. Sites are processed in accession order, so consecutive
+# lookups hit the same structure and a small cache captures nearly all the reuse.
+# An unbounded one would hold every parsed model in memory at once — thousands of
+# structures across the control sets — and exhaust RAM long before it helped.
+_MODEL_CACHE: "OrderedDict[str, object]" = OrderedDict()
+_MODEL_CACHE_LIMIT = 4
 
 
 def _model_with_sasa(path: Path):
@@ -66,7 +72,12 @@ def _model_with_sasa(path: Path):
         simplefilter("ignore", PDBConstructionWarning)
         simplefilter("ignore")
         try:
-            structure = PDBParser(QUIET=True).get_structure("s", str(path))
+            parser = (
+                MMCIFParser(QUIET=True)
+                if Path(path).suffix.lower() in {".cif", ".mmcif"}
+                else PDBParser(QUIET=True)
+            )
+            structure = parser.get_structure("s", str(path))
             model = next(iter(structure), None)
             if model is not None:
                 # Strip non-amino-acid residues BEFORE computing accessibility.
@@ -85,6 +96,8 @@ def _model_with_sasa(path: Path):
             model = None
 
     _MODEL_CACHE[key] = model
+    while len(_MODEL_CACHE) > _MODEL_CACHE_LIMIT:
+        _MODEL_CACHE.popitem(last=False)
     return model
 
 

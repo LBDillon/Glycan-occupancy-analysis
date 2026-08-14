@@ -40,7 +40,7 @@ def main(argv: list[str] | None = None) -> int:
         "command",
         choices=[
             "validate", "fetch-glygen", "fetch-glyconnect", "fetch-structures",
-            "fetch-controls", "run",
+            "fetch-controls", "fetch-control-structures", "run",
         ],
     )
     parser.add_argument(
@@ -91,6 +91,32 @@ def main(argv: list[str] | None = None) -> int:
 
         print(f"\n{len(sites)} control sequons written")
         print(sites.groupby("control_set").size().to_string())
+        return 0
+
+    if args.command == "fetch-control-structures":
+        import pandas as pd
+
+        from .controls import control_structure_targets
+        from .structures import fetch_structures
+
+        results = Path(config.paths["results_dir"])
+        sites = pd.read_csv(results / "negative_control_sites.csv", low_memory=False)
+        caps = {
+            # All bacterial proteins: the smaller set, and the better compartment
+            # match to the positives. Cytosolic subsampled purely for cost.
+            "bacterial_extracytoplasmic": None,
+            "cytosolic_eukaryotic": int(config.api.get("control_cytosolic_proteins", 1500)),
+        }
+        wanted = control_structure_targets(sites, caps, seed=0)
+        print(f"{len(wanted)} control proteins, one structure each")
+        stats = fetch_structures(
+            wanted,
+            Path(config.paths["cache_dir"]) / "pdb",
+            delay=float(config.api.get("delay_seconds", 0.34)),
+            timeout=int(config.api.get("timeout_seconds", 60)),
+            per_accession_cap=1,
+        )
+        print(json.dumps(stats, indent=2))
         return 0
 
     if args.command == "fetch-structures":

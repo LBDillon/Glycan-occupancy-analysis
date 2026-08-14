@@ -1,0 +1,18 @@
+data_MINI
+#
+loop_
+_struct_conn.id
+_struct_conn.conn_type_id
+_struct_conn.ptnr1_label_comp_id
+_struct_conn.ptnr1_auth_asym_id
+_struct_conn.ptnr1_auth_seq_id
+_struct_conn.pdbx_ptnr1_PDB_ins_code
+_struct_conn.ptnr2_label_comp_id
+_struct_conn.ptnr2_auth_asym_id
+_struct_conn.ptnr2_auth_seq_id
+_struct_conn.pdbx_ptnr2_PDB_ins_code
+covale1 covale ASN A 2   ? NAG A 101 ?
+covale2 covale NAG B 202 ? ASN B 47  A
+disulf1 disulf CYS A 5   ? CYS A 9   ?
+covale3 covale SER A 12  ? MAN A 103 ?
+#

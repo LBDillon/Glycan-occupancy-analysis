@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 from Bio import Align
-from Bio.PDB import PDBParser
+from Bio.PDB import MMCIFParser, PDBParser
 from Bio.PDB.Polypeptide import is_aa
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 from Bio.SeqUtils import seq1
@@ -106,16 +106,92 @@ def _one_letter(resname: str) -> str:
         return "X"
 
 
-def parse_link_records(path: Path) -> list[GlycanLink]:
-    """Asparagine-side coordinates of every ASN-glycan LINK record.
+def _as_list(value) -> list:
+    """MMCIF2Dict returns a scalar for a single-row category and a list otherwise."""
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
 
-    A LINK between an asparagine and a glycan residue is direct physical
+
+def parse_struct_conn(path: Path) -> list[GlycanLink]:
+    """Asparagine-side coordinates of every ASN-glycan bond in an mmCIF file.
+
+    mmCIF records covalent connectivity in `_struct_conn` rather than in LINK
+    lines. The author numbering (`auth_asym_id`, `auth_seq_id`) is used because
+    that is what Biopython's parsers expose as residue identifiers, so the
+    coordinates here line up with the ones the residue mapping produces.
+    """
+    from Bio.PDB.MMCIF2Dict import MMCIF2Dict
+
+    try:
+        data = MMCIF2Dict(str(path))
+    except Exception:  # a malformed file is data, not a bug
+        return []
+
+    conn_types = _as_list(data.get("_struct_conn.conn_type_id"))
+    if not conn_types:
+        return []
+
+    def column(name: str) -> list:
+        values = _as_list(data.get(name))
+        return values if len(values) == len(conn_types) else [""] * len(conn_types)
+
+    fields = {
+        side: (
+            column(f"_struct_conn.ptnr{side}_label_comp_id"),
+            column(f"_struct_conn.ptnr{side}_auth_asym_id"),
+            column(f"_struct_conn.ptnr{side}_auth_seq_id"),
+            column(f"_struct_conn.pdbx_ptnr{side}_PDB_ins_code"),
+        )
+        for side in (1, 2)
+    }
+
+    links: list[GlycanLink] = []
+    for index, conn_type in enumerate(conn_types):
+        # Glycosidic attachment is a covalent bond; disulfides and the rest are not
+        # relevant and would otherwise be scanned for no reason.
+        if str(conn_type).lower() != "covale":
+            continue
+
+        partners = [
+            (
+                str(fields[side][0][index]).strip(),
+                str(fields[side][1][index]).strip(),
+                str(fields[side][2][index]).strip(),
+                str(fields[side][3][index]).strip(),
+            )
+            for side in (1, 2)
+        ]
+
+        for asn, glycan in (partners, partners[::-1]):
+            if asn[0] != "ASN" or glycan[0] not in GLYCAN_RESNAMES:
+                continue
+            if not asn[2].lstrip("-").isdigit():
+                continue
+            icode = "" if asn[3] in {"?", ".", "None"} else asn[3]
+            links.append(GlycanLink(
+                chain_id=asn[1], resseq=int(asn[2]), icode=icode, glycan_resname=glycan[0],
+            ))
+            break
+
+    return links
+
+
+def parse_link_records(path: Path) -> list[GlycanLink]:
+    """Asparagine-side coordinates of every ASN-glycan covalent bond.
+
+    A bond between an asparagine and a glycan residue is direct physical
     evidence that the site carried a glycan in that structure. The absence of
     such a record is NOT evidence that the site was unmodified.
+
+    Reads LINK lines from PDB files and `_struct_conn` from mmCIF, so recent and
+    large depositions — which exist only in mmCIF — are not silently skipped.
     """
     path = Path(path)
-    if not path.exists() or path.suffix.lower() in MMCIF_SUFFIXES:
+    if not path.exists():
         return []
+    if path.suffix.lower() in MMCIF_SUFFIXES:
+        return parse_struct_conn(path)
 
     links: list[GlycanLink] = []
     with path.open(encoding="utf-8", errors="ignore") as handle:
@@ -141,7 +217,13 @@ def parse_link_records(path: Path) -> list[GlycanLink]:
 def _parse_chains(path: Path, pdb_id: str) -> list[ChainData]:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", PDBConstructionWarning)
-        structure = PDBParser(QUIET=True).get_structure(pdb_id, str(path))
+        warnings.simplefilter("ignore")
+        parser = (
+            MMCIFParser(QUIET=True)
+            if Path(path).suffix.lower() in MMCIF_SUFFIXES
+            else PDBParser(QUIET=True)
+        )
+        structure = parser.get_structure(pdb_id, str(path))
 
     chains = []
     for chain in next(iter(structure)):
@@ -177,9 +259,6 @@ def assess_site(
 
     if not structure_path.exists():
         return {**blank, "detail": "structure_file_missing"}
-    if structure_path.suffix.lower() in MMCIF_SUFFIXES:
-        return {**blank, "detail": "mmcif_linkage_unsupported"}
-
     try:
         chains = _parse_chains(structure_path, pdb_id)
     except Exception as exc:  # malformed structure files are data, not bugs
@@ -355,26 +434,38 @@ def fetch_structures(
 
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    stats = {"requested": 0, "downloaded": 0, "cached": 0, "failed": 0}
+    stats = {"requested": 0, "downloaded": 0, "downloaded_mmcif": 0, "cached": 0, "failed": 0}
 
     for accession in sorted(wanted):
         for pdb_id in sorted(wanted[accession])[:per_accession_cap]:
-            target = cache_dir / f"{pdb_id.upper()}.pdb"
             stats["requested"] += 1
-            if target.exists() and target.stat().st_size > 0:
+            existing = [
+                cache_dir / f"{pdb_id.upper()}{suffix}" for suffix in (".pdb", ".cif")
+            ]
+            if any(path.exists() and path.stat().st_size > 0 for path in existing):
                 stats["cached"] += 1
                 continue
-            url = f"https://files.rcsb.org/download/{pdb_id.upper()}.pdb"
-            try:
-                with urllib.request.urlopen(url, timeout=timeout) as response:
-                    payload = response.read()
-            except (urllib.error.URLError, TimeoutError, OSError):
-                # Large entries are mmCIF-only and have no .pdb form; that is data,
-                # not a bug, so record and continue rather than aborting the sweep.
+            # Modern and large depositions are mmCIF-only, and for recent entries
+            # that is the majority. Taking only what the legacy format offers would
+            # silently bias a set toward older, smaller structures.
+            payload, suffix = None, None
+            for candidate_suffix in (".pdb", ".cif"):
+                url = f"https://files.rcsb.org/download/{pdb_id.upper()}{candidate_suffix}"
+                try:
+                    with urllib.request.urlopen(url, timeout=timeout) as response:
+                        payload, suffix = response.read(), candidate_suffix
+                    break
+                except (urllib.error.URLError, TimeoutError, OSError):
+                    continue
+
+            if payload is None:
                 stats["failed"] += 1
                 continue
-            target.write_bytes(payload)
-            stats["downloaded"] += 1
+
+            (cache_dir / f"{pdb_id.upper()}{suffix}").write_bytes(payload)
+            stats["downloaded" if suffix == ".pdb" else "downloaded_mmcif"] = (
+                stats.get("downloaded" if suffix == ".pdb" else "downloaded_mmcif", 0) + 1
+            )
             time.sleep(delay)
     return stats
 

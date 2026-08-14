@@ -201,3 +201,40 @@ def summarise(sites: pd.DataFrame, proteins: pd.DataFrame) -> dict:
         }
     out["_excluded_taxa"] = OST_BEARING_TAXA
     return out
+
+
+def control_structure_targets(
+    sites: pd.DataFrame,
+    proteins_per_set: dict[str, int | None] | None = None,
+    seed: int = 0,
+) -> dict[str, set[str]]:
+    """One deposited structure per control protein, optionally subsampled.
+
+    Feature extraction needs coordinates, and one entry per protein is enough:
+    the residue either resolves in it or it does not. Fetching every
+    cross-referenced entry for 7,499 proteins would cost hours and gigabytes for
+    no gain in matching power, since a few thousand controls already dwarf the
+    332 occupied sites they are matched against.
+
+    Subsampling is by protein and seeded, so the selection is reproducible and
+    does not depend on which sequons a protein happens to carry.
+    """
+    proteins_per_set = proteins_per_set or {}
+    wanted: dict[str, set[str]] = {}
+
+    for name, group in sites.groupby("control_set"):
+        first_entry = (
+            group[group.pdb_ids.fillna("") != ""]
+            .groupby("accession")
+            .pdb_ids.first()
+            .str.split(";")
+            .str[0]
+        )
+        cap = proteins_per_set.get(name)
+        if cap is not None and len(first_entry) > cap:
+            first_entry = first_entry.sample(n=cap, random_state=seed)
+        for accession, pdb_id in first_entry.items():
+            if pdb_id:
+                wanted[accession] = {pdb_id.strip()}
+
+    return wanted

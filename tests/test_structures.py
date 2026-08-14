@@ -170,13 +170,22 @@ def test_missing_structure_file_is_not_assessed(tmp_path):
     assert result["detail"] == "structure_file_missing"
 
 
-def test_mmcif_linkage_is_recorded_as_unsupported(tmp_path):
-    path = tmp_path / "entry.cif"
-    path.write_text("data_TEST\n")
-    result = assess_site(LONG_SEQUENCE, 2, path, "TEST", [])
-    assert result["tier"] == "structure_not_assessed"
-    assert result["detail"] == "mmcif_linkage_unsupported"
+def test_mmcif_glycan_bonds_are_parsed_from_struct_conn():
+    """mmCIF records connectivity in _struct_conn, not LINK lines.
 
+    Recent and large depositions exist only in mmCIF, so refusing them would
+    silently drop glycan evidence for exactly the newest structures.
+    """
+    links = parse_link_records(Path(__file__).parent / "fixtures" / "mini_conn.cif")
+    assert GlycanLink("A", 2, "", "NAG") in links       # ASN listed first
+    assert GlycanLink("B", 47, "A", "NAG") in links     # glycan first, insertion code kept
+
+
+def test_mmcif_ignores_bonds_that_are_not_asn_glycan():
+    """A disulfide is covalent too, and an O-linked serine bond is not N-linked."""
+    links = parse_link_records(Path(__file__).parent / "fixtures" / "mini_conn.cif")
+    assert not any(link.resseq in (5, 9) for link in links)   # CYS-CYS disulfide
+    assert not any(link.resseq == 12 for link in links)       # SER-MAN, O-linked
 
 def test_accession_without_a_cached_structure_is_not_assessed():
     candidates = pd.DataFrame([{"accession": "P99999", "position": 5}])
