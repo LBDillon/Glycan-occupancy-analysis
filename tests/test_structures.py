@@ -10,9 +10,15 @@ from experimental_glycosylation_sites.structures import (
     build_site_evidence,
     parse_link_records,
 )
-from pdb_lines import atom_line, link_line
+from pdb_lines import LONG_RESIDUES, LONG_SEQUENCE, chain_lines, link_line
 
 FIXTURE = Path(__file__).parent / "fixtures" / "mini_link.pdb"
+
+# A short chain that matches only the query's first two residues. Local
+# alignment maps the queried position onto it at identity 1.0, so it is exactly
+# the "short perfect sub-block on an unrelated chain" that the credibility floor
+# (MIN_CHAIN_COVERAGE / MIN_ALIGNED_RESIDUES) exists to reject.
+SHORT_DECOY_RESIDUES = ["MET", "ASN", "TRP", "TRP", "TRP"]
 
 
 def write_link(tmp_path: Path, name: str, line: str) -> Path:
@@ -21,75 +27,91 @@ def write_link(tmp_path: Path, name: str, line: str) -> Path:
     return path
 
 
-def homodimer_structure() -> str:
-    """Two copies of the same short protein (an 1AVD-style avidin homodimer).
-    Chain A is missing its last two C-terminal residues (unresolved) but
-    carries a glycan LINK on its Asn. Chain B is fully resolved (higher
-    coverage) but has no LINK. Both chains resolve the query position, so a
-    coverage-sensitive tie would incorrectly drop chain A even though it is
-    unambiguously the same protein and the one actually carrying the glycan.
-    """
-    lines = [link_line("ASN", "A", 2, "NAG", "A", 101)]
+def build_structure(
+    chains: list[tuple[str, list[str]]],
+    links: list[tuple] = (),
+) -> str:
+    """A PDB file from (chain_id, residue names) blocks plus optional LINK records."""
+    lines = [link_line(*link) for link in links]
     serial = 1
-    for offset, resname in enumerate(["MET", "ASN", "LYS", "THR", "ALA", "LEU", "TRP", "ASP"]):
-        lines.append(atom_line(
-            serial, "CA", resname, "A", offset + 1, 10.0 + serial, 10.0, 10.0, "C",
-        ))
-        serial += 1
-    for offset, resname in enumerate(
-        ["MET", "ASN", "LYS", "THR", "ALA", "LEU", "TRP", "ASP", "GLY", "TYR"]
-    ):
-        lines.append(atom_line(
-            serial, "CA", resname, "B", offset + 1, 50.0 + serial, 10.0, 10.0, "C",
-        ))
-        serial += 1
+    for chain_id, resnames in chains:
+        block, serial = chain_lines(chain_id, resnames, start_serial=serial)
+        lines.extend(block)
     lines.append("END")
     return "\n".join(lines) + "\n"
+
+
+def substituted(positions: dict[int, str]) -> list[str]:
+    """LONG_RESIDUES with 1-indexed positions replaced, for building homologues
+    of the query at a controlled identity. Position 2 is never touched, so the
+    asparagine every test targets stays put."""
+    residues = list(LONG_RESIDUES)
+    for position, resname in positions.items():
+        assert position != 2, "position 2 must stay ASN"
+        residues[position - 1] = resname
+    return residues
+
+
+def homodimer_structure() -> str:
+    """Two copies of the same protein (an 1AVD-style homodimer). Chain A is
+    missing its last eight C-terminal residues (unresolved) but carries a glycan
+    LINK on its Asn. Chain B is fully resolved (higher coverage) but has no
+    LINK. Both chains clear the credibility floor and align at identity 1.0, so
+    both are the same protein; a coverage-sensitive tie would incorrectly drop
+    chain A even though it is the copy actually carrying the glycan.
+    """
+    return build_structure(
+        [("A", LONG_RESIDUES[:32]), ("B", LONG_RESIDUES)],
+        [("ASN", "A", 2, "NAG", "A", 101)],
+    )
 
 
 def linked_but_unrelated_chain_structure() -> str:
-    """Chain A: an unrelated sequence (one substitution away from the query)
-    that carries a synthetic glycan LINK on its own residue 2. Chain B: an
-    exact match to the query, with no LINK. The identity gate must still
-    reject chain A's link rather than trusting a glycan link found on any
-    chain regardless of whether it is actually the queried protein.
+    """Chain A: a full-length but divergent chain (eight substitutions, identity
+    0.8) that carries a synthetic glycan LINK on its own Asn 2. Chain B: an
+    exact match to the query, with no LINK. Chain A clears the credibility floor
+    on its own — full coverage over 40 aligned residues — so only the identity
+    gate can reject it, which is what this pins: a glycan link is never trusted
+    just because it exists somewhere in the file.
     """
-    lines = [link_line("ASN", "A", 2, "NAG", "A", 101)]
-    serial = 1
-    for offset, resname in enumerate(["MET", "ASP", "LYS", "THR", "ALA"]):
-        lines.append(atom_line(
-            serial, "CA", resname, "A", offset + 1, 10.0 + serial, 10.0, 10.0, "C",
-        ))
-        serial += 1
-    for offset, resname in enumerate(["MET", "ASN", "LYS", "THR", "ALA"]):
-        lines.append(atom_line(
-            serial, "CA", resname, "B", offset + 1, 60.0 + serial, 10.0, 10.0, "C",
-        ))
-        serial += 1
-    lines.append("END")
-    return "\n".join(lines) + "\n"
+    divergent = substituted({
+        5: "GLY", 9: "ALA", 13: "GLY", 17: "ALA",
+        23: "GLY", 27: "ALA", 31: "GLY", 35: "ALA",
+    })
+    return build_structure(
+        [("A", divergent), ("B", LONG_RESIDUES)],
+        [("ASN", "A", 2, "NAG", "A", 101)],
+    )
 
 
 def two_chain_structure() -> str:
-    """Chain A: an unrelated sequence sharing only one residue type with the
-    query. Chain B: an exact match to the query sequence "MNKTA". Chain A is
-    written first, so file-order-wins chain selection would pick it over the
-    chain that actually matches the query.
+    """Chain A: the short decoy, sharing only the query's first two residues.
+    Chain B: an exact match to the full query sequence. Chain A is written
+    first, so file-order-wins chain selection would pick it over the chain that
+    actually matches the query.
     """
-    lines = []
-    serial = 1
-    for offset, resname in enumerate(["TRP", "TRP", "ASN", "TRP", "TRP"]):
-        lines.append(atom_line(
-            serial, "CA", resname, "A", offset + 1, 30.0 + serial, 10.0, 10.0, "C",
-        ))
-        serial += 1
-    for offset, resname in enumerate(["MET", "ASN", "LYS", "THR", "ALA"]):
-        lines.append(atom_line(
-            serial, "CA", resname, "B", offset + 1, 40.0 + serial, 10.0, 10.0, "C",
-        ))
-        serial += 1
-    lines.append("END")
-    return "\n".join(lines) + "\n"
+    return build_structure([("A", SHORT_DECOY_RESIDUES), ("B", LONG_RESIDUES)])
+
+
+def short_linked_chain_structure() -> str:
+    """The short decoy as the only chain, carrying a glycan LINK on its Asn 2.
+    Nothing in the file is credibly the queried protein, so the linkage must not
+    be credited to the site however perfectly that two-residue block aligns.
+    """
+    return build_structure(
+        [("A", SHORT_DECOY_RESIDUES)], [("ASN", "A", 2, "NAG", "A", 101)]
+    )
+
+
+def point_mutant_structure() -> str:
+    """A single full-length chain one substitution away from the query (identity
+    0.975), carrying a glycan LINK on its Asn 2. Real structures routinely
+    differ from the canonical UniProt sequence by a point mutation or an
+    isoform difference, and must still count as the same protein.
+    """
+    return build_structure(
+        [("A", substituted({20: "LYS"}))], [("ASN", "A", 2, "NAG", "A", 101)]
+    )
 
 
 def test_parses_asn_first_link_order():
@@ -118,26 +140,31 @@ def test_ignores_links_without_an_asparagine(tmp_path):
 
 def test_site_with_linked_glycan_is_tier_linked():
     links = parse_link_records(FIXTURE)
-    result = assess_site("MNKTA", 2, FIXTURE, "MINI", links)
+    result = assess_site(LONG_SEQUENCE, 2, FIXTURE, "MINI", links)
     assert result["tier"] == "structure_linked_glycan"
     assert result["chain_id"] == "A"
     assert result["resseq"] == 2
     assert result["observed_residue"] == "N"
+    assert result["detail"] == ""
 
 
 def test_resolved_site_without_glycan_is_not_called_unmodified():
-    result = assess_site("MNKTA", 4, FIXTURE, "MINI", parse_link_records(FIXTURE))
+    result = assess_site(LONG_SEQUENCE, 4, FIXTURE, "MINI", parse_link_records(FIXTURE))
     assert result["tier"] == "structure_residue_resolved"
     assert "unmodified" not in result["tier"]
+    assert result["observed_residue"] == "T"
 
 
 def test_position_outside_the_model_is_unresolved():
-    result = assess_site("MNKTAWWWWW", 9, FIXTURE, "MINI", parse_link_records(FIXTURE))
+    # The query runs five residues past the end of the modelled chain.
+    result = assess_site(
+        LONG_SEQUENCE + "KKKKK", 43, FIXTURE, "MINI", parse_link_records(FIXTURE)
+    )
     assert result["tier"] == "structure_residue_unresolved"
 
 
 def test_missing_structure_file_is_not_assessed(tmp_path):
-    result = assess_site("MNKTA", 2, tmp_path / "absent.pdb", "NONE", [])
+    result = assess_site(LONG_SEQUENCE, 2, tmp_path / "absent.pdb", "NONE", [])
     assert result["tier"] == "structure_not_assessed"
     assert result["detail"] == "structure_file_missing"
 
@@ -145,14 +172,14 @@ def test_missing_structure_file_is_not_assessed(tmp_path):
 def test_mmcif_linkage_is_recorded_as_unsupported(tmp_path):
     path = tmp_path / "entry.cif"
     path.write_text("data_TEST\n")
-    result = assess_site("MNKTA", 2, path, "TEST", [])
+    result = assess_site(LONG_SEQUENCE, 2, path, "TEST", [])
     assert result["tier"] == "structure_not_assessed"
     assert result["detail"] == "mmcif_linkage_unsupported"
 
 
 def test_accession_without_a_cached_structure_is_not_assessed():
     candidates = pd.DataFrame([{"accession": "P99999", "position": 5}])
-    frame = build_site_evidence(candidates, {"P99999": "MNKTA"}, {})
+    frame = build_site_evidence(candidates, {"P99999": LONG_SEQUENCE}, {})
     assert frame.iloc[0].structure_tier == "structure_not_assessed"
     assert frame.iloc[0].structure_detail == "no_cached_structure"
 
@@ -161,24 +188,25 @@ def test_build_site_evidence_uses_the_manifest(tmp_path):
     candidates = pd.DataFrame([{"accession": "P1", "position": 2}])
     manifest = {"P1": {"accession": "P1", "pdb_id": "MINI",
                        "output_path": str(FIXTURE), "status": "already_present"}}
-    frame = build_site_evidence(candidates, {"P1": "MNKTA"}, manifest)
+    frame = build_site_evidence(candidates, {"P1": LONG_SEQUENCE}, manifest)
     assert frame.iloc[0].structure_tier == "structure_linked_glycan"
 
 
 def test_chain_selection_prefers_alignment_quality_over_file_order(tmp_path):
     path = tmp_path / "two_chain.pdb"
     path.write_text(two_chain_structure())
-    result = assess_site("MNKTA", 2, path, "MULTI", [])
+    result = assess_site(LONG_SEQUENCE, 2, path, "MULTI", [])
     assert result["chain_id"] == "B"
     assert result["resseq"] == 2
     assert result["observed_residue"] == "N"
+    assert result["detail"] == ""
 
 
 def test_glycan_link_on_lower_coverage_homodimer_copy_still_wins(tmp_path):
     path = tmp_path / "homodimer.pdb"
     path.write_text(homodimer_structure())
     links = parse_link_records(path)
-    result = assess_site("MNKTALWDGY", 2, path, "DIMER", links)
+    result = assess_site(LONG_SEQUENCE, 2, path, "DIMER", links)
     assert result["tier"] == "structure_linked_glycan"
     assert result["chain_id"] == "A"
     assert result["resseq"] == 2
@@ -188,6 +216,26 @@ def test_identity_gate_excludes_linked_but_unrelated_chain(tmp_path):
     path = tmp_path / "linked_unrelated.pdb"
     path.write_text(linked_but_unrelated_chain_structure())
     links = parse_link_records(path)
-    result = assess_site("MNKTA", 2, path, "MULTI2", links)
+    result = assess_site(LONG_SEQUENCE, 2, path, "MULTI2", links)
     assert result["tier"] == "structure_residue_resolved"
     assert result["chain_id"] == "B"
+
+
+def test_short_block_match_on_a_linked_chain_is_low_confidence(tmp_path):
+    path = tmp_path / "short_linked.pdb"
+    path.write_text(short_linked_chain_structure())
+    links = parse_link_records(path)
+    result = assess_site(LONG_SEQUENCE, 2, path, "SHORT", links)
+    assert result["tier"] == "structure_residue_resolved"
+    assert result["detail"] == "low_confidence_chain_match"
+
+
+def test_full_length_point_mutant_is_still_the_same_protein(tmp_path):
+    path = tmp_path / "point_mutant.pdb"
+    path.write_text(point_mutant_structure())
+    links = parse_link_records(path)
+    result = assess_site(LONG_SEQUENCE, 2, path, "MUT", links)
+    assert result["tier"] == "structure_linked_glycan"
+    assert result["chain_id"] == "A"
+    assert result["resseq"] == 2
+    assert result["detail"] == ""

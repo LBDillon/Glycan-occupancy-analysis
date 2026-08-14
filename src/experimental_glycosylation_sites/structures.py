@@ -22,6 +22,13 @@ MMCIF_SUFFIXES = {".cif", ".mmcif"}
 # happened to match.
 SAME_PROTEIN_IDENTITY_TOLERANCE = 0.02
 
+# Identity alone is not enough: it is measured over the aligned block, so an
+# unrelated chain sharing a short motif scores identity 1.0 on a two-residue block
+# and would pass the gate. A chain that genuinely is this protein aligns across
+# most of itself, so require that too before trusting a glycan linkage from it.
+MIN_CHAIN_COVERAGE = 0.5
+MIN_ALIGNED_RESIDUES = 30
+
 
 @dataclass(frozen=True)
 class GlycanLink:
@@ -185,22 +192,28 @@ def assess_site(
     if not scored:
         return {**blank, "tier": "structure_residue_unresolved", "detail": "position_not_in_model"}
 
-    # Two failure modes to avoid, and they pull in opposite directions.
-    #
-    # Taking the first chain in file order is wrong: local alignment always returns
-    # SOME block, so an unrelated chain captures the position, misattributing the
-    # residue and silently upgrading unresolved positions to resolved.
-    #
-    # But restricting to chains that tie on the FULL metric tuple is also wrong:
-    # homodimer copies of the same protein have identical identity yet different
-    # coverage (unresolved loops and termini), so a coverage-sensitive tie drops the
-    # copy that may carry the only modelled glycan.
-    #
     # Identity is the "is this the same protein" test; coverage is not. So gate on
-    # identity, then prefer a linked chain, then rank the rest by coverage.
-    best_identity = max(item[0][0] for item in scored)
-    same_protein = [
+    # identity, then prefer a linked chain, then rank the rest by coverage. But
+    # admit only chains that align across enough of themselves to be credibly this
+    # protein at all — otherwise a short perfect sub-block on an unrelated chain
+    # passes at identity 1.0 and its glycan is wrongly credited.
+    credible = [
         item for item in scored
+        if item[0][1] >= MIN_CHAIN_COVERAGE and item[0][3] >= MIN_ALIGNED_RESIDUES
+    ]
+
+    if not credible:
+        # Nothing aligns well enough to identify. Report the best positional guess,
+        # but never assert a glycan from a chain we cannot credibly call this protein.
+        scored.sort(key=lambda item: item[0], reverse=True)
+        fallback = dict(scored[0][2])
+        fallback["tier"] = "structure_residue_resolved"
+        fallback["detail"] = "low_confidence_chain_match"
+        return fallback
+
+    best_identity = max(item[0][0] for item in credible)
+    same_protein = [
+        item for item in credible
         if item[0][0] >= best_identity - SAME_PROTEIN_IDENTITY_TOLERANCE
     ]
     same_protein.sort(key=lambda item: item[0], reverse=True)

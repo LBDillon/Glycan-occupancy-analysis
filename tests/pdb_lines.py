@@ -27,19 +27,45 @@ def atom_line(
     )
 
 
+# A 40-residue, repeat-free amino acid sequence (all 20 canonical residues,
+# then a second differently-ordered pass through the same 20) long enough to
+# clear structures.MIN_ALIGNED_RESIDUES (30) on a full self-match. Used
+# wherever a fixture needs a chain that's credibly "the same protein" as the
+# query, not just a short coincidental local-alignment match. One-letter form
+# verified against Bio.SeqUtils.seq1 rather than transcribed by hand:
+# MNKTALWDGYSPVHCEQFIRGSTVLIPFYHQEDKMWNACR
+LONG_RESIDUES = [
+    "MET", "ASN", "LYS", "THR", "ALA", "LEU", "TRP", "ASP", "GLY", "TYR",
+    "SER", "PRO", "VAL", "HIS", "CYS", "GLU", "GLN", "PHE", "ILE", "ARG",
+    "GLY", "SER", "THR", "VAL", "LEU", "ILE", "PRO", "PHE", "TYR", "HIS",
+    "GLN", "GLU", "ASP", "LYS", "MET", "TRP", "ASN", "ALA", "CYS", "ARG",
+]
+LONG_SEQUENCE = "MNKTALWDGYSPVHCEQFIRGSTVLIPFYHQEDKMWNACR"
+
+
+def chain_lines(
+    chain_id: str, resnames: list[str], start_serial: int = 1, start_resseq: int = 1,
+    x0: float = 10.0, y: float = 10.0, z: float = 10.0,
+) -> tuple[list[str], int]:
+    """CA-only ATOM records for a chain (sufficient for _parse_chains, which
+    only requires a CA atom per residue). Returns the lines and the next free
+    atom serial number, so callers can continue numbering across chains."""
+    lines = []
+    serial = start_serial
+    for offset, resname in enumerate(resnames):
+        lines.append(atom_line(
+            serial, "CA", resname, chain_id, start_resseq + offset, x0 + serial, y, z, "C",
+        ))
+        serial += 1
+    return lines, serial
+
+
 def mini_structure() -> str:
-    """Chain A holding MNKTA, with a NAG linked to the asparagine at resseq 2."""
+    """Chain A holding the 40-residue LONG_RESIDUES sequence, with a NAG
+    linked to the asparagine at resseq 2."""
     lines = [link_line("ASN", "A", 2, "NAG", "A", 101)]
-    serial = 1
-    for offset, (resname, element_seq) in enumerate([
-        ("MET", "NCC"), ("ASN", "NCC"), ("LYS", "NCC"), ("THR", "NCC"), ("ALA", "NCC"),
-    ]):
-        for name, element in zip(("N", "CA", "C"), element_seq):
-            lines.append(atom_line(
-                serial, name, resname, "A", offset + 1,
-                10.0 + serial, 10.0, 10.0, element,
-            ))
-            serial += 1
+    chain, serial = chain_lines("A", LONG_RESIDUES)
+    lines.extend(chain)
     lines.append(atom_line(serial, "C1", "NAG", "A", 101, 15.0, 12.0, 10.0, "C", "HETATM"))
     lines.append("END")
     return "\n".join(lines) + "\n"
