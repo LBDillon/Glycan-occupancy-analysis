@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from experimental_glycosylation_sites.structures import (
     GlycanLink,
@@ -239,3 +240,44 @@ def test_full_length_point_mutant_is_still_the_same_protein(tmp_path):
     assert result["chain_id"] == "A"
     assert result["resseq"] == 2
     assert result["detail"] == ""
+
+
+# --- manifest path resolution -------------------------------------------------
+# The manifest records absolute paths from the machine that downloaded the
+# structures. If those cannot be resolved elsewhere the structural layer silently
+# disappears, so resolution is pinned in all three directions.
+
+def _manifest_csv(tmp_path, output_path: str):
+    path = tmp_path / "manifest.csv"
+    path.write_text(
+        "accession,pdb_id,output_path,status\n"
+        f"P1,MINI,{output_path},already_present\n"
+    )
+    return path
+
+
+def test_manifest_uses_the_recorded_path_when_it_exists(tmp_path):
+    from experimental_glycosylation_sites.structures import load_manifest
+
+    manifest = load_manifest(_manifest_csv(tmp_path, str(FIXTURE)), None)
+    assert manifest["P1"]["output_path"] == str(FIXTURE)
+
+
+def test_manifest_recovers_via_structure_dir_when_recorded_path_is_absent(tmp_path):
+    from experimental_glycosylation_sites.structures import load_manifest
+
+    stale = "/nonexistent/machine/structures/pdb/mini_link.pdb"
+    manifest = load_manifest(_manifest_csv(tmp_path, stale), FIXTURE.parent)
+    assert manifest["P1"]["output_path"] == str(FIXTURE)
+
+
+def test_manifest_raises_rather_than_silently_returning_nothing(tmp_path):
+    from experimental_glycosylation_sites.structures import (
+        StructureManifestError,
+        load_manifest,
+    )
+
+    stale = "/nonexistent/machine/structures/pdb/mini_link.pdb"
+    with pytest.raises(StructureManifestError) as excinfo:
+        load_manifest(_manifest_csv(tmp_path, stale), tmp_path / "also-missing")
+    assert "structure_dir" in str(excinfo.value)

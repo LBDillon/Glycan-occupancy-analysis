@@ -158,7 +158,9 @@ def run_full(config: Config, fetch: bool = False) -> dict:
 
     structure_frame = None
     if config.layers.get("structure"):
-        manifest = structure_layer.load_manifest(config.paths["structure_manifest"])
+        manifest = structure_layer.load_manifest(
+            config.paths["structure_manifest"], config.paths.get("structure_dir")
+        )
         sequences = _uniprot_sequences(config.paths["uniprot_tsv"], set(accessions))
         extra["accessions_with_cached_structure"] = sum(
             1 for accession in accessions if accession in manifest

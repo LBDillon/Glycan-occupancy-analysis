@@ -223,18 +223,54 @@ def assess_site(
     return same_protein[0][2]
 
 
-def load_manifest(path: Path) -> dict[str, dict]:
-    """Accession to manifest row, keeping only rows whose file exists."""
+class StructureManifestError(RuntimeError):
+    """The manifest lists structures but none of them could be located."""
+
+
+def load_manifest(path: Path, structure_dir: Path | None = None) -> dict[str, dict]:
+    """Accession to manifest row, keeping only rows whose file can be located.
+
+    The manifest stores absolute `output_path` values recorded on the machine that
+    downloaded the structures. On any other checkout those paths do not exist, so
+    each row is also tried as a basename under `structure_dir`. Without that
+    fallback the whole structural layer silently disappears — every lookup misses,
+    the run completes, and it reports a smaller site count as though that were the
+    answer.
+
+    A manifest with usable rows but zero resolvable files is a broken setup, not an
+    empty result, and raises rather than returning {}.
+    """
     manifest: dict[str, dict] = {}
+    considered = 0
     with Path(path).open(encoding="utf-8", newline="") as handle:
         for row in csv.DictReader(handle):
             accession = (row.get("accession") or "").strip()
             output_path = (row.get("output_path") or "").strip()
             if not accession or not output_path or (row.get("status") or "").strip() == "failed":
                 continue
-            candidate = Path(output_path)
-            if candidate.exists() and candidate.stat().st_size > 0:
+            considered += 1
+
+            located = None
+            recorded = Path(output_path)
+            if recorded.exists() and recorded.stat().st_size > 0:
+                located = recorded
+            elif structure_dir is not None:
+                fallback = Path(structure_dir) / recorded.name
+                if fallback.exists() and fallback.stat().st_size > 0:
+                    located = fallback
+
+            if located is not None:
+                row = dict(row)
+                row["output_path"] = str(located)
                 manifest[accession] = row
+
+    if considered and not manifest:
+        raise StructureManifestError(
+            f"{path}: {considered} usable rows but none could be located. "
+            f"Recorded paths are absolute and this is not the machine that wrote them; "
+            f"set [paths] structure_dir to the directory holding the structure files "
+            f"(tried: {structure_dir})."
+        )
     return manifest
 
 
