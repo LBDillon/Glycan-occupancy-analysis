@@ -13,7 +13,7 @@ from .orthologs import (
     build_candidate_sites,
     count_null_positions,
 )
-from .uniprot import load_uniprot_features
+from .uniprot import accessions_with_xref, load_uniprot_features
 
 from . import glyconnect as glyconnect_layer
 from . import glygen as glygen_layer
@@ -128,10 +128,20 @@ def run_full(config: Config, fetch: bool = False) -> dict:
     cache_dir = Path(config.paths["cache_dir"])
     extra: dict = {}
 
+    def to_fetch(xref_column: str) -> list[str]:
+        """Accessions worth requesting from a source that indexes `xref_column`.
+
+        Narrows the fetch list only. Evidence below is still built from the full
+        candidate set, so filtering here cannot change any published count.
+        """
+        return accessions_with_xref(
+            config.paths["uniprot_tsv"], set(accessions), xref_column
+        )
+
     glygen_frame = None
     if config.layers.get("glygen"):
         if fetch:
-            glygen_layer.fetch_details(accessions, config)
+            glygen_layer.fetch_details(to_fetch("GlyGen"), config)
         cache = glygen_layer.load_cache(cache_dir / "glygen_protein_detail.jsonl")
         extra["glygen_cached_accessions"] = len(cache)
         glygen_frame = glygen_layer.build_site_evidence(candidates, cache)
@@ -140,7 +150,7 @@ def run_full(config: Config, fetch: bool = False) -> dict:
     glyconnect_frame = None
     if config.layers.get("glyconnect"):
         if fetch:
-            glyconnect_layer.fetch_details(accessions, config)
+            glyconnect_layer.fetch_details(to_fetch("GlyConnect"), config)
         cache = glyconnect_layer.load_cache(cache_dir / "glyconnect_protein_detail.jsonl")
         extra["glyconnect_cached_accessions"] = len(cache)
         glyconnect_frame = glyconnect_layer.build_site_evidence(candidates, cache)

@@ -11,6 +11,7 @@ from experimental_glycosylation_sites.pipeline import run_uniprot_baseline
 
 MODULE_ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOT = MODULE_ROOT / "tests" / "snapshots" / "uniprot_baseline_2026-04-27.json"
+ENRICHED = MODULE_ROOT / "tests" / "snapshots" / "enriched_2026-08-06.json"
 
 
 def fingerprint(path: Path) -> str:
@@ -51,4 +52,28 @@ def test_uniprot_baseline_matches_snapshot(config):
             f"Current input fingerprints: {json.dumps(prints, indent=2)}\n"
             "Investigate whether UniProt or the canonical tables changed "
             "before editing the snapshot file."
+        )
+
+
+def test_enriched_counts_match_snapshot(config):
+    if not ENRICHED.exists():
+        pytest.skip("enriched fixture not yet frozen")
+    cache = Path(config.paths["cache_dir"]) / "glygen_protein_detail.jsonl"
+    if not cache.exists():
+        pytest.skip("GlyGen cache absent; run fetch-glygen first")
+
+    from experimental_glycosylation_sites.pipeline import run_full
+
+    expected = json.loads(ENRICHED.read_text())["counts"]
+    actual = run_full(config, fetch=False)
+    deltas = {
+        key: {"expected": value, "actual": actual[key]}
+        for key, value in expected.items()
+        if actual[key] != value
+    }
+    if deltas:
+        pytest.fail(
+            "Enriched counts drifted from the 2026-08-06 snapshot.\n"
+            f"Deltas: {json.dumps(deltas, indent=2)}\n"
+            "Check whether the GlyGen cache or cached structures changed."
         )

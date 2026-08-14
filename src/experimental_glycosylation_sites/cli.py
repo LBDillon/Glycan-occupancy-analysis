@@ -10,6 +10,7 @@ from .glyconnect import fetch_details as fetch_glyconnect
 from .glygen import fetch_details as fetch_glygen
 from .orthologs import build_candidate_sites
 from .pipeline import run_full
+from .uniprot import accessions_with_xref
 
 DEFAULT_CONFIG = Path(__file__).resolve().parents[2] / "config" / "default.toml"
 
@@ -17,13 +18,9 @@ DEFAULT_CONFIG = Path(__file__).resolve().parents[2] / "config" / "default.toml"
 def _accessions(config, xref_column: str | None = None) -> list[str]:
     """Candidate accessions, optionally restricted to those a source indexes.
 
-    GlyGen answers HTTP 500 — not 404 — for an accession it has no entry for, so
-    requesting every candidate spends most of the run on responses that can never
-    succeed. Only 1,714 of 2,878 candidates carry a GlyGen cross-reference.
+    Only 1,714 of 2,878 candidates carry a GlyGen cross-reference; see
+    `uniprot.accessions_with_xref` for why the rest are not worth requesting.
     """
-    import csv
-    import gzip
-
     import pandas as pd
 
     pairs = pd.read_csv(config.paths["pairs_master"], low_memory=False)
@@ -33,16 +30,7 @@ def _accessions(config, xref_column: str | None = None) -> list[str]:
     accessions = set(sites["accession"])
     if xref_column is None:
         return sorted(accessions)
-
-    tsv_path = config.paths["uniprot_tsv"]
-    opener = gzip.open if str(tsv_path).endswith(".gz") else open
-    indexed = set()
-    with opener(tsv_path, "rt", encoding="utf-8", newline="") as handle:
-        for row in csv.DictReader(handle, delimiter="\t"):
-            accession = (row.get("Entry") or "").strip()
-            if accession in accessions and (row.get(xref_column) or "").strip():
-                indexed.add(accession)
-    return sorted(indexed)
+    return accessions_with_xref(config.paths["uniprot_tsv"], accessions, xref_column)
 
 
 def main(argv: list[str] | None = None) -> int:

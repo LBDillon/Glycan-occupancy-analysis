@@ -200,21 +200,27 @@ From the latest full run (`results/summary.json`):
 | UniProt baseline, all | 505 sites / 401 proteins |
 | UniProt baseline, strict + plausible | 357 sites / 303 proteins |
 | UniProt baseline, strict only | 321 sites / 278 proteins |
-| Enriched (all layers), all | 537 sites / 426 proteins |
-| Excluded | 3,770 (537 + 3,770 = 4,307) |
+| Enriched (all layers), all | 912 sites / 697 proteins |
+| Enriched, strict + plausible | 460 sites / 381 proteins |
+| Enriched, strict only | 396 sites / 333 proteins |
+| Excluded | 3,395 (912 + 3,395 = 4,307) |
 | Sites with UniProt support | 505 |
+| Sites with GlyGen support | 774 |
 | Sites with structural glycan support | 172 |
-| Structure-only sites (structural glycan, fails UniProt policy) | 32 |
+| Sites failing UniProt policy but carrying a structural glycan | 32 |
 
-The 32 structure-only sites are the clearest demonstration that the layers are
-independent: each has a modelled glycan covalently linked to the asparagine in a
-cached PDB entry, yet its UniProt annotation rests on a sequence model, a
-curator inference, or no evidence code at all.
+Those 32 sites are the clearest demonstration that the layers are independent:
+each has a modelled glycan covalently linked to the asparagine in a cached PDB
+entry, yet its UniProt annotation rests on a sequence model, a curator
+inference, or no evidence code at all. Twenty-four of them are still supported
+by structure alone once GlyGen is included.
 
-`summary.json` from this run reports `support_glygen: 0` because the GlyGen
-cache was empty at run time (`provenance.json` records
-`glygen_cached_accessions: 0`). Run `fetch-glygen` and rerun to populate that
-layer; the enriched counts will grow.
+Enrichment adds 407 sites to the 505-site UniProt baseline without moving the
+baseline itself: 383 of the additions carry GlyGen support, 32 carry a
+structural glycan, and 8 carry both. The GlyGen layer was populated from 1,714
+cached accessions — the candidates that carry a GlyGen cross-reference, which
+are the only ones worth requesting (`provenance.json` records
+`glygen_cached_accessions: 1714`).
 
 ## Caching, offline reruns, and determinism
 

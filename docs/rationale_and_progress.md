@@ -7,36 +7,20 @@ database can and cannot establish.*
 
 ---
 
-## The problem this module solves
+## The problem in catalouging sequons by motif
 
-The ortholog sequon-conservation database asks an evolutionary question. It finds pairs of
-orthologous proteins where one member carries an N-linked sequon — the N-X-S/T motif that
-makes glycosylation possible — and the other has lost it. Each such comparison is one row.
+The ortholog sequon-conservation database asks an evolutionary question. It finds pairs of orthologous proteins where one member carries an N-linked sequon, which is the N-X-S/T motif is nesacarry (but not sufficentt) for N-linked glycosylation, and the other has lost it. Each such comparison is one row.
 
-That structure is right for evolution and wrong for glycosylation, for two reasons.
+That structure is right for evolution and wrong for glycosylation (this does not make sense, what is meant for evolution and stucture specifically here and right and wring?), for two reasons.
 
-The first is biological. A sequon is a motif, not a modification. N-X-S/T is necessary for
-N-linked glycosylation but nowhere near sufficient: whether a sequon is actually used
-depends on local structure, on membrane topology, and on whether the protein ever meets an
-oligosaccharyltransferase. So "this pair lost a sequon" and "this pair lost a glycan" are
-different statements, and until now the database could only support the first.
+A sequon is a motif in the sequence that is one of the signals for N-Linked glycosylation but whether a sequon is actually used depends on local structure, on membrane topology, and on whether the protein ever meets an oligosaccharyltransferase (OST). So distingishing between "this pair lost a sequon" and "this pair lost a glycan" is critcal for the database to make sense biologocally.
 
-The second is arithmetic. A single asparagine on a single protein appears once for every
-ortholog it was compared against. In the current data, 13,816 pair rows collapse to 4,307
-distinct sites. Counting rows rather than sites would turn one biochemical fact into dozens
-of apparent observations, and every statistic built on top would be badly overconfident.
+The second reason is arithmetic. A single asparagine on a single protein appears once for every ortholog it was compared against (what does this mean?). In the current data, 13,816 pair rows collapse to 4,307 distinct sites. Counting rows rather than sites would turn one biochemical fact into dozens of apparent observations, and every statistic built on top would be badly overconfident. (I am confused by this, maybe expalin in a diagram?)
 
-This module reorganises the evidence around the thing that corresponds to a physical event:
-**one protein, one residue position**. Ortholog pairs remain as context, but they live in a
-separate table where they cannot inflate a count.
+This part of the dataset now reorganises the evidence around one protein, one residue position. Ortholog pairs remain as context, but they live in a separate table where they cannot inflate a count.
 
-## What was built
-
-For every candidate site, the module asks a narrow, checkable question: is there
-experimental evidence that *this* asparagine, on *this* protein, actually carries a glycan?
-
-Four independent sources can answer, and each is kept in its own layer so that no source can
-quietly overrule another.
+For every candidate site for a protien in the database we ask if there is
+experimental evidence that the asparagine specificaly carries a glycan. 
 
 **UniProt** is the primary source, because it is the only one whose site-level annotations
 carry per-feature evidence codes you can audit. Its glycosylation features are read at exact
@@ -81,9 +65,9 @@ residue is resolved and no glycan is modelled" as exactly that, and never as evi
 absence.
 
 One older convention in this repository had to be corrected along the way. The evidence code
-`ECO:0007744` had been labelled as PDB-backed, implying the site had been seen in a
-structure. It does not mean that — it means a curator combined computational and
-experimental evidence. Seven sites in the dataset rest on it alone, and they are flagged so
+`ECO:0007744` had been labelled as though a deposited structure stood behind it, implying
+the site had been seen in one. It does not mean that — it means a curator combined
+computational and experimental evidence. Seven sites rest on it alone, and they are flagged so
 they can be set aside in a sensitivity check. Nothing in the module now describes them as
 structurally observed.
 
@@ -103,8 +87,14 @@ individually to confirm it maps to a genuine asparagine. That is the multi-layer
 earning its place: a third of a hundred sites recovered that any single-source approach
 would have missed.
 
-The GlyGen layer is currently being populated and its contribution is not yet included, so
-the present total of **537 sites in 426 proteins** is a floor, not a final number.
+The GlyGen layer has since been populated — 1,714 of the candidate accessions carry a GlyGen
+cross-reference, and only those were requested — bringing the enriched total to **912 sites
+across 697 proteins**. Of the 407 sites added on top of the UniProt baseline, 383 have GlyGen
+support and 32 have a structural glycan linkage, with 8 supported by both. Restricting to the
+most confident ortholog comparisons leaves 396 sites in 333 proteins. These enriched figures
+are frozen as their own regression fixture beside the UniProt baseline, so a change in the
+GlyGen cache or the cached structures shows up as a failing test rather than a quietly
+different number.
 
 ## Why this matters beyond the immediate count
 

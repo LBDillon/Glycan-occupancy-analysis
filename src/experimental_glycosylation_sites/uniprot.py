@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import gzip
 import re
 from pathlib import Path
@@ -11,6 +12,27 @@ _EXACT_POSITION = re.compile(r"^CARBOHYD\s+(\d+)\s*;")
 _ANY_POSITION = re.compile(r"^CARBOHYD\s+(\S+)")
 _NOTE = re.compile(r'/note="([^"]*)"')
 _ECO = re.compile(r"ECO:\d{7}")
+
+
+def accessions_with_xref(tsv_path, accessions: set[str], xref_column: str) -> list[str]:
+    """The subset of `accessions` the UniProt snapshot cross-references to a source.
+
+    GlyGen answers HTTP 500 - not 404 - for an accession it has no entry for, so
+    requesting every candidate spends most of a fetch run on responses that can
+    never succeed. Both the standalone fetch commands and `run --fetch` narrow to
+    the cross-referenced subset through this one helper so they cannot drift
+    apart. Only the *fetching* is narrowed: evidence is still built for every
+    candidate site, since an accession absent from the cache simply contributes
+    no support.
+    """
+    opener = gzip.open if str(tsv_path).endswith(".gz") else open
+    indexed = set()
+    with opener(tsv_path, "rt", encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle, delimiter="\t"):
+            accession = (row.get("Entry") or "").strip()
+            if accession in accessions and (row.get(xref_column) or "").strip():
+                indexed.add(accession)
+    return sorted(indexed)
 
 
 def _glyco_type(note: str) -> str:

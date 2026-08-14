@@ -19,31 +19,31 @@ them, and constructing them is the hard part of most of what follows.
 **Do this first.** It is the use for which auditable provenance is the scarce
 ingredient, and it needs the least new machinery.
 
-The positive set is ready to use. `experimental_sites_all.csv` gives 537 sites
-in 426 proteins, each with `support_sources` recording which independent layers
+The positive set is ready to use. `experimental_sites_all.csv` gives 912 sites
+in 697 proteins, each with `support_sources` recording which independent layers
 support it, and each traceable through `provenance.json` to a hashed input.
 Three graded positive sets are available for a sensitivity analysis without any
 extra work:
 
 | Set | Sites | Use |
 |---|---|---|
-| `support_count >= 2` | 140 (`uniprot` and `structure` together) | Highest-confidence core |
+| `support_count >= 2` | 430 (109 of them supported by all three layers) | Highest-confidence core |
 | `experimental_sites_uniprot_baseline.csv` | 505 | Curated-only, frozen and regression-tested |
-| `experimental_sites_all.csv` | 537 | All layers, including 32 structure-only sites |
+| `experimental_sites_all.csv` | 912 | All layers, including 32 sites that fail UniProt policy but carry a structural glycan |
 
-The 32 structure-only sites are especially valuable as a held-out check: they
-carry a modelled covalent glycan but fail UniProt's evidence policy, so a model
-trained on curated annotation alone has not seen them.
+Those 32 sites are especially valuable as a held-out check: they carry a
+modelled covalent glycan but fail UniProt's evidence policy, so a model trained
+on curated annotation alone has not seen them.
 
 ### The negative set is the hard part
 
 There is no `observed_unmodified` class and there cannot be one from these
-sources. The tempting move — treat the 3,770 excluded sites as negatives — is
+sources. The tempting move — treat the 3,395 excluded sites as negatives — is
 wrong, and wrong in a way that will produce a good-looking and meaningless
 benchmark.
 
-Those 3,770 sites are `unknown`. They are dominated by proteins nobody has
-studied closely. A classifier trained to separate 537 positives from 3,770
+Those 3,395 sites are `unknown`. They are dominated by proteins nobody has
+studied closely. A classifier trained to separate 912 positives from 3,395
 "negatives" will learn the features that predict *being well studied* — model
 organism, protein family, abundance, medical relevance, structural
 tractability — and score highly, because those features really do separate the
@@ -370,10 +370,12 @@ Ordered by how much each would improve the dataset.
 
 Also worth doing, smaller:
 
-- Populate the GlyGen cache and rerun. The current build ran with an empty cache
-  (`glygen_cached_accessions: 0` in `provenance.json`), so the GlyGen layer
-  contributed nothing to the 537 and the enriched counts are, in that respect
-  too, a lower bound.
-- Freeze a dated enriched-counts snapshot alongside the UniProt baseline
-  snapshot, once the GlyGen layer has actually run, so the full pipeline gets
-  the same regression protection the baseline has.
+- Evaluate the GlyConnect layer on a populated cache. It is fetched and parsed
+  but does not confer positivity (`glyconnect_qualifies = false`), on the
+  argument that GlyGen already ingests it. Measuring how many of its sites GlyGen
+  missed would let that stay a decision rather than an assumption.
+
+Two earlier items on this list are now done: the GlyGen cache has been populated
+(1,714 cross-referenced accessions) and rerun, and the resulting enriched counts
+are frozen in `tests/snapshots/enriched_2026-08-06.json`, so the full pipeline
+now has the same regression protection as the UniProt baseline.
