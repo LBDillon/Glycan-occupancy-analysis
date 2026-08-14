@@ -1,7 +1,7 @@
 # Why this module exists, and what has been built
 
 *A plain-language account of the work, kept current as the module changes. Last updated
-2026-08-14, after Task 11 of 12. Technical detail appears only where the argument depends
+2026-08-14, after the full enrichment run (Task 12 of 12). Technical detail appears only where the argument depends
 on it; the README covers how to run things and `evidence_sources.md` covers what each
 database can and cannot establish.*
 
@@ -11,35 +11,50 @@ database can and cannot establish.*
 
 The ortholog sequon-conservation database asks an evolutionary question. It finds pairs of orthologous proteins where one member carries an N-linked sequon, which is the N-X-S/T motif is nesacarry (but not sufficentt) for N-linked glycosylation, and the other has lost it. Each such comparison is one row.
 
-That structure is right for evolution and wrong for glycosylation (this does not make sense, what is meant for evolution and stucture specifically here and right and wring?), for two reasons.
+Storing the data as one row per comparison suits the question the database was built to
+answer — how often sequons are lost across evolution — but it causes two problems as soon as
+you want to say anything about glycans.
 
-A sequon is a motif in the sequence that is one of the signals for N-Linked glycosylation but whether a sequon is actually used depends on local structure, on membrane topology, and on whether the protein ever meets an oligosaccharyltransferase (OST). So distingishing between "this pair lost a sequon" and "this pair lost a glycan" is critcal for the database to make sense biologocally.
+The first is that a sequon is only a motif in the sequence. Whether it is actually used
+depends on local structure, on membrane topology, and on whether the protein ever meets an
+oligosaccharyltransferase (OST). So "this pair lost a sequon" and "this pair lost a glycan"
+are different claims, and only the first is supported by the motif alone.
 
-The second reason is arithmetic. A single asparagine on a single protein appears once for every ortholog it was compared against (what does this mean?). In the current data, 13,816 pair rows collapse to 4,307 distinct sites. Counting rows rather than sites would turn one biochemical fact into dozens of apparent observations, and every statistic built on top would be badly overconfident. (I am confused by this, maybe expalin in a diagram?)
+The second problem is arithmetic, and it is easiest to see with an example. Take human
+P00709 with an asparagine at position 64. The database compares that protein against its
+bovine, murine and porcine orthologs, and each comparison is stored as its own row — so
+position 64 appears three times. Nothing about the protein has changed; only the number of
+comparisons has. If you counted rows you would record three glycosylation observations where
+biology has only one asparagine. Across the whole dataset that is the difference between
+13,816 rows and 4,307 actual sites, and any statistic built on the row count would be
+roughly three times more confident than the evidence allows.
 
-This part of the dataset now reorganises the evidence around one protein, one residue position. Ortholog pairs remain as context, but they live in a separate table where they cannot inflate a count.
+There is a diagram of exactly this collapse, along with the full provenance of every source,
+at the [evidence provenance
+page](https://claude.ai/code/artifact/d0248a3d-8f3e-4ebc-950e-31cd245dc835).
+
+The module therefore reorganises the evidence around one protein and one residue position.
+Ortholog pairs are still kept, but in a separate table, so they provide context without
+inflating any count.
 
 For every candidate site for a protien in the database we ask if there is
-experimental evidence that the asparagine specificaly carries a glycan. 
+experimental evidence that the asparagine specificaly carries a glycan. To check if it does we use data for the protein from UniProt and GlyGen, as well as looking at depositied structures and GlyConnect for supporting evidence.
 
-**UniProt** is the primary source, because it is the only one whose site-level annotations
-carry per-feature evidence codes you can audit. Its glycosylation features are read at exact
-residue positions only — a feature two residues away is not a match, and a range or an
-uncertain position is rejected rather than being rounded into a precise claim.
+**UniProt** is the primary source, because it is the only one with site-level annotations for per-feature evidence codes. Its glycosylation features are read at exact residue positions only and a range or an uncertain position is rejected.
 
-**GlyGen** aggregates glycosylation data from many labs and databases. It is genuinely
-independent of UniProt where its records cite mass-spectrometry repositories and published
-papers, and *not* independent where it is simply re-exporting UniProt's own predictions. The
-module separates those cases explicitly, because GlyGen agreeing with UniProt because it
-read UniProt is not corroboration.
+**GlyGen** aggregates glycosylation data from many labs and databases. It is independent of
+UniProt where its records cite mass-spectrometry repositories and published papers, and not
+independent where it is re-exporting UniProt's own predictions. The code separates those
+cases by reading the sources GlyGen itself cites for each site. Where the only citation is
+UniProt, the record is treated as an echo and carries no weight; where the citation is a
+PubMed paper or a mass-spectrometry repository, it counts. This matters more than it sounds:
+of the sites GlyGen holds, 1,415 turn out to be UniProt's own sequence rule coming back
+round, and admitting them would have quietly put predictions into a dataset whose entire
+value is that it contains none.
 
-**Deposited structures** provide the strongest evidence of all. When a crystallographer
-models a sugar covalently bonded to a specific asparagine, that is a direct physical
-observation of occupancy. These bonds are recorded in the structure files already cached on
-disk, and the module reads them.
+**Deposited structures**. When a crystallographer models a sugar covalently bonded to a specific asparagine, that is a direct physical observation of occupancy. These bonds are recorded in the structure files already cached, and the code reads them.
 
-**GlyConnect** contributes supporting detail but is off by default: its coverage is thin and
-GlyGen already ingests most of it.
+**GlyConnect** contributes supporting detail, but its coverage is thin and GlyGen already has most of it.
 
 ## Why the evidence handling is so fussy
 
