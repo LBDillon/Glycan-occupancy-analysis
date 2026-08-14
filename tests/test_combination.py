@@ -94,8 +94,45 @@ def test_glygen_predicted_never_confers_support():
     assert bool(row.experimental_positive) is False
 
 
-def test_observed_unmodified_is_never_emitted():
+def test_observed_unmodified_not_emitted_without_an_internal_control():
+    """A bare residue is a silence unless the structure proves glycans were modelled."""
     assert "observed_unmodified" not in set(combined().occupancy_status)
+
+
+def _structure_frame_with_control(controlled: set) -> pd.DataFrame:
+    frame = structure_frame()
+    frame["structure_internal_control"] = [
+        (a, p) in controlled for a, p in zip(frame.accession, frame.position)
+    ]
+    return frame
+
+
+def test_observed_unmodified_emitted_only_with_an_internal_control():
+    result = combine_layers(
+        uniprot_frame(), glygen_frame(), None,
+        _structure_frame_with_control({("P3", 30)}), POLICY,
+    ).set_index(["accession", "position"])
+    assert result.loc[("P3", 30)].occupancy_status == "observed_unmodified"
+    # P5 has no control and stays unknown rather than being swept along
+    assert result.loc[("P5", 50)].occupancy_status == "unknown"
+
+
+def test_supported_site_is_occupied_even_with_an_internal_control():
+    """Occupied outranks observed-unmodified; a glycan seen anywhere wins."""
+    result = combine_layers(
+        uniprot_frame(), glygen_frame(), None,
+        _structure_frame_with_control({("P1", 10), ("P3", 30)}), POLICY,
+    ).set_index(["accession", "position"])
+    assert result.loc[("P1", 10)].occupancy_status == "occupied_supported"
+
+
+def test_observed_unmodified_can_be_disabled_by_policy():
+    policy = dict(POLICY, observed_unmodified_from_internal_control=False)
+    result = combine_layers(
+        uniprot_frame(), glygen_frame(), None,
+        _structure_frame_with_control({("P3", 30)}), policy,
+    )
+    assert "observed_unmodified" not in set(result.occupancy_status)
 
 
 def test_support_count_reflects_independent_layers():

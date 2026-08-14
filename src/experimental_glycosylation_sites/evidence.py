@@ -161,9 +161,20 @@ def combine_layers(
     ]
     merged["support_count"] = sum(series.astype(int) for series in support.values())
     merged["experimental_positive"] = merged["support_count"] > 0
-    merged["occupancy_status"] = merged["experimental_positive"].map(
-        {True: OCCUPIED, False: UNKNOWN}
-    )
+    # Precedence: supported sites are occupied; otherwise a site whose structure
+    # carries an internal control (a glycan modelled at another residue, in a host
+    # that can glycosylate) is observed-unmodified; everything else is unknown.
+    #
+    # This is the ONLY route by which observed_unmodified may be emitted. Without
+    # that control a bare asparagine is a silence, not an observation, and calling
+    # it a negative would reintroduce the error the whole package guards against.
+    merged["occupancy_status"] = UNKNOWN
+    if "structure_internal_control" in merged.columns and policy.get(
+        "observed_unmodified_from_internal_control", True
+    ):
+        control = merged["structure_internal_control"].fillna(False).astype(bool)
+        merged.loc[control, "occupancy_status"] = OBSERVED_UNMODIFIED
+    merged.loc[merged["experimental_positive"], "occupancy_status"] = OCCUPIED
     merged.loc[merged["experimental_positive"], "exclusion_reason"] = ""
 
     return merged.sort_values(["accession", "position"]).reset_index(drop=True)

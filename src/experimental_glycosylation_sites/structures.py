@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import re
 import time
 import warnings
 from dataclasses import dataclass
@@ -15,6 +16,33 @@ from Bio.SeqUtils import seq1
 
 GLYCAN_RESNAMES = {"NAG", "NDG", "BGC", "GLC", "MAN", "BMA", "FUC", "GAL", "XYS"}
 MMCIF_SUFFIXES = {".cif", ".mmcif"}
+
+# Hosts that can N-glycosylate. A bare asparagine in a protein expressed in E. coli
+# says nothing; the same residue in a HEK or Sf9 construct was at least reachable by
+# the machinery.
+GLYCOSYLATION_COMPETENT_HOSTS = (
+    "HOMO SAPIENS", "HEK", "CRICETULUS", "CHO", "MUS MUSCULUS",
+    "SPODOPTERA", "TRICHOPLUSIA", "DROSOPHILA", "INSECT",
+    "PICHIA", "KOMAGATAELLA", "SACCHAROMYCES", "YEAST",
+)
+
+_EXPRESSION_SYSTEM = re.compile(r"EXPRESSION_SYSTEM:\s*([^;]+);")
+
+
+def expression_system(path: Path) -> str:
+    """Host organism from the structure's SOURCE records, "" when not stated."""
+    try:
+        with Path(path).open(encoding="utf-8", errors="ignore") as handle:
+            head = handle.read(40000)
+    except OSError:
+        return ""
+    match = _EXPRESSION_SYSTEM.search(head)
+    return match.group(1).strip() if match else ""
+
+
+def host_can_glycosylate(host: str) -> bool:
+    upper = host.upper()
+    return any(marker in upper for marker in GLYCOSYLATION_COMPETENT_HOSTS)
 
 # A chain counts as "the same protein" when its alignment identity is within this
 # much of the best-matching chain's. Copies in a homodimer align at essentially
@@ -187,6 +215,7 @@ def assess_site(
                 "pdb_id": pdb_id, "chain_id": chain.chain_id,
                 "resseq": resseq, "icode": icode,
                 "observed_residue": chain.sequence[index - 1],
+                "source_path": str(structure_path),
                 # An N-linked site must land on an asparagine. Anything else is a
                 # mapping failure — often an engineered N->Q sequon knockout — and
                 # must not be read as "examined and found bare", which is exactly
@@ -358,6 +387,7 @@ def build_site_evidence(
 ) -> pd.DataFrame:
     """One row per candidate site on the structural resolution ladder."""
     link_cache: dict[str, list[GlycanLink]] = {}
+    host_cache: dict[Path, str] = {}
     rows = []
 
     for accession, position in zip(candidates["accession"], candidates["position"]):
@@ -401,6 +431,34 @@ def build_site_evidence(
                     break
             result["n_structures_examined"] = len(paths)
 
+            # A bare asparagine is normally uninformative. It becomes informative
+            # when the SAME structure models a glycan at another residue — proving
+            # sugars survived sample preparation and were modelled by this
+            # depositor — and the protein was expressed in a host that can
+            # glycosylate. Only then is "no glycan here" a decision rather than a
+            # silence, and only then may a site be called observed-unmodified.
+            if (
+                result["tier"] == "structure_residue_resolved"
+                and not str(result.get("detail", "")).startswith("residue_mismatch")
+                and result.get("source_path")
+            ):
+                links = link_cache.get(result["source_path"], [])
+                elsewhere = [
+                    link for link in links
+                    if not (
+                        link.chain_id == result.get("chain_id")
+                        and link.resseq == result.get("resseq")
+                    )
+                ]
+                if elsewhere:
+                    source = Path(result["source_path"])
+                    if source not in host_cache:
+                        host_cache[source] = expression_system(source)
+                    host = host_cache[source]
+                    result["expression_system"] = host
+                    result["glycans_modelled_elsewhere"] = len(elsewhere)
+                    result["internal_control"] = host_can_glycosylate(host)
+
         rows.append({
             "accession": accession,
             "position": position,
@@ -414,6 +472,12 @@ def build_site_evidence(
             # mapping failure that would otherwise be invisible.
             "structure_observed_residue": result.get("observed_residue", ""),
             "structure_n_examined": result.get("n_structures_examined", 0),
+            # Internal control: this structure models a glycan at some OTHER
+            # residue, and the host can glycosylate — so a bare asparagine here is
+            # an observation rather than a silence.
+            "structure_internal_control": bool(result.get("internal_control", False)),
+            "structure_glycans_elsewhere": result.get("glycans_modelled_elsewhere", 0),
+            "structure_expression_system": result.get("expression_system", ""),
             "structure_detail": result.get("detail", ""),
         })
 

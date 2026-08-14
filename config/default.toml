@@ -25,6 +25,10 @@ qualifying_structure_tiers = ["structure_linked_glycan"]
 # GlyConnect is corroboration only by default: GlyGen already ingests it, and
 # its coverage is 183 of 2,591 non-qualifying accessions.
 glyconnect_qualifies = false
+# The only route to an observed_unmodified classification: a structure that
+# models a glycan at another residue, in a host that can glycosylate. Set false
+# to collapse that class back into unknown for a sensitivity check.
+observed_unmodified_from_internal_control = true
 curator_inferred_sensitivity = true
 require_analysis_ready = true
 strict_buckets = ["strict_ortholog_like"]
