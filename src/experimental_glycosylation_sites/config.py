@@ -8,6 +8,11 @@ from pathlib import Path
 
 OUTPUT_PATH_KEYS = {"cache_dir", "results_dir"}
 
+# Declared for provenance and possible future use, but read by no module today.
+# Validating them would hard-fail every command — and silently skip the frozen
+# regression test — on files nothing actually consumes.
+UNUSED_PATH_KEYS = {"proteins_master", "existing_structural_context"}
+
 
 @dataclass(frozen=True)
 class Config:
@@ -23,7 +28,7 @@ class Config:
         """Return one message per configured input path that does not exist."""
         errors = []
         for key, path in sorted(self.paths.items()):
-            if key in OUTPUT_PATH_KEYS:
+            if key in OUTPUT_PATH_KEYS or key in UNUSED_PATH_KEYS:
                 continue
             if not path.exists():
                 errors.append(f"config key '{key}' points at a missing path: {path}")

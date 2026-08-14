@@ -1,15 +1,17 @@
 {
-  "_comment": "Snapshot expectations, not biological constants. Observed on the first full run of all enabled evidence layers (uniprot + glygen + structure; glyconnect disabled as corroboration-only). The uniprot_* counts are inherited unchanged from uniprot_baseline_2026-04-27.json - enrichment adds sites, it must never move the baseline, so any drift in all_sites/all_proteins here is a wiring bug rather than a data update. The enriched_* counts additionally depend on the GlyGen response cache (data/cache/glygen_protein_detail.jsonl, 1714 accessions - the candidates carrying a GlyGen cross-reference, the rest answer HTTP 500) and on the cached PDB structures (484 candidate accessions present in the structure manifest). A mismatch means the cache, the structures, or the upstream tables changed - investigate the inputs before editing this file. Note: the filename carries the plan's date (2026-08-06, per the implementation plan this snapshot fulfills); snapshot_date below carries the date the numbers were actually generated (see results/provenance.json generated_at) - these are expected to differ and that is not a bug.",
+  "_comment": "Snapshot expectations, not biological constants. Observed on a full run of all enabled evidence layers (uniprot + glygen + structure; glyconnect disabled as corroboration-only). The uniprot_* counts are inherited unchanged from uniprot_baseline_2026-04-27.json - enrichment adds sites, it must never move the baseline, so any drift in all_sites/all_proteins here is a wiring bug rather than a data update. The enriched_* counts additionally depend on the GlyGen response cache (data/cache/glygen_protein_detail.jsonl, 1714 accessions - the candidates carrying a GlyGen cross-reference, the rest answer HTTP 500) and on the cached PDB structures. A mismatch means the cache, the structures, or the upstream tables changed - investigate the inputs before editing this file. Note: the filename carries the plan's date (2026-08-06, per the implementation plan this snapshot fulfills); snapshot_date below carries the date the numbers were actually generated (see results/provenance.json generated_at) - these are expected to differ and that is not a bug.",
   "snapshot_date": "2026-08-14",
   "uniprot_snapshot": "uniprot_reviewed_glycoproteins_2026-04-27.tsv.gz",
   "layers_enabled": ["uniprot", "glygen", "structure"],
   "layers_disabled": ["glyconnect"],
   "glygen_cached_accessions": 1714,
   "accessions_with_cached_structure": 484,
-  "_contribution": "Of the 912 positive sites, 505 carry UniProt support (the unchanged baseline) and 407 are net new: 375 supported by GlyGen alone, 24 by a structural glycan linkage alone, and 8 by both. Structure's independent contribution is therefore 32 sites, matching the pre-run expectation; GlyGen's 375 sits at the upper end of the projected +100 to +400 range.",
+  "extra_structures_fetched": 611,
+  "_revision": "Superseded the first frozen run (912 sites / 697 proteins, support_structure 172), which examined only the single structure the ortholog database had cached per protein. 611 further PDB entries were then fetched for the 123 proteins cross-referencing more than one, and every available structure is now examined per site with the strongest answer kept. Net effect: support_structure 172 -> 184, enriched_all_sites 912 -> 922. Twenty-one sites unresolved in the original structure resolve in another, and 22 sites needed more than the first structure to find their glycan. The baseline is unmoved, as it must be.",
+  "_contribution": "Of the 922 positive sites, 505 carry UniProt support (the unchanged baseline) and 417 are net new: 373 supported by GlyGen alone, 34 by a structural glycan linkage alone, and 10 by both. Structure's independent contribution is therefore 44 sites.",
   "counts": {
     "candidate_sites": 4307,
-    "excluded_sites": 3395,
+    "excluded_sites": 3385,
     "null_position_rows": 0,
     "all_sites": 505,
     "all_proteins": 401,
@@ -17,14 +19,14 @@
     "strict_plus_plausible_proteins": 303,
     "strict_sites": 321,
     "strict_proteins": 278,
-    "enriched_all_sites": 912,
-    "enriched_all_proteins": 697,
-    "enriched_strict_plus_plausible_sites": 460,
-    "enriched_strict_plus_plausible_proteins": 381,
+    "enriched_all_sites": 922,
+    "enriched_all_proteins": 703,
+    "enriched_strict_plus_plausible_sites": 462,
+    "enriched_strict_plus_plausible_proteins": 382,
     "enriched_strict_sites": 396,
     "enriched_strict_proteins": 333,
     "support_uniprot": 505,
     "support_glygen": 774,
-    "support_structure": 172
+    "support_structure": 184
   }
 }

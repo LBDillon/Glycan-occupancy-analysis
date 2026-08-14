@@ -12,8 +12,16 @@ ASSOCIATION_COLUMNS = [
 
 
 def _ready(pairs: pd.DataFrame, require_analysis_ready: bool) -> pd.DataFrame:
-    if not require_analysis_ready or "analysis_ready" not in pairs.columns:
+    if not require_analysis_ready:
         return pairs
+    if "analysis_ready" not in pairs.columns:
+        # Falling through to the unfiltered frame here inflates the candidate
+        # universe from 4,307 to 5,836 with no indication anything went wrong.
+        # A missing column is a broken input, not a reason to skip the filter.
+        raise KeyError(
+            "analysis_ready filtering was requested but the column is absent from "
+            "pairs_master; refusing to silently return the unfiltered frame"
+        )
     return pairs[pairs["analysis_ready"].astype("boolean").fillna(False)]
 
 

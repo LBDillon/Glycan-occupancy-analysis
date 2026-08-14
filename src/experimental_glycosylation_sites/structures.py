@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import time
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -185,7 +186,16 @@ def assess_site(
                 "tier": "structure_linked_glycan" if has_link else "structure_residue_resolved",
                 "pdb_id": pdb_id, "chain_id": chain.chain_id,
                 "resseq": resseq, "icode": icode,
-                "observed_residue": chain.sequence[index - 1], "detail": "",
+                "observed_residue": chain.sequence[index - 1],
+                # An N-linked site must land on an asparagine. Anything else is a
+                # mapping failure — often an engineered N->Q sequon knockout — and
+                # must not be read as "examined and found bare", which is exactly
+                # what a blank detail would imply.
+                "detail": (
+                    ""
+                    if chain.sequence[index - 1] == "N"
+                    else f"residue_mismatch:{chain.sequence[index - 1]}"
+                ),
             },
         ))
 
@@ -274,10 +284,77 @@ def load_manifest(path: Path, structure_dir: Path | None = None) -> dict[str, di
     return manifest
 
 
+# Best-answer precedence when a site is examined in several structures. A glycan
+# seen in any structure is an existence claim and outranks every silence; "not
+# assessed" is the weakest because it records only that we did not look.
+TIER_RANK = {
+    "structure_linked_glycan": 3,
+    "structure_residue_resolved": 2,
+    "structure_residue_unresolved": 1,
+    "structure_not_assessed": 0,
+}
+
+
+def extra_structure_paths(accession: str, pdb_ids: set[str], cache_dir: Path) -> list[Path]:
+    """Locally cached structures for an accession beyond the manifest's one entry."""
+    cache_dir = Path(cache_dir)
+    if not cache_dir.exists():
+        return []
+    found = []
+    for pdb_id in sorted(pdb_ids):
+        path = cache_dir / f"{pdb_id.upper()}.pdb"
+        if path.exists() and path.stat().st_size > 0:
+            found.append(path)
+    return found
+
+
+def fetch_structures(
+    wanted: dict[str, set[str]],
+    cache_dir: Path,
+    delay: float = 0.34,
+    timeout: int = 60,
+    per_accession_cap: int = 20,
+) -> dict[str, int]:
+    """Download PDB entries from RCSB into a module-local cache.
+
+    `wanted` maps accession to the PDB ids worth fetching. Resumable: anything
+    already cached is skipped. Never writes outside `cache_dir`, so the ortholog
+    database's own structure cache stays read-only.
+    """
+    import urllib.error
+    import urllib.request
+
+    cache_dir = Path(cache_dir)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    stats = {"requested": 0, "downloaded": 0, "cached": 0, "failed": 0}
+
+    for accession in sorted(wanted):
+        for pdb_id in sorted(wanted[accession])[:per_accession_cap]:
+            target = cache_dir / f"{pdb_id.upper()}.pdb"
+            stats["requested"] += 1
+            if target.exists() and target.stat().st_size > 0:
+                stats["cached"] += 1
+                continue
+            url = f"https://files.rcsb.org/download/{pdb_id.upper()}.pdb"
+            try:
+                with urllib.request.urlopen(url, timeout=timeout) as response:
+                    payload = response.read()
+            except (urllib.error.URLError, TimeoutError, OSError):
+                # Large entries are mmCIF-only and have no .pdb form; that is data,
+                # not a bug, so record and continue rather than aborting the sweep.
+                stats["failed"] += 1
+                continue
+            target.write_bytes(payload)
+            stats["downloaded"] += 1
+            time.sleep(delay)
+    return stats
+
+
 def build_site_evidence(
     candidates: pd.DataFrame,
     sequences: dict[str, str],
     manifest: dict[str, dict],
+    extra_cache_dir: Path | None = None,
 ) -> pd.DataFrame:
     """One row per candidate site on the structural resolution ladder."""
     link_cache: dict[str, list[GlycanLink]] = {}
@@ -296,13 +373,33 @@ def build_site_evidence(
                       "chain_id": "", "resseq": None, "icode": "",
                       "detail": "no_uniprot_sequence"}
         else:
-            path = Path(entry["output_path"])
-            key = str(path)
-            if key not in link_cache:
-                link_cache[key] = parse_link_records(path)
-            result = assess_site(
-                sequence, position, path, entry.get("pdb_id", ""), link_cache[key]
-            )
+            paths = [(Path(entry["output_path"]), str(entry.get("pdb_id", "")))]
+            if extra_cache_dir is not None:
+                ids = {
+                    x.strip()
+                    for x in str(entry.get("all_pdb_ids") or "").split(";")
+                    if x.strip()
+                }
+                ids.discard(str(entry.get("pdb_id", "")).strip())
+                paths += [
+                    (p, p.stem)
+                    for p in extra_structure_paths(accession, ids, extra_cache_dir)
+                ]
+
+            # Examine every structure available for this protein and keep the
+            # strongest answer. A glycan modelled in any one of them is a real
+            # observation; seeing none in a particular crystal is not evidence.
+            result = None
+            for path, pdb_id in paths:
+                key = str(path)
+                if key not in link_cache:
+                    link_cache[key] = parse_link_records(path)
+                candidate = assess_site(sequence, position, path, pdb_id, link_cache[key])
+                if result is None or TIER_RANK[candidate["tier"]] > TIER_RANK[result["tier"]]:
+                    result = candidate
+                if result["tier"] == "structure_linked_glycan":
+                    break
+            result["n_structures_examined"] = len(paths)
 
         rows.append({
             "accession": accession,
@@ -316,6 +413,7 @@ def build_site_evidence(
             # N-linked site must map to an asparagine, and anything else is a
             # mapping failure that would otherwise be invisible.
             "structure_observed_residue": result.get("observed_residue", ""),
+            "structure_n_examined": result.get("n_structures_examined", 0),
             "structure_detail": result.get("detail", ""),
         })
 

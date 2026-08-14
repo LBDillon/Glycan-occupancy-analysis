@@ -165,7 +165,13 @@ def run_full(config: Config, fetch: bool = False) -> dict:
         extra["accessions_with_cached_structure"] = sum(
             1 for accession in accessions if accession in manifest
         )
-        structure_frame = structure_layer.build_site_evidence(candidates, sequences, manifest)
+        extra_dir = cache_dir / "pdb"
+        structure_frame = structure_layer.build_site_evidence(
+            candidates, sequences, manifest, extra_dir if extra_dir.exists() else None
+        )
+        extra["extra_structures_cached"] = (
+            len(list(extra_dir.glob("*.pdb"))) if extra_dir.exists() else 0
+        )
         write_table(structure_frame, results / "structure_site_evidence.csv")
 
     combined = combine_layers(

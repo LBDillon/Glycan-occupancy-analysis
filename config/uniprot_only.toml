@@ -1,3 +1,12 @@
+# UniProt-only configuration.
+#
+# Disables every enrichment layer so a run reproduces the frozen baseline
+# exactly: 505 sites / 401 proteins, 357/303 strict-plus-plausible, 321/278
+# strict. Use it to separate what UniProt alone supports from what the other
+# sources add, or as a control when reporting enriched figures.
+#
+# Paths resolve relative to this file, exactly as in default.toml.
+
 [paths]
 pairs_master = "../../ortholog_sequon_conservation/results/database_current/pairs_master.csv"
 proteins_master = "../../ortholog_sequon_conservation/results/database_current/proteins_master.csv"
@@ -14,9 +23,9 @@ results_dir = "../results"
 
 [layers]
 uniprot = true
-glygen = true
+glygen = false
 glyconnect = false
-structure = true
+structure = false
 
 [policy]
 qualifying_uniprot_tiers = ["manual_experimental", "manual_combinatorial"]

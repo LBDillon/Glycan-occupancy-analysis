@@ -19,8 +19,8 @@ them, and constructing them is the hard part of most of what follows.
 **Do this first.** It is the use for which auditable provenance is the scarce
 ingredient, and it needs the least new machinery.
 
-The positive set is ready to use. `experimental_sites_all.csv` gives 912 sites
-in 697 proteins, each with `support_sources` recording which independent layers
+The positive set is ready to use. `experimental_sites_all.csv` gives 922 sites
+in 703 proteins, each with `support_sources` recording which independent layers
 support it, and each traceable through `provenance.json` to a hashed input.
 Three graded positive sets are available for a sensitivity analysis without any
 extra work:
@@ -29,7 +29,7 @@ extra work:
 |---|---|---|
 | `support_count >= 2` | 430 (109 of them supported by all three layers) | Highest-confidence core |
 | `experimental_sites_uniprot_baseline.csv` | 505 | Curated-only, frozen and regression-tested |
-| `experimental_sites_all.csv` | 912 | All layers, including 32 sites that fail UniProt policy but carry a structural glycan |
+| `experimental_sites_all.csv` | 922 | All layers, including 44 sites that fail UniProt policy but carry a structural glycan |
 
 Those 32 sites are especially valuable as a held-out check: they carry a
 modelled covalent glycan but fail UniProt's evidence policy, so a model trained
@@ -38,12 +38,12 @@ on curated annotation alone has not seen them.
 ### The negative set is the hard part
 
 There is no `observed_unmodified` class and there cannot be one from these
-sources. The tempting move — treat the 3,395 excluded sites as negatives — is
+sources. The tempting move — treat the 3,385 excluded sites as negatives — is
 wrong, and wrong in a way that will produce a good-looking and meaningless
 benchmark.
 
-Those 3,395 sites are `unknown`. They are dominated by proteins nobody has
-studied closely. A classifier trained to separate 912 positives from 3,395
+Those 3,385 sites are `unknown`. They are dominated by proteins nobody has
+studied closely. A classifier trained to separate 922 positives from 3,385
 "negatives" will learn the features that predict *being well studied* — model
 organism, protein family, abundance, medical relevance, structural
 tractability — and score highly, because those features really do separate the

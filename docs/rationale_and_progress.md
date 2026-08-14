@@ -94,8 +94,8 @@ confident ortholog comparisons narrows this to 321 sites in 278 proteins. These 
 frozen as a regression fixture: if a future run disagrees, the tests fail loudly and point at
 which input changed, rather than silently adopting the new number.
 
-Reading glycan bonds out of the cached structures then found **172 sites** with direct
-physical evidence of a sugar attached. Thirty-two of those fail UniProt's evidence bar
+Reading glycan bonds out of the cached structures then found **184 sites** with direct
+physical evidence of a sugar attached. Forty-four of those fail UniProt's evidence bar
 entirely — sites where no curator has recorded experimental glycosylation, but a
 crystallographer has modelled the sugar sitting on the residue. Each was checked
 individually to confirm it maps to a genuine asparagine. That is the multi-layer design
@@ -103,9 +103,9 @@ earning its place: a third of a hundred sites recovered that any single-source a
 would have missed.
 
 The GlyGen layer has since been populated — 1,714 of the candidate accessions carry a GlyGen
-cross-reference, and only those were requested — bringing the enriched total to **912 sites
-across 697 proteins**. Of the 407 sites added on top of the UniProt baseline, 383 have GlyGen
-support and 32 have a structural glycan linkage, with 8 supported by both. Restricting to the
+cross-reference, and only those were requested — bringing the enriched total to **922 sites
+across 703 proteins**. Of the 417 sites added on top of the UniProt baseline, 383 have GlyGen
+support and 44 have a structural glycan linkage, with 10 supported by both. Restricting to the
 most confident ortholog comparisons leaves 396 sites in 333 proteins. These enriched figures
 are frozen as their own regression fixture beside the UniProt baseline, so a change in the
 GlyGen cache or the cached structures shows up as a failing test rather than a quietly

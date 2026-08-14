@@ -22,12 +22,21 @@ def fingerprint(path: Path) -> str:
     return digest.hexdigest()[:16]
 
 
+# The UniProt baseline reads only these three. Gating on every configured path
+# would let an unrelated missing file silently skip the primary regression guard.
+BASELINE_INPUTS = ("pairs_master", "homology_qc", "uniprot_tsv")
+
+
 @pytest.fixture(scope="module")
 def config():
     cfg = load_config(MODULE_ROOT / "config" / "default.toml")
-    errors = cfg.validate_inputs()
-    if errors:
-        pytest.skip("canonical inputs unavailable: " + "; ".join(errors))
+    missing = [
+        f"{key}: {cfg.paths[key]}"
+        for key in BASELINE_INPUTS
+        if not cfg.paths[key].exists()
+    ]
+    if missing:
+        pytest.skip("canonical inputs unavailable: " + "; ".join(missing))
     return cfg
 
 

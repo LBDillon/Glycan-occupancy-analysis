@@ -38,6 +38,12 @@ def classify_uniprot_tier(codes: frozenset[str]) -> str:
 
 
 EXCLUSION_BY_TIER = {
+    # A site excluded only because the policy did not select its tier has good
+    # evidence that is simply not being counted. Saying "no qualifying evidence"
+    # would be false, and the sensitivity workflow in docs/evidence_sources.md
+    # depends on this distinction being reported truthfully.
+    "manual_experimental": "experimental_tier_not_selected",
+    "manual_combinatorial": "combinatorial_tier_not_selected",
     "manual_curator_inference": "curator_inference_only",
     "manual_sequence_model": "sequence_model_only",
     "automatic_sequence_model": "sequence_model_only",

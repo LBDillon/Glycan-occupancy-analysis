@@ -38,7 +38,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument(
         "command",
-        choices=["validate", "fetch-glygen", "fetch-glyconnect", "run"],
+        choices=[
+            "validate", "fetch-glygen", "fetch-glyconnect", "fetch-structures", "run",
+        ],
     )
     parser.add_argument(
         "--fetch", action="store_true",
@@ -59,6 +61,37 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "fetch-glygen":
         print("cache:", fetch_glygen(_accessions(config, "GlyGen"), config))
         return 0
+    if args.command == "fetch-structures":
+        from .structures import fetch_structures, load_manifest
+
+        manifest = load_manifest(
+            config.paths["structure_manifest"], config.paths.get("structure_dir")
+        )
+        wanted: dict[str, set[str]] = {}
+        for accession in _accessions(config):
+            row = manifest.get(accession)
+            if row is None:
+                continue
+            ids = {x.strip() for x in str(row.get("all_pdb_ids") or "").split(";") if x.strip()}
+            ids.discard(str(row.get("pdb_id", "")).strip())
+            if ids:
+                wanted[accession] = ids
+
+        cap = int(config.api.get("structures_per_accession", 20))
+        print(
+            f"{len(wanted)} proteins have structures beyond the one already cached; "
+            f"fetching up to {cap} each"
+        )
+        stats = fetch_structures(
+            wanted,
+            Path(config.paths["cache_dir"]) / "pdb",
+            delay=float(config.api.get("delay_seconds", 0.34)),
+            timeout=int(config.api.get("timeout_seconds", 60)),
+            per_accession_cap=cap,
+        )
+        print(json.dumps(stats, indent=2))
+        return 0
+
     if args.command == "fetch-glyconnect":
         print("cache:", fetch_glyconnect(_accessions(config, "GlyConnect"), config))
         return 0

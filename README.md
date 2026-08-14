@@ -200,10 +200,10 @@ From the latest full run (`results/summary.json`):
 | UniProt baseline, all | 505 sites / 401 proteins |
 | UniProt baseline, strict + plausible | 357 sites / 303 proteins |
 | UniProt baseline, strict only | 321 sites / 278 proteins |
-| Enriched (all layers), all | 912 sites / 697 proteins |
+| Enriched (all layers), all | 922 sites / 703 proteins |
 | Enriched, strict + plausible | 460 sites / 381 proteins |
 | Enriched, strict only | 396 sites / 333 proteins |
-| Excluded | 3,395 (912 + 3,395 = 4,307) |
+| Excluded | 3,385 (922 + 3,385 = 4,307) |
 | Sites with UniProt support | 505 |
 | Sites with GlyGen support | 774 |
 | Sites with structural glycan support | 172 |
@@ -215,7 +215,7 @@ entry, yet its UniProt annotation rests on a sequence model, a curator
 inference, or no evidence code at all. Twenty-four of them are still supported
 by structure alone once GlyGen is included.
 
-Enrichment adds 407 sites to the 505-site UniProt baseline without moving the
+Enrichment adds 417 sites to the 505-site UniProt baseline without moving the
 baseline itself: 383 of the additions carry GlyGen support, 32 carry a
 structural glycan, and 8 carry both. The GlyGen layer was populated from 1,714
 cached accessions — the candidates that carry a GlyGen cross-reference, which
