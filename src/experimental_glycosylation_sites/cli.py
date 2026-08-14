@@ -39,7 +39,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "command",
         choices=[
-            "validate", "fetch-glygen", "fetch-glyconnect", "fetch-structures", "run",
+            "validate", "fetch-glygen", "fetch-glyconnect", "fetch-structures",
+            "fetch-controls", "run",
         ],
     )
     parser.add_argument(
@@ -61,6 +62,37 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "fetch-glygen":
         print("cache:", fetch_glygen(_accessions(config, "GlyGen"), config))
         return 0
+    if args.command == "fetch-controls":
+        import pandas as pd
+
+        from .controls import (
+            CONTROL_SETS, build_control_sites, fetch_control_proteins, summarise,
+        )
+
+        frames = []
+        for name in CONTROL_SETS:
+            print(f"fetching {name}...", flush=True)
+            frames.append(fetch_control_proteins(name))
+            print(f"  {len(frames[-1])} proteins")
+        proteins = pd.concat(frames, ignore_index=True)
+        sites = build_control_sites(proteins)
+
+        results = Path(config.paths["results_dir"])
+        results.mkdir(parents=True, exist_ok=True)
+        sites.to_csv(results / "negative_control_sites.csv", index=False)
+        (results / "negative_control_summary.json").write_text(
+            json.dumps(summarise(sites, proteins), indent=2)
+        )
+        # Sequences are needed by the feature stage but are bulky; keep them in
+        # the cache rather than the results tables.
+        cache = Path(config.paths["cache_dir"])
+        cache.mkdir(parents=True, exist_ok=True)
+        proteins.to_csv(cache / "negative_control_proteins.csv.gz", index=False)
+
+        print(f"\n{len(sites)} control sequons written")
+        print(sites.groupby("control_set").size().to_string())
+        return 0
+
     if args.command == "fetch-structures":
         from .structures import fetch_structures, load_manifest
 
