@@ -1,7 +1,7 @@
 # Why this module exists, and what has been built
 
 *A plain-language account of the work, kept current as the module changes. Last updated
-2026-08-14, after the full enrichment run (Task 12 of 12). Technical detail appears only where the argument depends
+2026-08-14, after the observed-unmodified class and structural features were added. Technical detail appears only where the argument depends
 on it; the README covers how to run things and `evidence_sources.md` covers what each
 database can and cannot establish.*
 
@@ -44,14 +44,27 @@ One of the realities of the data we have available, is that an absence of annota
 
 So each site carries two separate facts: whether it qualifies for the experimentally-supported
 set, and what is actually known about its occupancy. For most sites the second answer is
-`unknown`. There is a classification for "looked at and found no glycan", but it is
-deliberately never populated, because no source available today can establish it. Mass
-spectrometry reports the peptides it detected, not the ones it searched for and failed to
-find, so a site missing from a glycoproteomics run may have been unoccupied, or may simply
-never have produced an observable peptide. Distinguishing those two requires an experiment
-designed to test that specific site, and no database records that.
+`unknown`, and that is the honest answer rather than a gap to be filled.
 
-The same applies to structures. A residue visible in a crystal structure with no sugar attached is not automatically classified as an unoccupied site as glycans are routinely trimmed off before crystallisation, proteins are often expressed in bacteria that cannot glycosylate at all, and sugars are frequently too floppy to appear in the density. Instead we record is that the residue is resolved and no glycan is modelled.
+A residue visible in a structure with no sugar attached is not, on its own, an unoccupied
+site. Glycans are routinely trimmed before crystallisation, proteins are often expressed in
+bacteria that cannot glycosylate at all, and sugars are frequently too mobile to appear in
+the density. So by default we record only that the residue is resolved and no glycan is
+modelled, which is a statement about the experiment rather than about the biology.
+
+There is one circumstance where that changes, and it is the basis of the third class. If the
+same structure models a glycan at some *other* residue, then sugars demonstrably survived
+sample preparation and this depositor demonstrably modelled them. If the protein was also
+expressed in a host that can glycosylate, a bare asparagine in that structure is a decision
+rather than a silence. Sites meeting both conditions are classified `observed_unmodified`:
+**32 of them, across 25 proteins**, in structures modelling a median of three glycans
+elsewhere. Nothing else can enter that class, and the criteria are pinned by tests so it
+cannot quietly widen.
+
+Mass spectrometry could in principle supply many more. A PNGase F digest in H2-18O converts
+occupied asparagines to labelled aspartate, so a sequon peptide detected with the asparagine
+intact is a genuine, quantified negative. That is a data-acquisition route rather than a code
+one, and it is the obvious way to grow this class beyond 32.
  
 Note : The evidence code `ECO:0007744` was not serving the purpose that i had originally thought.
 
@@ -70,9 +83,9 @@ Total: 922 sites across 703 proteins. The most confident ortholog comparisons: 3
 
 Occupancy prediction now is testable. We can also ask: of the sequons that get lost between orthologs, are the ones that in fact have a glycan attached lost at a different rate from the ones that merely matched the motif? Yet the comparison will also need controls for how well-studied each protein is.
 
+ 
 ## Limitations
-
-Structural coverage is now bounded by what exists rather than by how we use it. Only 484 of
+Only 484 of
 the 2,878 candidate proteins have any experimental structure, so 3,546 sites cannot be
 assessed structurally at all. Within those 484 every available structure is examined: 611
 further PDB entries were downloaded for the 123 proteins cross-referencing more than one, and
@@ -87,18 +100,68 @@ Taxonomic reach is uneven: GlyGen and GlyConnect are strongly biased toward huma
 
 ## Where the work stands
 
-The module is built and tested. Eleven of twelve planned pieces of work are complete and
-have passed independent review: configuration, UniProt parsing and evidence grading, the
-site universe, the evidence join, the frozen baseline, all four evidence layers, the
-combination logic, provenance recording, the command-line interface, and the documentation.
+The module is built, reviewed and tested: 120 tests, covering configuration, UniProt parsing
+and evidence grading, the site universe, the evidence join, the frozen baseline, all four
+evidence layers, the combination logic, provenance, the command line and now the structural
+feature extraction. Both the UniProt baseline and the enriched totals are frozen as
+regression fixtures, so any drift in the inputs surfaces as a failing test rather than a
+quietly different number.
 
-The last step is the full enrichment run — populating the GlyGen cache and freezing a second
-regression fixture for the enriched totals. Those enriched numbers are deliberately not
-predicted in advance; they will be generated, checked, and only then locked in.
+The dataset now separates the three classes the occupancy analysis needs:
 
-Development turned up several real defects, all of which were caught by review rather than
-by luck: output files that would have been written into the wrong directory, a residue-
-mapping bug that attributed glycans to the wrong protein chain, a retry loop that would have
-crashed on a particular configuration, and an API access pattern that would have taken
-thirty-five hours instead of forty minutes. Each is fixed and has a test pinning the
-behaviour so it cannot return quietly.
+| Class | Sites |
+|---|---|
+| `occupied_supported` | 922 |
+| `observed_unmodified` | 32 |
+| `unknown` | 3,353 |
+
+Structural context features — relative solvent accessibility, exposure bin, neighbourhood
+composition, distance to the chain terminus — are computed for the 364 sites with mapped
+coordinates (all 32 unmodified, 332 occupied) in `results/site_structural_features.csv`.
+Sites without coordinates are retained and flagged rather than filtered out.
+
+One correction is worth recording, because it would have inverted a conclusion. Solvent
+accessibility initially included non-protein atoms, so each occupied asparagine was being
+shaded by its own glycan. Occupied sites appeared buried 106 times out of 332; with glycans
+stripped it is 6 out of 332, and median accessibility moves from 0.185 to 0.433. Burial was
+encoding the label. Corrected, occupied sites are overwhelmingly solvent-exposed, which is
+what oligosaccharyltransferase access requires.
+
+## Next steps: the occupancy analysis
+
+The point of the resource is to ask whether protein models have learned the sequon motif or
+its biological use. That is now runnable.
+
+**1. Score sites zero-shot, before any training.** Take the pretrained models as they are and
+record per-residue preferences at the sequon positions, across ProteinMPNN, ESM-IF and
+TriFlow so the result is not one model's quirk. The adapters already exist in the
+glycosylation-bias analysis. Zero-shot first is deliberate: it is the honest baseline, and
+fine-tuning only makes sense if there is recoverable signal to justify it.
+
+**2. Match before comparing.** Occupied sites sit disproportionately in exposed loops, and
+these models can see exposure. Without matching on accessibility, secondary structure and
+burial, any score difference would just restate that fact. The good news from the corrected
+features is that the two classes are already close on exposure — median accessibility 0.433
+occupied against 0.446 unmodified — so the comparison is not badly confounded to begin with.
+
+**3. Expect a null, and design for what a null can support.** ProteinMPNN never sees glycans:
+they are non-protein records, stripped in training. A null is therefore close to guaranteed
+in advance, which makes the raw comparison weakly informative on its own. Framed as a
+negative control it is much stronger — establishing that current inverse-folding models are
+glycan-blind is the premise that motivates glycan-aware modelling. Note that 32 sites cannot
+establish a null on their own; that claim needs equivalence testing against a pre-specified
+effect size, or more negatives.
+
+**4. Treat the 32 as a calibration probe, not a training class.** The intended approach is
+positive-unlabelled learning, as in the KinoPlex kinase atlas, which faced the same shortage
+and never asserted a negative: roughly 116,000 known phosphosites against 1.7 million
+uncharacterised residues, with an Elkan-Noto correction to recover true performance. This
+resource is already that shape — 922 positives against 3,353 unlabelled. The 32 then earn
+their place by testing whether the unlabelled pool really does behave like a mixture
+containing negatives, which is the assumption the whole method rests on.
+
+Two cautions to carry into that. The 32 skew exposed, 20 of 32, so matching should be done
+pair by pair rather than assumed from the group averages. And they exist only where someone
+solved a glycoprotein structure, so they represent well-studied secreted and membrane
+proteins rather than a random draw from the unlabelled pool — which matters precisely because
+the unlabelled pool is much broader.
