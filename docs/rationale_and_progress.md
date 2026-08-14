@@ -9,151 +9,58 @@ database can and cannot establish.*
 
 ## The problem in cataloguing sequons by motif
 
-The ortholog sequon-conservation database asks an evolutionary question. It finds pairs of orthologous proteins where one member carries an N-linked sequon, which is the N-X-S/T motif that is necessary (but not sufficient) for N-linked glycosylation, and the other has lost it. Each such comparison is one row.
+The ortholog sequon-conservation database finds pairs of orthologous proteins where one member carries an N-linked sequon and the other has lost it. Each such comparison is one row. 
 
-Storing the data as one row per comparison suits the question the database was built to
-answer — how often sequons are lost across evolution — but it causes two problems as soon as
-you want to say anything about glycans.
+Storing the data as one row per comparison suits one of the questions the database was built to answer: how often sequons are lost across evolution? But the one row comparison makes it hard to figure out the types of changes that the proteins have in the process of gaining or losing glycans. (paragraph may be redundant).
 
-The first is that a sequon is only a motif in the sequence. Whether it is actually used
-depends on local structure, on membrane topology, and on whether the protein ever meets an
-oligosaccharyltransferase (OST). So "this pair lost a sequon" and "this pair lost a glycan"
-are different claims, and only the first is supported by the motif alone.
+A sequon is only a motif in the sequence. Whether it is actually used depends on local structure, on membrane topology, and the presence of an oligosaccharyltransferase (OST). The sequence motif being insufficent for a glycan attachment means distingishing "this pair lost a sequon" and "this pair lost a glycan" is important to make the database biologcally relevant. 
 
-The second problem is arithmetic, and it is easiest to see with an example. Take human
-P00709 with an asparagine at position 64. The database compares that protein against its
-bovine, murine and porcine orthologs, and each comparison is stored as its own row — so
-position 64 appears three times. Nothing about the protein has changed; only the number of
-comparisons has. If you counted rows you would record three glycosylation observations where
-biology has only one asparagine. Across the whole dataset that is the difference between
-13,816 rows and 4,307 actual sites, and any statistic built on the row count would be
-roughly three times more confident than the evidence allows.
+One of the problems that I encountered building the database is that the  
+Take human P00709 with an asparagine at position 64. The database compares that protein against its bovine, murine and porcine orthologs, and each comparison is stored as its own row, meaning position 64 P00709 appears three times. If counteding rows, there woulf be three glycosylation observations where biology has only one asparagine. Across the whole dataset that is the difference between 13,816 rows and 4,307 actual sites.
 
-There is a diagram of exactly this collapse, along with the full provenance of every source,
-at the [evidence provenance
-page](https://claude.ai/code/artifact/d0248a3d-8f3e-4ebc-950e-31cd245dc835).
+To make sure that one N-site does not inflate statistical confidence in the relationships we build (but isn't the relationship between three different orthologs important? maybe this is actually just that we are seperating out this component of the dataset from the pairs and it's that simple? the relationships between the pairs and one protein leading to multipule orthologs still ebing in the analysis just a different one?) the pairs are kept seperate from the part of the analysis where we are looking at the evidence tiers for the motifs.
 
-The module therefore reorganises the evidence around one protein and one residue position.
-Ortholog pairs are still kept, but in a separate table, so they provide context without
-inflating any count.
+There is a diagram of this collapse: (https://claude.ai/code/artifact/d0248a3d-8f3e-4ebc-950e-31cd245dc835). 
 
-For every candidate site for a protein in the database we ask if there is
-experimental evidence that the asparagine specifically carries a glycan. To check if it does we use data for the protein from UniProt and GlyGen, as well as looking at deposited structures and GlyConnect for supporting evidence.
+For every candidate site for a protein in the database we ask if there is experimental evidence that the asparagine specifically carries a glycan. To check if it does we use data for the protein from UniProt and GlyGen, as well as looking at deposited structures and GlyConnect for supporting evidence.
 
 **UniProt** is the primary source, because it is the only one with site-level annotations for per-feature evidence codes. Its glycosylation features are read at exact residue positions only and a range or an uncertain position is rejected.
 
-**GlyGen** aggregates glycosylation data from many labs and databases. It is independent of
-UniProt where its records cite mass-spectrometry repositories and published papers, and not
-independent where it is re-exporting UniProt's own predictions. The code separates those
-cases by reading the sources GlyGen itself cites for each site. Where the only citation is
-UniProt, the record is treated as an echo and carries no weight; where the citation is a
-PubMed paper or a mass-spectrometry repository, it counts. This matters more than it sounds:
-of the sites GlyGen holds, 1,415 turn out to be UniProt's own sequence rule coming back
-round, and admitting them would have quietly put predictions into a dataset whose entire
-value is that it contains none.
+**GlyGen** aggregates glycosylation data from many labs and databases. It is independent of UniProt where its records cite mass-spectrometry repositories and published papers, and not independent where it is re-exporting UniProt's own predictions. The code separates those cases by reading the sources GlyGen itself cites for each site. Where the only citation is UniProt, the record is not counted; where the citation is a PubMed paper or a mass-spectrometry repository, it counts. Of the sites GlyGen holds, 1,415 are UniProt data for the motif identiifcation.
 
 **Deposited structures**. When a crystallographer models a sugar covalently bonded to a specific asparagine, that is a direct physical observation of occupancy. These bonds are recorded in the structure files already cached, and the code reads them.
 
 **GlyConnect** contributes supporting detail, but its coverage is thin and GlyGen already has most of it.
 
-## Why the evidence handling is so fussy
+## Evidence Hadelling
 
-There is one mistake this module is built to avoid, and it is an easy one to make.
+One of the realtilies of the data we have avaible, is that an absence of annotation is liekly to mean that glycosylation was not screened for. Well-studied proteins accumulate annotations, thus we do not want the database to primarly reflect the current state of glycoprotein curation biased towards such proteins
 
-It is tempting to treat "annotated in UniProt" as glycosylated and "not annotated" as not
-glycosylated, then compare the two groups. But absence of annotation almost always means
-*nobody looked*. Well-studied proteins accumulate annotations; obscure ones do not. A study
-built on that comparison would be measuring how much attention each protein has received
-from curators, and reporting the result as glycobiology.
+For a site to qualify experimentally-supported set, and what is actually known about its occupancy. For most sites occupancy status is answer to unknow. There is a classification for "looked at and found no glycan", but realisitically redundant as no source available today can establish
+that (elaborate?).
 
-So the module keeps two separate facts about every site: whether it qualifies for the
-experimentally-supported set, and what is actually known about its occupancy. For most
-sites the honest answer to the second question is *unknown*. There is a slot for "looked at
-and found bare", but it is deliberately empty — no source available today can establish
-that, and the code has a test asserting the module never claims otherwise.
+The same applies to structures. A residue visible in a crystal structure with no sugar attached is not automatically classified as an unoccupied site as glycans are routinely trimmed off before crystallisation, proteins are often expressed in bacteria that cannot glycosylate at all, and sugars are frequently too floppy to appear in the density. Instead we record is that the residue is resolved and no glycan is modelled.
+ 
+Note : The evidence code `ECO:0007744` was not serving the purpose that i had originally thought.
 
-The same care applies to structures. A residue visible in a crystal structure with no sugar
-attached is not an unoccupied site: glycans are routinely trimmed off before
-crystallisation, proteins are often expressed in bacteria that cannot glycosylate at all,
-and sugars are frequently too floppy to appear in the density. So the module records "the
-residue is resolved and no glycan is modelled" as exactly that, and never as evidence of
-absence.
+Applying the strictest reading of UniProt evidence to the 4,307 candidate sites gives 505 sites across 401 proteins with direct experimental support. Restricting to the most confident ortholog comparisons (explain what this means) narrows this to 321 sites in 278 proteins.
 
-One older convention in this repository had to be corrected along the way. The evidence code
-`ECO:0007744` had been labelled as though a deposited structure stood behind it, implying
-the site had been seen in one. It does not mean that — it means a curator combined
-computational and experimental evidence. Seven sites rest on it alone, and they are flagged so
-they can be set aside in a sensitivity check. Nothing in the module now describes them as
-structurally observed.
+Reading glycan bonds out of the cached structures found 172 sites with direct physical evidence of a sugar attached. Thirty-two of those fail UniProt's evidence bar, as they are sites where no curator has recorded experimental glycosylation, but have been modelled with cystalistaiton. Each was checked individually to confirm it maps to a genuine asparagine.
 
-## What has been found so far
+1,714 of the candidate accessions carry a GlyGen cross-reference, and only those were requested (what does requested mean here?). The enriched total is 912 sites across 697 proteins. Of the 407 sites added on top of the UniProt baseline, 383 have GlyGen support and 32 have a structural glycan linkage, with 8 supported by both. Restricting to the most confident ortholog comparisons leaves 396 sites in 333 proteins.
 
-Applying the strictest reading of UniProt evidence to the 4,307 candidate sites yields **505
-sites across 401 proteins** with direct experimental support. Restricting to the most
-confident ortholog comparisons narrows this to 321 sites in 278 proteins. These figures are
-frozen as a regression fixture: if a future run disagrees, the tests fail loudly and point at
-which input changed, rather than silently adopting the new number.
+Total: 912 sites across 697 proteins.The most confident ortholog comparisons: 396 sites in 333 proteins.
 
-Reading glycan bonds out of the cached structures then found **184 sites** with direct
-physical evidence of a sugar attached. Forty-four of those fail UniProt's evidence bar
-entirely — sites where no curator has recorded experimental glycosylation, but a
-crystallographer has modelled the sugar sitting on the residue. Each was checked
-individually to confirm it maps to a genuine asparagine. That is the multi-layer design
-earning its place: a third of a hundred sites recovered that any single-source approach
-would have missed.
+Occupancy prediction now is testable. We can also ask: of the sequons that get lost between orthologs, are the ones that in fact have a glycan attached lost at a different rate from the ones that merely matched the motif? Yet the comparison will also need controls for how well-studied each protein is.
 
-The GlyGen layer has since been populated — 1,714 of the candidate accessions carry a GlyGen
-cross-reference, and only those were requested — bringing the enriched total to **922 sites
-across 703 proteins**. Of the 417 sites added on top of the UniProt baseline, 383 have GlyGen
-support and 44 have a structural glycan linkage, with 10 supported by both. Restricting to the
-most confident ortholog comparisons leaves 396 sites in 333 proteins. These enriched figures
-are frozen as their own regression fixture beside the UniProt baseline, so a change in the
-GlyGen cache or the cached structures shows up as a failing test rather than a quietly
-different number.
+## Limitations
 
-## Why this matters beyond the immediate count
+Structural coverage: a minority of the proteins have an experimentally determined structure, and the module currently examines one structure per protein even where many are available (multpule PDB codes) so widening that could help.
 
-Two things follow from having this dataset.
+Chain matching is conservative. When a structure contains several similar chains, we prioitise a close sequence match before crediting a glycan to one of them. This was because of an issue of crediting sugars to unrelated chains. The current setting can, in principle, miss a glycan
+that sits on an engineered mutant when an unmutated copy is also present. This is a deleberate favouring of false negatives over false positives. 
 
-The first is that occupancy prediction becomes testable. Models that predict whether a
-sequon is used need ground truth to be measured against, and the scarce ingredient has never
-been sequences — it has been sites whose glycosylation status is known and whose provenance
-can be audited. This gives a positive set where every entry can be traced to the evidence
-behind it.
-
-The second, and the reason the ortholog database was built in the first place, is that the
-evolutionary question becomes answerable in a sharper form. Of the sequons that get lost
-between orthologs, are the ones that were actually *used* lost at a different rate from the
-ones that merely matched the motif? That question is only askable once occupancy is a
-site-level fact with a stated evidence standard rather than an assumption. The honest
-caveat is that the annotation bias described above does not disappear just because it is
-acknowledged — any such comparison will need controls for how well-studied each protein is,
-which is why the analysis guide treats that as the first problem to solve rather than a
-footnote.
-
-The dataset is also a standalone artefact. It references the ortholog database rather than
-copying it, records the exact provenance of every input, and regenerates deterministically
-from cache, so it can travel with a paper without dragging the whole pipeline behind it.
-
-## What is known to be imperfect
-
-Three limitations are worth stating plainly.
-
-Structural coverage is thin. Only a minority of these proteins have a cached structure at
-all, and the module currently examines one structure per protein even where many are
-available. Widening that is the clearest route to more structural evidence.
-
-Chain matching is deliberately conservative. When a structure contains several similar
-chains, the module insists on a close sequence match before crediting a glycan to one of
-them. This was tightened three times during development, because the first version credited
-sugars to entirely unrelated chains. The current setting can, in principle, miss a glycan
-that sits on an engineered mutant when an unmutated copy is also present. That trade is
-intentional: the module prefers to miss evidence than to invent it.
-
-Taxonomic reach is uneven. GlyGen and GlyConnect are strongly biased toward human and mouse,
-so enrichment will be much stronger for well-studied model organisms than for the rest of
-the tree — which is itself a form of the annotation bias the whole design is guarding
-against.
+Taxonomic reach is uneven: GlyGen and GlyConnect are strongly biased toward human and mouse, so enrichment will be much stronger for well-studied model organisms than for the rest of the tree
 
 ## Where the work stands
 
