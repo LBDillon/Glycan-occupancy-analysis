@@ -56,6 +56,15 @@ _MODEL_CACHE: "OrderedDict[str, object]" = OrderedDict()
 _MODEL_CACHE_LIMIT = 4
 
 
+# Solvent accessibility is computed over the whole structure, so cost scales with
+# the entire assembly rather than the one residue of interest. Cytosolic proteins
+# are frequently components of ribosomes and proteasomes, whose entries run to
+# hundreds of megabytes and take many minutes each. The residue environment is the
+# same in a smaller structure of the same protein, so oversized entries are skipped
+# rather than allowed to dominate a run.
+MAX_STRUCTURE_BYTES = 20_000_000
+
+
 def _model_with_sasa(path: Path):
     """Parsed first model with per-residue SASA attached, cached per file.
 
@@ -65,6 +74,10 @@ def _model_with_sasa(path: Path):
     key = str(path)
     if key in _MODEL_CACHE:
         return _MODEL_CACHE[key]
+
+    if Path(path).exists() and Path(path).stat().st_size > MAX_STRUCTURE_BYTES:
+        _MODEL_CACHE[key] = None
+        return None
 
     model = None
     with warnings.catch_warnings():

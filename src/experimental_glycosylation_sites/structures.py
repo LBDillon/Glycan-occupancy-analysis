@@ -4,6 +4,7 @@ import csv
 import re
 import time
 import warnings
+from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -190,6 +191,11 @@ def parse_link_records(path: Path) -> list[GlycanLink]:
     path = Path(path)
     if not path.exists():
         return []
+    # Same guard as the mapping stage. MMCIF2Dict reads the entire file into a
+    # dictionary, so a 171 MB ribosome entry costs minutes and gigabytes to answer
+    # a question about one residue.
+    if path.stat().st_size > MAX_STRUCTURE_BYTES:
+        return []
     if path.suffix.lower() in MMCIF_SUFFIXES:
         return parse_struct_conn(path)
 
@@ -214,7 +220,36 @@ def parse_link_records(path: Path) -> list[GlycanLink]:
     return links
 
 
+# Bounded: sites are processed in accession order, so consecutive lookups hit the
+# same structure. Without this every sequon re-parses its whole structure — a
+# protein with four sequons paid for four full parses, which dominates the cost
+# over thousands of sites. Unbounded would instead hold every structure in memory.
+_CHAIN_CACHE: "OrderedDict[str, list]" = OrderedDict()
+_CHAIN_CACHE_LIMIT = 4
+
+# Mapping a site means aligning the query against every chain in the file, so a
+# ribosome or proteasome entry costs hundreds of alignments to place one residue.
+# Those assemblies run to hundreds of megabytes and dominate a run entirely. The
+# residue environment is the same in a smaller structure of the same protein, so
+# oversized entries are skipped and reported rather than allowed to stall.
+MAX_STRUCTURE_BYTES = 20_000_000
+
+
 def _parse_chains(path: Path, pdb_id: str) -> list[ChainData]:
+    key = str(path)
+    if key in _CHAIN_CACHE:
+        return _CHAIN_CACHE[key]
+    if Path(path).exists() and Path(path).stat().st_size > MAX_STRUCTURE_BYTES:
+        _CHAIN_CACHE[key] = []
+        return []
+    chains = _parse_chains_uncached(path, pdb_id)
+    _CHAIN_CACHE[key] = chains
+    while len(_CHAIN_CACHE) > _CHAIN_CACHE_LIMIT:
+        _CHAIN_CACHE.popitem(last=False)
+    return chains
+
+
+def _parse_chains_uncached(path: Path, pdb_id: str) -> list[ChainData]:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", PDBConstructionWarning)
         warnings.simplefilter("ignore")
@@ -264,7 +299,11 @@ def assess_site(
     except Exception as exc:  # malformed structure files are data, not bugs
         return {**blank, "detail": f"structure_unreadable: {type(exc).__name__}"}
     if not chains:
-        return {**blank, "detail": "no_protein_chain"}
+        oversized = (
+            structure_path.exists()
+            and structure_path.stat().st_size > MAX_STRUCTURE_BYTES
+        )
+        return {**blank, "detail": "structure_too_large" if oversized else "no_protein_chain"}
 
     linked = {(link.chain_id, link.resseq, link.icode) for link in links}
     scored: list[tuple[tuple[float, float, float, int], bool, dict]] = []
