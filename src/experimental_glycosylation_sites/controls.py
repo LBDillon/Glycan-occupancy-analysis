@@ -116,6 +116,10 @@ def fetch_control_proteins(
         time.sleep(delay)
 
     frame = pd.DataFrame(rows, columns=header) if rows else pd.DataFrame(columns=header or [])
+    if "Entry" in frame.columns:
+        # Paginated responses can repeat an entry across page boundaries. A repeat
+        # would emit that protein's sequons twice and then square in any join.
+        frame = frame.drop_duplicates("Entry")
     frame["control_set"] = name
     return frame
 
@@ -164,7 +168,9 @@ def build_control_sites(proteins: pd.DataFrame) -> pd.DataFrame:
     if frame.empty:
         return frame
     return (
-        frame.sort_values(["control_set", "accession", "position"]).reset_index(drop=True)
+        frame.drop_duplicates(["control_set", "accession", "position"])
+        .sort_values(["control_set", "accession", "position"])
+        .reset_index(drop=True)
     )
 
 

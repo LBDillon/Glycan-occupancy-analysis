@@ -95,3 +95,15 @@ def test_summary_reports_density_and_excluded_taxa():
     assert "composition" in entry
     # the exclusions travel with the data, so a reader can audit them
     assert summary["_excluded_taxa"] == OST_BEARING_TAXA
+
+
+def test_repeated_protein_does_not_duplicate_its_sequons():
+    """Paginated UniProt responses can repeat an entry across page boundaries.
+
+    A repeat would emit that protein's sequons twice and then square in any join
+    keyed on (accession, position) — 2 copies became 4 rows in the first build.
+    """
+    doubled = pd.concat([_proteins(), _proteins()], ignore_index=True)
+    sites = build_control_sites(doubled)
+    assert not sites.duplicated(["control_set", "accession", "position"]).any()
+    assert len(sites) == len(build_control_sites(_proteins()))
