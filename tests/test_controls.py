@@ -107,3 +107,26 @@ def test_repeated_protein_does_not_duplicate_its_sequons():
     sites = build_control_sites(doubled)
     assert not sites.duplicated(["control_set", "accession", "position"]).any()
     assert len(sites) == len(build_control_sites(_proteins()))
+
+
+def test_cytosolic_query_is_restricted_to_eukaryota():
+    """GO:0005829 is domain-agnostic.
+
+    Without an explicit Eukaryota restriction the set filled with bacteria (E.
+    coli was its third most common organism) and 302 archaeal proteins — and
+    archaea glycosylate via AglB, so those are potential true glycoproteins in a
+    set defined as unable to be glycosylated.
+    """
+    assert "taxonomy_id:2759" in CONTROL_SETS["cytosolic_eukaryotic"]["query"]
+
+
+def test_control_sets_target_disjoint_domains():
+    """A protein must not be able to satisfy both queries.
+
+    Bacterial proteins annotated both cytosolic and periplasmic previously
+    appeared in both sets, which makes the two comparisons non-independent.
+    """
+    cyto = CONTROL_SETS["cytosolic_eukaryotic"]["query"]
+    bact = CONTROL_SETS["bacterial_extracytoplasmic"]["query"]
+    assert "taxonomy_id:2759" in cyto and "taxonomy_id:2" in bact
+    assert "taxonomy_id:2759" not in bact

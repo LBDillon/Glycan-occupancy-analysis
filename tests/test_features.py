@@ -68,3 +68,25 @@ def test_build_features_keeps_every_site():
     assert bool(by_accession.loc["P1", "features_available"]) is True
     assert bool(by_accession.loc["P2", "features_available"]) is False
     assert by_accession.loc["P1", "observed_residue"] == "N"
+
+
+def test_carried_columns_survive_the_output_resort():
+    """The regression that mislabelled 43.5% of control rows.
+
+    build_features sorts its output. A caller that assigns a provenance column
+    afterwards with .values pairs labels from input order against rows in sorted
+    order, silently scrambling them. Here the input order is deliberately the
+    reverse of the sorted order, so a positional assignment would swap the labels.
+    """
+    sites = pd.DataFrame([
+        {"accession": "Z9", "position": 2, "structure_pdb_id": "MINI",
+         "structure_chain_id": "A", "structure_resseq": 2,
+         "structure_icode": float("nan"), "control_set": "set_last"},
+        {"accession": "A1", "position": 2, "structure_pdb_id": "MINI",
+         "structure_chain_id": "A", "structure_resseq": 2,
+         "structure_icode": float("nan"), "control_set": "set_first"},
+    ])
+    frame = build_features(sites, {"MINI": FIXTURE}, carry_columns=("control_set",))
+    by_accession = frame.set_index("accession")["control_set"]
+    assert by_accession.loc["Z9"] == "set_last"
+    assert by_accession.loc["A1"] == "set_first"

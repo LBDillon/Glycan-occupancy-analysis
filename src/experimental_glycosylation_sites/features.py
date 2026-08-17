@@ -206,13 +206,22 @@ FEATURE_COLUMNS = [
 ]
 
 
-def build_features(sites: pd.DataFrame, structure_paths: dict[str, Path]) -> pd.DataFrame:
+def build_features(
+    sites: pd.DataFrame,
+    structure_paths: dict[str, Path],
+    carry_columns: tuple[str, ...] = (),
+) -> pd.DataFrame:
     """One row per site, with features where the residue could be located.
 
     `sites` needs accession, position, structure_pdb_id, structure_chain_id,
     structure_resseq and structure_icode. Sites without mapped coordinates are
     kept with empty features so the output stays a complete account of the input
     rather than a silently filtered subset.
+
+    `carry_columns` names provenance columns to copy through per row. Use it
+    rather than reattaching a column to the result afterwards: the output is
+    re-sorted, so a positional assignment silently scrambles the labels. That
+    defect mislabelled 43.5% of control rows and mixed the two comparisons.
     """
     cache: dict[tuple, dict | None] = {}
     rows = []
@@ -226,6 +235,8 @@ def build_features(sites: pd.DataFrame, structure_paths: dict[str, Path]) -> pd.
             "structure_chain_id": getattr(row, "structure_chain_id", ""),
             "structure_resseq": getattr(row, "structure_resseq", None),
         }
+        for column in carry_columns:
+            record[column] = getattr(row, column, None)
         pdb_id = str(record["structure_pdb_id"] or "").upper()
         resseq = record["structure_resseq"]
         path = structure_paths.get(pdb_id)

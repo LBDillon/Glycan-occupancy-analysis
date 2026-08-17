@@ -50,8 +50,14 @@ _EXCLUDE_TAXA = " ".join(f"AND NOT taxonomy_id:{t}" for t in sorted(OST_BEARING_
 
 CONTROL_SETS: dict[str, dict] = {
     "cytosolic_eukaryotic": {
+        # taxonomy_id:2759 (Eukaryota) is load-bearing, not decoration. GO:0005829
+        # applies to any domain, so without it E. coli was the third most common
+        # organism in this set, and 302 archaeal proteins were included — archaea
+        # glycosylate via AglB, so those are potentially genuine glycoproteins
+        # inside a set defined as unable to be glycosylated. It also removes the
+        # bacterial proteins that matched both this query and the periplasmic one.
         "query": (
-            "reviewed:true AND go:0005829 AND database:pdb "
+            "reviewed:true AND taxonomy_id:2759 AND go:0005829 AND database:pdb "
             "AND NOT keyword:KW-0325 AND NOT keyword:KW-0732 "
             "AND NOT keyword:KW-0812"
         ),

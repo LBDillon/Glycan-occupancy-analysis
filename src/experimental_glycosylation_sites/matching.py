@@ -165,3 +165,65 @@ def balance_report(
             ),
         }
     return report
+
+
+def _weighted_moments(values: np.ndarray, weights: np.ndarray) -> tuple[float, float]:
+    total = weights.sum()
+    if total <= 0 or len(values) == 0:
+        return float("nan"), float("nan")
+    mean = float((values * weights).sum() / total)
+    var = float((weights * (values - mean) ** 2).sum() / total)
+    return mean, var
+
+
+def weighted_balance_report(
+    cases: pd.DataFrame,
+    controls: pd.DataFrame,
+    pairs: pd.DataFrame,
+    features: tuple[str, ...] = MATCH_FEATURES,
+) -> dict:
+    """Balance using matched-set weights.
+
+    Each occupied site carries total weight one, and the controls matched to it
+    share weight one between them. Without this a case matched to five controls
+    would contribute five times as much to the control mean as a case matched to
+    one, so the balance statistic would describe the matching's bookkeeping rather
+    than the comparison being made.
+    """
+    if pairs.empty:
+        return {"cases_matched": 0, "controls_used": 0, "features": {}}
+
+    per_case = pairs.groupby(["case_accession", "case_position"]).size()
+    weights = pairs.join(
+        per_case.rename("k"), on=["case_accession", "case_position"]
+    ).assign(weight=lambda f: 1.0 / f.k)
+
+    case_keys = pairs[["case_accession", "case_position"]].drop_duplicates()
+    matched_cases = cases.merge(
+        case_keys, left_on=["accession", "position"],
+        right_on=["case_accession", "case_position"],
+    )
+    control_side = weights.merge(
+        controls, left_on=["control_accession", "control_position"],
+        right_on=["accession", "position"],
+    )
+
+    report = {
+        "cases_matched": int(len(case_keys)),
+        "controls_used": int(len(pairs)),
+        "control_weight_total": round(float(weights.weight.sum()), 6),
+        "features": {},
+    }
+    for feature in features:
+        case_values = matched_cases[feature].astype(float).to_numpy()
+        control_values = control_side[feature].astype(float).to_numpy()
+        control_weights = control_side.weight.to_numpy()
+        case_mean, case_var = _weighted_moments(case_values, np.ones(len(case_values)))
+        ctl_mean, ctl_var = _weighted_moments(control_values, control_weights)
+        pooled = np.sqrt((case_var + ctl_var) / 2)
+        report["features"][feature] = {
+            "smd_weighted": round(float((case_mean - ctl_mean) / pooled) if pooled else 0.0, 4),
+            "case_mean": round(case_mean, 4),
+            "control_weighted_mean": round(ctl_mean, 4),
+        }
+    return report
