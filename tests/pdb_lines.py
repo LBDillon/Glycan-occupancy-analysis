@@ -1,5 +1,11 @@
 """Fixed-column PDB record formatters, used by fixtures and tests alike.
 
+NOTE: the coordinates these produce are collinear placeholders, adequate for
+residue identity, numbering and linkage parsing but meaningless as geometry.
+Never feed a fixture built here to a structure-based model — ProteinMPNN on this
+backbone returns saturated nonsense, because no real protein looks like a
+straight line.
+
 LINK column layout (1-indexed, per the PDB format spec):
   13-16 name1  18-20 resName1  22 chainID1  23-26 resSeq1  27 iCode1
   43-46 name2  48-50 resName2  52 chainID2  53-56 resSeq2  57 iCode2
