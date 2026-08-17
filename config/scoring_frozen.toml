@@ -1,0 +1,100 @@
+# Frozen scoring configuration — ProteinMPNN conditional sequon score
+#
+# Written before any labelled contrast was computed. Nothing here may be changed
+# after the occupied-versus-control differences have been seen; a later change is
+# a new analysis, recorded as such, not an edit to this one.
+
+[provenance]
+frozen_on = "2026-08-17"
+frozen_before = "any occupied-versus-control contrast was calculated"
+preflight_gates = "all four passed: control labels, eukaryotic taxonomy, exact three-residue mapping, one score per unique site"
+manifest = "results/scoring_manifest.csv"
+manifest_rows = 2910
+unique_scoreable_sites = 2640
+
+[model]
+name = "ProteinMPNN"
+checkpoint = "v_48_020"
+source = "ProteinMPNN/vanilla_model_weights/v_48_020.pt"
+rationale = "the checkpoint used by the preprint, so conditional scores and the later design-retention analysis describe the same model"
+k_neighbors = 48
+augment_eps = 0.0
+augment_eps_note = "backbone noise disabled at inference; the checkpoint's 0.2 training noise is a property of the weights, not something to reapply"
+device = "cpu"
+threads = 1
+threads_note = "OMP_NUM_THREADS=1 with KMP_DUPLICATE_LIB_OK for the duplicate libomp on macOS; single-threaded also makes the numbers reproducible"
+
+[conditioning]
+mode = "conditional"
+definition = "P(amino acid at position | backbone and the rest of the native sequence)"
+call = "ProteinMPNN.conditional_probs"
+backbone_only = false
+sequences_generated = false
+sequon_altered = false
+whole_protein_score_used = false
+whole_protein_note = "three residues contribute almost nothing to an average over hundreds, so a protein-level score cannot answer a site-level question"
+
+[decoding_orders]
+n_orders = 8
+seed = 0
+generator = "torch.Generator(device='cpu').manual_seed(seed), one randn draw per order"
+retain_per_order = true
+rationale = "conditional probabilities depend on the sampled decoding order; measured SD across orders was 0.080 on a real site, so a single order is one draw reported as a value"
+convergence_rule = "adopt 8 only if 8-vs-16 median difference < 0.02 SD, 95th percentile < 0.05 SD and correlation > 0.99 on a blinded ~50-site subset; otherwise use 16"
+convergence_result = "PASSED on 50 blinded sites (seed 20260817): median 0.0022 SD, p95 0.0141 SD, correlation 0.99998 -> 8 orders adopted"
+convergence_artefacts = ["results/convergence_check.csv", "results/convergence_check.json"]
+
+[optimisation]
+restrict_positions = true
+restrict_positions_note = """
+ProteinMPNN's conditional_probs runs a full decoder pass for every position it is
+asked about, so a 300-residue chain costs 300 passes to answer about three. The
+per-position result depends only on that position and the decoding order, so the
+request is restricted to the sequon residues. Verified bit-identical against the
+unrestricted computation (max difference 0.0, score equal to nine decimals) and
+49x faster.
+"""
+batch_by_structure_chain = true
+batch_note = "sites sharing a chain reuse one probability computation; 2,640 sites reduce to 1,725 chain groups"
+
+[score]
+primary = "conditional_sequon_score"
+formula = "mean( logit P(N) at the first position, logit[ P(S) + P(T) ] at the third )"
+logit = "log(p / (1 - p))"
+epsilon = 1e-6
+epsilon_note = "probabilities clamped before the logit so a saturated position gives a large finite value rather than an infinity"
+middle_residue_excluded = true
+middle_residue_note = "any residue except proline permits a sequon, so a preference at +1 is not a preference for the motif; P(proline) is recorded as a diagnostic"
+also_recorded = [
+    "p_asn_at_n", "p_ser_at_plus2", "p_thr_at_plus2", "p_ser_or_thr_at_plus2",
+    "p_pro_at_plus1", "full 21-residue probability vectors at all three positions",
+]
+
+[equivalence]
+margin_standardised = 0.2
+margin_sign = "two-sided, plus or minus"
+status = "exploratory statistical threshold, NOT a biologically validated one"
+reference_sd_rule = """
+Estimated per model and per conditioning mode, as the standard deviation of the
+primary score across all unique structurally scoreable dataset sites — the 332
+occupied and 32 observed-unmodified — pooled and computed WITHOUT reference to
+their labels. The raw margin is 0.2 times that reference SD.
+"""
+reference_sd_population = "364 unique dataset sites (332 occupied + 32 observed-unmodified)"
+applies_to = "the primary conditional-score analysis only"
+same_scale_across = ["vs_observed_unmodified", "vs_bacterial_control", "vs_cytosolic_control"]
+report_unstandardised = true
+report_unstandardised_note = "the raw log-odds difference and its confidence interval are reported alongside the standardised effect"
+secondary_outcomes = "retention and other secondary outcomes are descriptive until they have their own justified margins"
+inconclusive_rule = """
+If the 24-pair confidence interval is too wide to establish equivalence, the
+result is reported as inconclusive. A non-significant difference at this sample
+size is not evidence of no effect.
+"""
+
+[analysis_unit]
+unit = "one occupied site"
+contrast = "site_contrast = occupied_score - mean(scores of its matched controls)"
+not_the_unit = "individual rows of a 1:k matched set are not independent observations"
+uncertainty = "resample whole proteins or ortholog clusters; control proteins contributing several sites handled by clustered resampling"
+stratify = "NXS versus NXT exactly or by stratum; middle X residue distribution reported"

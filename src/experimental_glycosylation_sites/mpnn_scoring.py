@@ -96,8 +96,18 @@ def conditional_probabilities(
     device: str = "cpu",
     n_decoding_orders: int = DEFAULT_DECODING_ORDERS,
     seed: int = 0,
+    positions: "list[int] | None" = None,
 ) -> np.ndarray:
-    """Per-order conditional probabilities for one chain, shape [orders, L, 21]."""
+    """Per-order conditional probabilities for one chain, shape [orders, L, 21].
+
+    `positions` restricts which residues are computed. ProteinMPNN's
+    conditional_probs runs a full decoder pass for every position it is asked
+    about, so a 300-residue chain costs 300 passes when three are wanted. The
+    per-position result depends only on that position and the decoding order, not
+    on which other positions were requested, so restricting the set returns
+    identical values for them — verified against the unrestricted computation.
+    Rows outside `positions` are left at zero and must not be read.
+    """
     _prepare_environment()
     import torch
 
@@ -117,13 +127,20 @@ def conditional_probabilities(
     X, S, mask = out[0], out[1], out[2]
     chain_M, chain_encoding_all, chain_M_pos, residue_idx = out[4], out[5], out[10], out[12]
 
+    design_mask = chain_M * chain_M_pos
+    if positions is not None:
+        wanted = torch.zeros_like(design_mask)
+        for index in positions:
+            wanted[0, int(index)] = 1.0
+        design_mask = design_mask * wanted
+
     per_order = []
     generator = torch.Generator(device="cpu").manual_seed(seed)
     with torch.no_grad():
         for _ in range(n_decoding_orders):
             randn = torch.randn(chain_M.shape, generator=generator).to(device)
             log_probs = model.conditional_probs(
-                X, S, mask, chain_M * chain_M_pos, residue_idx, chain_encoding_all, randn, False
+                X, S, mask, design_mask, residue_idx, chain_encoding_all, randn, False
             )
             per_order.append(torch.exp(log_probs)[0].cpu().numpy())
     return np.stack(per_order)
