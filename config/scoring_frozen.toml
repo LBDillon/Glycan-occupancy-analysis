@@ -98,3 +98,111 @@ contrast = "site_contrast = occupied_score - mean(scores of its matched controls
 not_the_unit = "individual rows of a 1:k matched set are not independent observations"
 uncertainty = "resample whole proteins or ortholog clusters; control proteins contributing several sites handled by clustered resampling"
 stratify = "NXS versus NXT exactly or by stratum; middle X residue distribution reported"
+
+# ============================================================================
+# AMENDMENT 1 — 2026-08-18
+#
+# A defect was found in the scorer after the first set of contrasts had been
+# computed and seen. Everything below records what changed and why. The
+# scientific choices above are unchanged: the model, the conditioning, the
+# score formula, the 0.2 SD margin and the analysis unit all stand exactly as
+# frozen. What changed is that invalid rows are now excluded, which moves the
+# numbers those rules are applied to.
+#
+# This section exists so the change is visible as a correction rather than an
+# edit. The first result cannot be treated as an independent prior estimate:
+# it was computed from the same data with a broken scorer.
+# ============================================================================
+
+[amendment_1]
+date = "2026-08-18"
+reason = "defect correction, not a change of analytical choice"
+
+[amendment_1.defect]
+what = """
+ProteinMPNN's conditional_probs allocates a zero tensor of log-probabilities
+and fills only positions surviving chain_M * mask, where mask is zero wherever
+the backbone is incomplete. A residue missing N, CA, C or O was returned as a
+row of zeros. Exponentiating gives twenty-one ones: P(N) = 1, P(S)+P(T) = 2,
+and a conditional_sequon_score of about +13.8.
+"""
+why_it_was_missed = """
+The manifest confirmed that all three sequon residues had coordinates and a
+model index. That is a different claim from ProteinMPNN having accepted them,
+and nothing checked that the returned vectors were distributions.
+"""
+scope = "105 of 2,564 scored sites, 8 of them dataset sites (5 occupied, 3 internal control)"
+effect_on_reference_sd = "inflated it from 1.3316 to 2.6169, so every standardised effect was wrong"
+found_by = "external review of the scoring code and output rows"
+
+[amendment_1.fix]
+guards = [
+    "conditional_probabilities returns the set of positions the model actually decoded",
+    "sequon_score rejects any undecoded position",
+    "sequon_score rejects any row that does not sum to 1 within 1e-3 or leaves [0,1]",
+]
+independence = "the two guards are independent; neither is a single point of failure"
+regression_test = "tests/fixtures/incomplete_backbone.pdb — real backbone geometry with one sequon +2 oxygen removed, which reproduces the all-ones row end to end"
+
+[amendment_1.ordering]
+change = "scoreability is now established before matching, not after"
+rationale = """
+Scoreability is a property of the coordinates, so it can be settled without a
+model pass. Establishing it afterwards let unscoreable sites into matched sets
+and removed them later, unbalancing sets that matching had just balanced.
+"""
+validation = "the pre-screen reproduced all 103 in-manifest corrupted rows with zero false positives and zero misses"
+
+[amendment_1.matching]
+exact_subtype = true
+exact_subtype_rationale = """
+About 45% of analysable pairs previously matched an NXS site to an NXT control.
+NXT is occupied more often and the two are chemically distinct, so subtype was
+confounded with occupancy. It is now matched exactly.
+"""
+k = 1
+k_was = 5
+k_rationale = """
+28 internal controls against 314 occupied sites. Greedy matching without
+replacement at k=5 lets the first cases absorb the pool, yielding 14 occupied
+cases from 314. At k=1 each control supports a distinct occupied case, which is
+what the analysis unit counts. k=5 is retained as a sensitivity analysis.
+"""
+k_disclosure = """
+Pre-specified before any score existed under the corrected scorer, but NOT
+blind: the defective run's primary estimate had already been seen. Recorded as
+a deviation for that reason.
+"""
+features_unchanged = ["rsa", "n_neighbours_8a", "hydrophobic_fraction_8a"]
+caliper_unchanged = 0.25
+
+[amendment_1.uncertainty]
+change = "resampling unit is now the connected component of occupied ortholog clusters and the control proteins they share"
+was = "the occupied site's ortholog cluster only"
+rationale = """
+The [analysis_unit] rule above already promised that control proteins
+contributing several sites would be handled by clustered resampling. The
+implementation did not do it. Two dependencies run through the contrasts —
+near-identical occupied orthologs, and one control protein matched to several
+occupied cases — and resampling on either alone leaves the other unaccounted
+for.
+"""
+
+[amendment_1.terminology]
+change = "the 32-site class is described as 'no modelled glycan under internal-control conditions'"
+was = "observed-unmodified"
+rationale = """
+These sites are not demonstrated to be chemically unmodified. They are sequons
+with no modelled glycan in structures where a glycan would have been visible
+had it been present. That makes them the best available internal controls and
+not definitive biochemical negatives, and the earlier name claimed the latter.
+The stored class value remains observed_unmodified as a legacy identifier.
+"""
+
+[amendment_1.reference_sd]
+recomputed = 1.3316
+was = 2.6169
+population = "342 scoreable dataset sites (314 occupied + 28 internal control), labels not consulted"
+population_was = "364 sites including 8 that could not be validly scored"
+margin_raw = 0.2663
+note = "the rule is unchanged; only the set it is applied to is corrected"

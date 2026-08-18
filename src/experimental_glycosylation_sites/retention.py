@@ -130,3 +130,26 @@ def classify_retention(designs: list[str], n_index: int, plus1_index: int,
     result.update({f"frac_{k}": round(counts[k] / n_total, 4) for k in RETENTION_CATEGORIES})
     result.update({f"n_{k}": counts[k] for k in RETENTION_CATEGORIES})
     return result
+
+
+# --------------------------------------------------------------------------
+# Incomplete backbones affect generation too, by a different route.
+#
+# sample() computes chain_mask = chain_mask * chain_M_pos * mask and then commits
+#
+#     S_t = S_t * chain_mask + S_true * (1 - chain_mask)
+#
+# so a residue whose backbone is incomplete is never redesigned: it is written
+# back at its native identity in every design. On a real fixture whose sequon
+# +2 oxygen is missing, all three designs return native T at that position
+# while the asparagine two residues earlier is redesigned away.
+#
+# The distortion therefore depends on which residue is affected rather than
+# pushing retention one way. A frozen +2 inflates ser_thr_retained_motif_lost;
+# a frozen N inflates asn_retained_motif_lost; all three frozen would report a
+# fully retained sequon that the model never had the chance to alter. In every
+# case the number describes the parser, not the model, so these sites are
+# excluded rather than corrected.
+# --------------------------------------------------------------------------
+
+RETENTION_REQUIRES_SCOREABLE = True

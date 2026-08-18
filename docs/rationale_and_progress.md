@@ -9,26 +9,15 @@ database can and cannot establish.*
 
 ## The problem in cataloguing sequons by motif
 
-The ortholog sequon-conservation database finds pairs of orthologous proteins where one member carries an N-linked sequon and the other has lost it. Each such comparison is one row. 
+The ortholog sequon-conservation database finds pairs of orthologous proteins where one member carries an N-linked sequon and the other has lost it. Each such comparison is one row.
 
-Storing the data as one row per comparison suits the question the database was built to
-answer — how often sequons are lost across evolution — but it makes a second question hard
-to ask, because a sequon is only a motif in the sequence. Whether it is actually used depends on local structure, on membrane topology, and the presence of an oligosaccharyltransferase (OST). The sequence motif being insufficient for a glycan attachment means distinguishing "this pair lost a sequon" and "this pair lost a glycan" is important to make the database biologically relevant. 
+Storing the data as one row per comparison suits the question the main ortholog database was built to answer of how often sequons are lost across evolution and if we can learn the context changes other than the motif shift. However we need to adapt it for the occupancy analysis because a sequon is only a motif in the sequence. Whether it is actually used depends on local structure, on membrane topology, and the presence of an oligosaccharyltransferase (OST). The sequence motif being insufficient for a glycan attachment means distinguishing "this pair lost a sequon" and "this pair lost a glycan" is important to make the database biologically relevant.
 
-The second problem is arithmetic. Take human P00709 with an asparagine at position 64. The database compares that protein against its bovine, murine and porcine orthologs, and each comparison is stored as its own row, meaning position 64 P00709 appears three times. If counting rows, there would be three glycosylation observations where biology has only one asparagine. Across the whole dataset that is the difference between 13,816 rows and 4,307 actual sites.
+The main reasons is the inflating the statitical signifigance if we treat pairs as the main comparison. Take human P00709 with an asparagine at position 64. The database compares that protein against its bovine, murine and porcine orthologs, and each comparison is stored as its own row, meaning position 64 P00709 appears three times. If counting rows, there would be three glycosylation observations where biology has only one asparagine. Across the whole dataset that is the difference between 13,816 rows and 4,307 actual sites.
 
-Those three ortholog relationships do matter, and nothing is thrown away — the intuition in
-the second half of that question is the right one. It is the same data indexed twice for two
-different questions. Asking "does this asparagine carry a glycan" is a question about one
-residue, so the site is counted once. Asking "how often is this sequon lost, and against
-which orthologs" is a question about comparisons, so all three rows stay available in
-`site_pair_associations.csv`, carrying cluster, source and homology quality. Separating them
-means an evidence count cannot be inflated by how many orthologs a protein happens to have
-been compared against, while the comparisons themselves remain fully in play.
+Asking "does this asparagine carry a glycan" is a question about one residue, so the site is counted once. Asking "how often is this sequon lost, and against which orthologs" is a question about comparisons, so all three rows stay available in `site_pair_associations.csv`, carrying cluster, source and homology quality. Separating them means an evidence count cannot be inflated by how many orthologs a protein happens to have been compared against.
 
-There is a diagram of this collapse: (https://claude.ai/code/artifact/d0248a3d-8f3e-4ebc-950e-31cd245dc835). 
-
-For every candidate site for a protein in the database we ask if there is experimental evidence that the asparagine specifically carries a glycan. To check if it does we use data for the protein from UniProt and GlyGen, as well as looking at deposited structures and GlyConnect for supporting evidence.
+For the occupancy analysis data, every candidate site for a protein in the database we ask if there is experimental evidence that the asparagine specifically carries a glycan. To check if it does we use data for the protein from UniProt and GlyGen, as well as looking at deposited structures and GlyConnect for supporting evidence.
 
 **UniProt** is the primary source, because it is the only one with site-level annotations for per-feature evidence codes. Its glycosylation features are read at exact residue positions only and a range or an uncertain position is rejected.
 
@@ -151,24 +140,6 @@ negative control it is much stronger — establishing that current inverse-foldi
 glycan-blind is the premise that motivates glycan-aware modelling. Note that 32 sites cannot
 establish a null on their own; that claim needs equivalence testing against a pre-specified
 effect size, or more negatives.
-
-**3b. Bring in the negative controls.** The 32 are too few to carry a null on their own,
-so two further sets of sequons that cannot be N-glycosylated now exist alongside them:
-19,337 in cytosolic eukaryotic proteins, which never enter the secretory pathway and so
-never meet OST, and 5,865 in bacterial periplasmic and outer-membrane proteins, which
-cross a membrane into an oxidising compartment but whose clades have no OST. These are
-mechanistic negatives — positive knowledge from the biology, not inference from missing
-annotation.
-
-Their value is that their confounds do not overlap. The cytosolic set matches the
-positives on taxonomy but differs in compartment; the bacterial set matches on
-compartment but differs in taxonomy; the 32 match on both but are tiny. A model that
-separates occupied sites from the cytosolic set and not the 32 has learned where proteins
-live; one that separates them from the bacterial set and not the cytosolic set has learned
-taxonomy. The gap between the comparisons is the measurement. Both sets sit at neutral
-sequon density for their composition, which is the assumption they rest on and a direct
-check that it holds. See `negative_controls.md`; they are labelled by `control_set`, never
-pooled with the 4,307, and never counted in a site total.
 
 **4. Treat the 32 as a calibration probe, not a training class.** The intended approach is
 positive-unlabelled learning, as in the KinoPlex kinase atlas, which faced the same shortage

@@ -1,3 +1,15 @@
+> ## ⚠️ SUPERSEDED — the numbers in this document are withdrawn
+>
+> Every ProteinMPNN score quoted below was computed with a scorer that returned
+> twenty-one ones for any residue with an incomplete backbone, giving
+> P(S)+P(T) = 2 and a score near +13.8. This corrupted 105 of 2,564 sites and
+> inflated the reference SD from 1.33 to 2.62, so all standardised effects here
+> are wrong — including the primary estimate, whose sign reverses once the
+> invalid rows are removed.
+>
+> **Current result: [`primary_result.md`](primary_result.md).**
+> Correction record: `config/scoring_frozen.toml`, section `[amendment_1]`.
+
 # Phase 4 — occupied versus unoccupied sequons under ProteinMPNN
 
 Zero-shot conditional scoring, ProteinMPNN v_48_020, against the frozen

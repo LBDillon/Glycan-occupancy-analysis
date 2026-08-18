@@ -30,25 +30,35 @@ KEY = ["accession", "position"]
 LABEL = sys.argv[1] if len(sys.argv) > 1 else "primary"
 PAIRS = Path(f"results/matched_pairs_{LABEL}.csv")
 
-man = pd.read_csv("results/candidate_manifest_dataset.csv", low_memory=False)
-man = man[man.scoreable.astype(bool)].copy()
-scores = pd.read_csv("results/scores_dataset.csv", low_memory=False)
+def load(manifest_path, score_path):
+    if not Path(manifest_path).exists() or not Path(score_path).exists():
+        return pd.DataFrame()
+    m = pd.read_csv(manifest_path, low_memory=False)
+    m = m[m.scoreable.astype(bool)].copy()
+    sc = pd.read_csv(score_path, low_memory=False)
+    for d in (m, sc):
+        d["accession"] = d.accession.astype(str)
+        d["position"] = d.position.astype(int)
+    return m.merge(sc[KEY + ["conditional_sequon_score", "conditional_sequon_score_sd"]],
+                   on=KEY, how="inner")
 
-for d in (man, scores):
-    d["accession"] = d.accession.astype(str)
-    d["position"] = d.position.astype(int)
-
-site = man.merge(scores[KEY + ["conditional_sequon_score", "conditional_sequon_score_sd"]],
-                 on=KEY, how="inner")
+dataset = load("results/candidate_manifest_dataset.csv", "results/scores_dataset.csv")
+controls = load("results/manifest_matched_controls.csv", "results/scores_controls.csv")
+site = pd.concat([dataset, controls], ignore_index=True)
+if "ortholog_clusters" not in site.columns:
+    site["ortholog_clusters"] = pd.NA
 
 # ---------------------------------------------------------------- reference SD
-# The frozen rule: pooled across all structurally scoreable dataset sites,
-# computed without reference to their labels.
-reference_sd = float(site.conditional_sequon_score.std(ddof=1))
+# The frozen rule: pooled across all structurally scoreable DATASET sites,
+# computed without reference to their labels. Controls never enter it, so every
+# comparison is expressed on one common scale.
+reference_sd = float(dataset.conditional_sequon_score.std(ddof=1))
 margin_raw = MARGIN_SD * reference_sd
-print(f"scoreable dataset sites scored : {len(site)} "
-      f"({int((site.occupancy_status=='occupied_supported').sum())} occupied, "
-      f"{int((site.occupancy_status=='observed_unmodified').sum())} internal control)")
+print(f"scoreable dataset sites scored : {len(dataset)} "
+      f"({int((dataset.occupancy_status=='occupied_supported').sum())} occupied, "
+      f"{int((dataset.occupancy_status=='observed_unmodified').sum())} internal control)")
+if len(controls):
+    print(f"matched control sites scored   : {len(controls)}")
 print(f"reference SD                   : {reference_sd:.4f} log-odds")
 print(f"equivalence margin (+/-0.2 SD) : +/-{margin_raw:.4f} log-odds\n")
 
@@ -73,7 +83,7 @@ for (acc, pos), grp in pairs.groupby(["case_accession", "case_position"]):
     ctrl = [c for c in ctrl if np.isfinite(c[2])]
     if not np.isfinite(case_score) or not ctrl:
         continue
-    clusters = lookup.loc[(acc, int(pos))].ortholog_clusters
+    clusters = lookup.loc[(acc, int(pos))].get("ortholog_clusters", pd.NA)
     rows.append({
         "case_accession": acc, "case_position": int(pos),
         "subtype": lookup.loc[(acc, int(pos))].subtype,
