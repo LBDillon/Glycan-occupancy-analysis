@@ -85,3 +85,55 @@ def test_rows_with_missing_features_are_excluded():
     controls = frame(100, rsa=0.4, neighbours=8, prefix="B", seed=12)
     pairs = match_controls(cases, controls)
     assert "A0" not in set(pairs.case_accession)
+
+
+def test_exact_column_blocks_a_closer_but_mismatched_control():
+    """Exact matching must override distance, not merely be one term within it."""
+    cases = pd.DataFrame([{"accession": "P1", "position": 10, "rsa": 0.50,
+                           "n_neighbours_8a": 10.0, "hydrophobic_fraction_8a": 0.5,
+                           "subtype": "NXT"}])
+    controls = pd.DataFrame([
+        # nearer, wrong subtype — must not be chosen
+        {"accession": "C1", "position": 1, "rsa": 0.50, "n_neighbours_8a": 10.0,
+         "hydrophobic_fraction_8a": 0.5, "subtype": "NXS"},
+        # further, right subtype
+        {"accession": "C2", "position": 2, "rsa": 0.52, "n_neighbours_8a": 11.0,
+         "hydrophobic_fraction_8a": 0.52, "subtype": "NXT"},
+    ])
+    pairs = match_controls(cases, controls, k=1, caliper=10.0, exact=("subtype",))
+    assert list(pairs.control_accession) == ["C2"]
+
+
+def test_no_pair_is_emitted_when_no_control_shares_the_subtype():
+    """A case with no same-subtype control is dropped, not matched across."""
+    cases = pd.DataFrame([{"accession": "P1", "position": 10, "rsa": 0.5,
+                           "n_neighbours_8a": 10.0, "hydrophobic_fraction_8a": 0.5,
+                           "subtype": "NXT"}])
+    controls = pd.DataFrame([{"accession": "C1", "position": 1, "rsa": 0.5,
+                              "n_neighbours_8a": 10.0, "hydrophobic_fraction_8a": 0.5,
+                              "subtype": "NXS"}])
+    assert match_controls(cases, controls, k=1, caliper=10.0, exact=("subtype",)).empty
+
+
+def test_every_matched_pair_shares_the_exact_column():
+    """The invariant the primary comparison relies on, over a larger draw."""
+    rng = np.random.default_rng(0)
+    cases = pd.DataFrame({
+        "accession": [f"P{i}" for i in range(40)], "position": range(40),
+        "rsa": rng.uniform(0, 1, 40), "n_neighbours_8a": rng.uniform(5, 20, 40),
+        "hydrophobic_fraction_8a": rng.uniform(0, 1, 40),
+        "subtype": rng.choice(["NXS", "NXT"], 40)})
+    controls = pd.DataFrame({
+        "accession": [f"C{i}" for i in range(60)], "position": range(60),
+        "rsa": rng.uniform(0, 1, 60), "n_neighbours_8a": rng.uniform(5, 20, 60),
+        "hydrophobic_fraction_8a": rng.uniform(0, 1, 60),
+        "subtype": rng.choice(["NXS", "NXT"], 60)})
+    pairs = match_controls(cases, controls, k=3, caliper=1.0, exact=("subtype",))
+    assert len(pairs) > 0
+    merged = (pairs.merge(cases[["accession", "position", "subtype"]],
+                          left_on=["case_accession", "case_position"],
+                          right_on=["accession", "position"])
+                   .merge(controls[["accession", "position", "subtype"]],
+                          left_on=["control_accession", "control_position"],
+                          right_on=["accession", "position"], suffixes=("_case", "_ctrl")))
+    assert (merged.subtype_case == merged.subtype_ctrl).all()

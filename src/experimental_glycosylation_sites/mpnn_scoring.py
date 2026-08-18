@@ -79,16 +79,24 @@ def _prepare_environment() -> None:
     os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 
+def _ensure_importable(proteinmpnn_dir: "Path | None") -> None:
+    """Put ProteinMPNN's own modules on the import path."""
+    import sys
+
+    if proteinmpnn_dir is None:
+        return
+    resolved = str(Path(proteinmpnn_dir).resolve())
+    if resolved not in sys.path:
+        sys.path.insert(0, resolved)
+
+
 def load_model(proteinmpnn_dir: Path, model_name: str = DEFAULT_MODEL, device: str = "cpu"):
     """Load a ProteinMPNN checkpoint with backbone noise disabled."""
     _prepare_environment()
-    import sys
-
     import torch
 
     proteinmpnn_dir = Path(proteinmpnn_dir).resolve()
-    if str(proteinmpnn_dir) not in sys.path:
-        sys.path.insert(0, str(proteinmpnn_dir))
+    _ensure_importable(proteinmpnn_dir)
     from protein_mpnn_utils import ProteinMPNN
 
     checkpoint_path = proteinmpnn_dir / "vanilla_model_weights" / f"{model_name}.pt"
@@ -274,3 +282,30 @@ def sequon_score(
         "probs_plus1": mean_probs[plus1_index].tolist(),
         "probs_plus2": mean_probs[plus2_index].tolist(),
     }
+
+
+def decodable_positions(pdb_path: Path, chain_id: str,
+                        proteinmpnn_dir: "Path | None" = None) -> np.ndarray:
+    """Which residues of a chain ProteinMPNN will decode, without running it.
+
+    The model's backbone mask is computed by its own featuriser from the parsed
+    coordinates, so scoreability is a property of the structure alone and can be
+    settled before any scoring. That ordering matters for the study design: if
+    scoreability were established afterwards, sites would be matched and then
+    silently lost, leaving matched sets that no longer balance.
+
+    Returns a boolean array of length L, true where the backbone is complete.
+    """
+    _prepare_environment()
+    _ensure_importable(proteinmpnn_dir)
+
+    from protein_mpnn_utils import StructureDatasetPDB, parse_PDB, tied_featurize
+
+    parsed = parse_PDB(str(pdb_path), input_chain_list=[chain_id])
+    protein = StructureDatasetPDB(parsed, truncate=None, max_length=20000)[0]
+    out = tied_featurize(
+        [protein], "cpu", {protein["name"]: ([chain_id], [])},
+        None, None, None, None, None, ca_only=False,
+    )
+    mask, chain_M_pos = out[2], out[10]
+    return ((mask * chain_M_pos)[0].cpu().numpy() > 0)

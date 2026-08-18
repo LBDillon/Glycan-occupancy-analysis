@@ -31,6 +31,13 @@ MATCH_FEATURES = ("rsa", "n_neighbours_8a", "hydrophobic_fraction_8a")
 # report, whereas a bad match silently weakens the comparison.
 DEFAULT_CALIPER = 0.25
 
+# Sequon subtype is matched exactly rather than as a distance. NXT is occupied
+# more often than NXS and the two are chemically distinct, so a comparison that
+# pairs an occupied NXS against an unoccupied NXT confounds subtype with
+# occupancy. Exact matching removes that at the cost of pairs, which is the
+# right trade when the alternative is an uninterpretable difference.
+DEFAULT_EXACT = ("subtype",)
+
 
 def standardised_mean_difference(case: pd.Series, control: pd.Series) -> float:
     """Group difference in pooled standard deviations.
@@ -60,8 +67,15 @@ def match_controls(
     k: int = 5,
     caliper: float = DEFAULT_CALIPER,
     seed: int = 0,
+    exact: tuple[str, ...] = (),
 ) -> pd.DataFrame:
     """Greedy nearest-neighbour matching without replacement.
+
+    `exact` names columns a control must equal the case on before distance is
+    considered at all. Requiring exact agreement is not the same as adding the
+    column to `features`: a distance-based match will accept a near neighbour of
+    the wrong subtype whenever the structural fit is good enough, which is
+    precisely the confound the constraint exists to remove.
 
     Without replacement, because reusing one convenient control across many cases
     would make the comparison look better powered than it is. Cases are processed
@@ -75,8 +89,8 @@ def match_controls(
         "case_accession", "case_position", "control_accession",
         "control_position", "distance", "match_rank",
     ]
-    usable_case = cases.dropna(subset=list(features))
-    usable_control = controls.dropna(subset=list(features)).reset_index(drop=True)
+    usable_case = cases.dropna(subset=list(features) + list(exact))
+    usable_control = controls.dropna(subset=list(features) + list(exact)).reset_index(drop=True)
     if usable_case.empty or usable_control.empty:
         return pd.DataFrame(columns=columns)
 
@@ -90,8 +104,14 @@ def match_controls(
     order = np.random.default_rng(seed).permutation(len(usable_case))
     rows = []
 
+    exact_case = {c: usable_case[c].to_numpy() for c in exact}
+    exact_control = {c: usable_control[c].to_numpy() for c in exact}
+
     for index in order:
         distances = np.linalg.norm(control_points - case_points[index], axis=1)
+        for column in exact:
+            distances = np.where(
+                exact_control[column] == exact_case[column][index], distances, np.inf)
         distances[~available] = np.inf
         nearest = np.argsort(distances)[:k]
         case_row = usable_case.iloc[index]

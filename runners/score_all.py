@@ -8,9 +8,18 @@ from experimental_glycosylation_sites.mpnn_scoring import (
 
 N_ORDERS, SEED = 8, 0
 KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
-OUT = Path("results/mpnn_conditional_scores.csv")
 
-manifest = pd.read_csv("results/scoring_manifest.csv", low_memory=False)
+# Manifest and destination are arguments so the same scorer serves the dataset
+# sites and the diagnostic control pools without a second copy of this file.
+MANIFEST = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results/scoring_manifest.csv")
+OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("results/mpnn_conditional_scores.csv")
+FAILURES = OUT.with_name(OUT.stem + "_failures.csv")
+
+manifest = pd.read_csv(MANIFEST, low_memory=False)
+if "scoreable" in manifest.columns:
+    # Unscoreable sites are excluded before matching, so reaching the scorer at
+    # all would mean the pipeline ran out of order.
+    manifest = manifest[manifest.scoreable.astype(bool)]
 sites = manifest.drop_duplicates(KEY).reset_index(drop=True)
 
 paths = {}
@@ -88,7 +97,7 @@ if rows:
 frame = pd.read_csv(OUT, low_memory=False) if OUT.exists() else pd.DataFrame()
 frame = frame.drop_duplicates(KEY)
 frame.to_csv(OUT, index=False)
-pd.DataFrame(failures).to_csv("results/mpnn_scoring_failures.csv", index=False)
+pd.DataFrame(failures).to_csv(FAILURES, index=False)
 
 print(f"\nscored {len(frame)} of {len(sites)} unique sites; {len(failures)} failures")
 if failures:
