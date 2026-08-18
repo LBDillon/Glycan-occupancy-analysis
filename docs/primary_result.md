@@ -159,10 +159,12 @@ Rerun on validated scores; neither is part of the conclusion above.
 - **[Diagnostic controls](diagnostic_controls.md)** — bacterial (278 pairs,
   −0.174 SD) and cytosolic (270 pairs, +0.062 SD). The three comparisons point
   in different directions, so the earlier "gradient" reading is withdrawn.
-- **Design retention** — frozen snapshot, scoreable sites only: mean full
-  retention 0.078, 80.4% of sites lose the sequon in all 32 designs, conditional
-  score predicts retention at Spearman +0.559 with monotonic quintiles. Coverage
-  is alphabetical, not a random sample. `results/retention_analysis.json`.
+- **Design retention** — sweep complete, scoreable sites only (2,423 of 2,526):
+  mean full retention 0.072, **81.6%** of sites lose the sequon in all 32 designs,
+  and the conditional score predicts retention at Spearman **+0.547** with
+  monotonic quintiles (0.000 in the lowest, 0.301 in the highest). 114 of 2,640
+  manifest sites are uncovered, all from logged chain parse failures, skewed
+  towards large recent depositions. `results/retention_analysis.json`.
 
 The earlier retention contrast (+0.084, CI [+0.007, +0.176]) is **withdrawn**: it
 used a site-level bootstrap and its pairs no longer exist after rematching.

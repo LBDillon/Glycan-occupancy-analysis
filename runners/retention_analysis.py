@@ -7,9 +7,15 @@ cannot carry a statistical conclusion of its own.
 
 Two exclusions apply. Sites ProteinMPNN cannot decode are dropped, because
 sample() writes their native residue back unchanged in every design and the
-resulting number describes the parser rather than the model. And the sweep was
-interrupted, so it covers chains in alphabetical order rather than a random
-sample — a coverage caveat, reported rather than hidden.
+resulting number describes the parser rather than the model.
+
+The sweep is complete: 2,526 of 2,640 manifest sites, 1,659 of 1,725 chains.
+Every one of the 114 uncovered sites is accounted for by a logged parse failure
+on its chain (59 KeyError, 7 ValueError across 66 chains), so the gap is
+structural rather than a truncation. It is not neutral, though: the uncovered
+entries skew towards recent large depositions whose chain identifiers
+ProteinMPNN's PDB parser cannot read, so very large complexes are
+under-represented relative to the manifest.
 """
 import json
 from pathlib import Path
@@ -38,8 +44,8 @@ before = len(ret)
 ret = ret.merge(able[KEY + ["scoreable"]], on=KEY, how="left")
 ret = ret[ret.scoreable == True].copy()
 print(f"retention rows {before} -> {len(ret)} after dropping sites the model cannot decode")
-print(f"chains covered {ret.structure_pdb_id.nunique()} — sweep interrupted, "
-      f"alphabetical, NOT a random subset\n")
+print(f"chains covered {ret.structure_pdb_id.nunique()}; sweep complete "
+      f"(uncovered sites are parse failures, skewed to large recent entries)\n")
 
 print("=== descriptive retention (32 designs, temperature 0.1) ===")
 print(f"  mean full-sequon retention   {ret[FULL].mean():.4f}")
@@ -70,7 +76,8 @@ for i, g in merged.groupby(q):
 Path("results/retention_analysis.json").write_text(json.dumps({
     "snapshot": SNAPSHOT.name,
     "status": "secondary and descriptive; not part of the primary conclusion",
-    "coverage_caveat": "sweep interrupted; chains in alphabetical order, not a random subset",
+    "coverage_caveat": "sweep complete; 114 of 2,640 manifest sites uncovered, all "
+                       "explained by logged chain parse failures, skewed to large recent entries",
     "rows_before_exclusion": int(before), "rows_analysed": int(len(ret)),
     "excluded_unscoreable": int(before - len(ret)),
     "mean_full_retention": round(float(ret[FULL].mean()), 4),

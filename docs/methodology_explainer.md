@@ -234,15 +234,20 @@ most that 16 pairs support.
 cytosolic +0.062 SD [−0.145, +0.270]. Together with the primary +0.458, the three
 point in three directions. No ordering, no interpretation offered.
 
-**The bridge holds.** Conditional score predicts retention at Spearman **+0.559**,
-monotonically: sites in the lowest score quintile retain their sequon in 0% of
-designs, the highest in 32%. The score measures something real about what the
-model will do.
+**The bridge holds.** Across 2,423 scoreable sites the conditional score predicts
+retention at Spearman **+0.547**, monotonically: sites in the lowest score
+quintile retain their sequon in 0% of designs, the highest in 30%. The score
+measures something real about what the model will do.
 
-**Retention itself is stark.** 80% of sites lose the sequon in every one of 32
-designs; overall retention 0.078. The preprint's finding replicates at site level,
-and its 8-design condition proves unbiased — mean 0.077 against 0.078 at 32
-designs, correlating 0.98. It was noisier per site, not wrong.
+**Retention itself is stark.** **81.6%** of sites lose the sequon in every one of
+32 designs; overall retention 0.072. The preprint's finding replicates at site
+level, and its 8-design condition proves unbiased — mean 0.0722 against 0.0721 at
+32 designs, correlating 0.98. It was noisier per site, not wrong.
+
+These figures are from the completed sweep. An earlier interim pass at 57%
+coverage gave 0.078, 80.4% and +0.559 — close enough that nothing turned on it,
+but mildly optimistic in every direction, which is the usual reason not to quote
+a partial run.
 
 **One earlier claim withdrawn.** A reported retention difference between occupied
 and control sites (+0.084, CI [+0.007, +0.176]) used a site-level bootstrap that
