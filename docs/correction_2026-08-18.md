@@ -1,8 +1,11 @@
 # What changed on 18 August 2026, and why
 
-A short account of one round of corrections. The detailed result is in
-[`primary_result.md`](primary_result.md); the machine-readable record is
-`config/scoring_frozen.toml`, section `[amendment_1]`.
+A short account of two rounds of correction on the same day. The first
+(Amendment 1) fixed a defect in the scorer; the second (Amendment 2, at the end
+of this document) removed an arbitrary dependence in the matching. The detailed
+result is in [`primary_result.md`](primary_result.md); the machine-readable
+record is `config/scoring_frozen.toml`, sections `[amendment_1]` and
+`[amendment_2]`.
 
 ## What prompted it
 
@@ -81,18 +84,13 @@ are sites with **no modelled glycan under internal-control conditions**: strong
 evidence of absence by structural standards, but still a statement about the
 deposited model rather than the molecule. They remain the best controls available.
 
-## What the results are now
+## What the results were after Amendment 1
 
-The primary comparison gives **+0.649 SD, 95% CI [+0.075, +1.243]**, on 16
-matched pairs — the opposite sign to the withdrawn −0.057 SD.
+Correcting the scorer reversed the sign. Against the withdrawn −0.057 SD, the
+comparison now gave **+0.649 SD, 95% CI [+0.075, +1.243]** on 16 matched pairs,
+an interval that excluded zero.
 
-It should be read carefully. The interval excludes zero, so a positive difference
-is indicated, but it stretches from inside the equivalence margin to five times
-past it, so the size is not established. More importantly, occupied sites score
-higher in only 9 of 16 pairs. The mean is positive because the seven negative
-contrasts are all small while the nine positive ones are large. The effect lives
-in magnitude, not in consistency, and a test that reads only direction finds
-nothing at all.
+That reading did not survive Amendment 2. See the end of this document.
 
 **The diagnostic controls no longer tell a tidy story.** They previously appeared
 to shrink toward zero as matching improved, which was read as evidence that the
@@ -119,3 +117,81 @@ should run until this one is stable.
 
 The honest summary is that the study now measures what it claims to measure, and
 that what it measures is not yet precise enough to answer the question.
+
+
+---
+
+# Amendment 2: the matching was making the decision
+
+## What was wrong
+
+Nothing in the data. The problem was the algorithm that pairs occupied sites
+with controls.
+
+Greedy nearest-neighbour matching walks the cases in a random order and gives
+each one its nearest unused control. With 28 controls for 314 occupied sites,
+that order decides things: an early case can take the only control that was
+admissible for a later one. The order comes from a seed, and the reported result
+came from seed 0. It was one draw from a distribution, written down as a value.
+
+## What I did
+
+Replaced it with the assignment that maximises the number of admissible pairs
+and, among those, minimises total distance. It is solved directly rather than
+approached greedily, so there is no seed and no ordering. Rows are sorted by
+accession and position first, so even exact ties break the same way regardless
+of how the data arrived. Features, caliper, the exact NXS/NXT requirement and
+one-control-per-case are all unchanged — only the pairing algorithm differs.
+
+Then I ran the greedy version 200 times to see how much the old answer had
+depended on its seed.
+
+## What that showed
+
+| | |
+|---|---|
+| Pairs, every seed | 16 |
+| Mean contrast across seeds | +0.286 to +0.699 SD |
+| Point estimates that were positive | **200 of 200** |
+| Intervals that excluded zero | **75 of 200 (38%)** |
+| Deterministic optimal matching | +0.458 SD, CI [−0.227, +1.098], inconclusive |
+
+The direction is robust and the significance is not. Every matching we tried put
+occupied sites higher; fewer than half produced an interval that excluded zero.
+Whether the earlier result "reached significance" was settled by an arbitrary
+choice inside the matching rather than by the data, which is exactly why that
+choice should not be left to a seed.
+
+The pair count is 16 under every seed and under the optimum, so the caliper, not
+the algorithm, is what limits it: 12 of the 28 controls have no partner within
+0.25. The optimum finds *better* pairs, not more — mean distance 0.099 against
+greedy's 0.113, with tighter balance.
+
+## The headline now
+
+> Occupied sites tend to score higher than matched sites with no modelled
+> glycan, but 16 pairs do not establish a precise or statistically robust
+> difference.
+
+This supersedes the Amendment 1 reading that the interval excluded zero.
+
+The interval is worth reading asymmetrically. It runs from −0.227 to +1.098 SD,
+so it is consistent with no difference and with a substantial positive one, and
+it excludes only large differences favouring the controls. That is a weak
+conclusion, but it is the one the data support.
+
+## Housekeeping in the same pass
+
+- `primary_analysis.py` now loads only what the requested comparison needs, so an
+  analysis of 16 dataset pairs no longer depends on control files it never reads.
+- The reference population is reported from dataset sites alone, so the scale
+  cannot shift when a control pool is rebuilt.
+- Contrast construction, the resampling unit and the bootstrap moved to a shared
+  module used by both the primary analysis and the sensitivity sweep — a
+  sensitivity check that computed its interval differently from the result it
+  tests would look like corroboration while being nothing of the kind.
+- `score_unmatched.py` removed: superseded, and it read a file from `/tmp` that
+  no one else could reproduce.
+
+**The ProteinMPNN analysis is frozen here.** The constraint is 16 pairs, and no
+further modelling changes that.

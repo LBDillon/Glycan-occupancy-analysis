@@ -206,3 +206,75 @@ population = "342 scoreable dataset sites (314 occupied + 28 internal control), 
 population_was = "364 sites including 8 that could not be validly scored"
 margin_raw = 0.2663
 note = "the rule is unchanged; only the set it is applied to is corrected"
+
+# ============================================================================
+# AMENDMENT 2 — 2026-08-18
+#
+# Recorded as an amendment because corrected scores had already been inspected
+# when this change was made. It alters no scientific choice: the model, the
+# score, the margin, the features, the caliper and the exact-subtype
+# requirement are all unchanged. What changes is the algorithm that assigns
+# pairs, from a seeded heuristic to a deterministic optimum.
+# ============================================================================
+
+[amendment_2]
+date = "2026-08-18"
+reason = "remove an arbitrary dependence on matching order; corrected scores already seen"
+
+[amendment_2.problem]
+what = """
+Greedy nearest-neighbour matching walks the cases in a seeded random order and
+takes the nearest available control each time. With 28 controls for 314
+occupied sites that order is consequential: an early case can take the only
+admissible partner for a later one, so which pairs form depends on the seed.
+The reported seed-0 result was one draw from that distribution presented as a
+value.
+"""
+
+[amendment_2.change]
+algorithm = "maximum-cardinality, minimum-total-distance assignment"
+implementation = "scipy.optimize.linear_sum_assignment with ineligible pairings priced above any achievable total of admissible distances"
+deterministic = true
+seed = "none — there is no ordering and no random draw"
+unchanged = ["rsa", "n_neighbours_8a", "hydrophobic_fraction_8a", "caliper 0.25", "exact NXS/NXT", "1:1 without replacement"]
+tested = "greedy can tie the optimal pair count over 40 seeds but never exceed it; output is invariant to input row order"
+
+[amendment_2.result]
+pairs = 16
+mean_raw = 0.6104
+mean_sd = 0.458
+ci95_sd = [-0.227, 1.098]
+verdict = "inconclusive"
+mean_matching_distance = 0.0990
+mean_matching_distance_greedy_seed0 = 0.1125
+
+[amendment_2.sensitivity]
+greedy_seed0 = "mean +0.649 SD, 95% CI [+0.075, +1.243], directional/magnitude undetermined"
+greedy_200_seeds = """
+Pair count is 16 under every seed, so the caliper rather than the algorithm
+limits it: 12 of the 28 controls have no admissible partner within 0.25.
+Mean contrast ranges +0.286 to +0.699 SD. EVERY point estimate is positive.
+The interval excludes zero in 75 of 200 seeds (38%).
+"""
+conclusion = """
+Whether the confidence interval excludes zero depends on which matching is
+selected. The direction does not. This is why the deterministic matching is
+primary: it removes the choice rather than making it favourably.
+"""
+
+[amendment_2.headline]
+text = """
+Occupied sites tend to score higher than matched sites with no modelled glycan,
+but 16 pairs do not establish a precise or statistically robust difference.
+"""
+supersedes = "the earlier reading that the corrected interval excluded zero"
+
+[amendment_2.housekeeping]
+primary_analysis_loads = "only the data the requested comparison needs; the control pool is read for diagnostics alone"
+reference_population = "reported from the dataset sites alone, so the scale cannot move when a control pool is rebuilt"
+shared_code = "contrast construction, resampling unit and bootstrap extracted to experimental_glycosylation_sites.contrasts, used by both the primary analysis and the sensitivity sweep"
+removed_runner = "runners/score_unmatched.py — superseded by build_candidate_manifest.py plus score_all.py; it depended on a file in /tmp and could not be reproduced"
+
+[amendment_2.status]
+proteinmpnn_analysis = "frozen"
+next = "no further models, endpoints or mechanistic analyses on this pass"

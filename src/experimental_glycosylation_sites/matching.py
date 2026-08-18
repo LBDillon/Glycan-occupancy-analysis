@@ -135,6 +135,84 @@ def match_controls(
     return pd.DataFrame(rows, columns=columns)
 
 
+def match_controls_optimal(
+    cases: pd.DataFrame,
+    controls: pd.DataFrame,
+    features: tuple[str, ...] = MATCH_FEATURES,
+    caliper: float = DEFAULT_CALIPER,
+    exact: tuple[str, ...] = (),
+) -> pd.DataFrame:
+    """Deterministic 1:1 matching: most pairs first, then least total distance.
+
+    Greedy matching processes cases in a random order and takes the nearest
+    available control each time. That is a heuristic, and with a scarce control
+    pool it is a consequential one: an early case can take a control that was
+    the only admissible partner for a later case, so both the number of pairs
+    and which pairs form depend on the seed. The result then carries a
+    dependence on an arbitrary choice that no one would defend on its merits.
+
+    This solves the assignment directly. Ineligible pairings — different
+    subtype, or further apart than the caliper — are given a cost far larger
+    than any achievable total of real distances, so a minimum-cost assignment
+    first maximises the number of admissible pairs and only then minimises the
+    distance across them. There is no seed and no ordering.
+
+    Ties are possible in principle: two controls can sit at identical distance
+    from a case. Rows are therefore sorted by accession and position before the
+    assignment, so the tie is broken by a stable property of the data rather
+    than by whatever order the caller happened to supply. This makes the output
+    reproducible across callers; it is not a claim that the chosen optimum is
+    the only one.
+    """
+    from scipy.optimize import linear_sum_assignment
+
+    columns = [
+        "case_accession", "case_position", "control_accession",
+        "control_position", "distance", "match_rank",
+    ]
+    usable_case = (cases.dropna(subset=list(features) + list(exact))
+                        .sort_values(["accession", "position"], kind="mergesort")
+                        .reset_index(drop=True))
+    usable_control = (controls.dropna(subset=list(features) + list(exact))
+                              .sort_values(["accession", "position"], kind="mergesort")
+                              .reset_index(drop=True))
+    if usable_case.empty or usable_control.empty:
+        return pd.DataFrame(columns=columns)
+
+    pooled = pd.concat([usable_case[list(features)], usable_control[list(features)]])
+    scales = {f: float(pooled[f].astype(float).std(ddof=1)) for f in features}
+    case_points = _scaled(usable_case, features, scales)
+    control_points = _scaled(usable_control, features, scales)
+
+    # [n_cases, n_controls]
+    cost = np.linalg.norm(case_points[:, None, :] - control_points[None, :, :], axis=2)
+    eligible = cost <= caliper
+    for column in exact:
+        eligible &= (usable_case[column].to_numpy()[:, None]
+                     == usable_control[column].to_numpy()[None, :])
+
+    # Any total of admissible distances is bounded by caliper * n_pairs, so a
+    # penalty of this size can never be worth paying to shorten real distances.
+    penalty = 1.0 + caliper * (min(len(usable_case), len(usable_control)) + 1)
+    work = np.where(eligible, cost, penalty)
+
+    rows_i, cols_i = linear_sum_assignment(work)
+    rows = []
+    for i, j in zip(rows_i, cols_i):
+        if not eligible[i, j]:
+            continue                    # the solver had to place it somewhere
+        rows.append({
+            "case_accession": usable_case.iloc[i].accession,
+            "case_position": int(usable_case.iloc[i].position),
+            "control_accession": usable_control.iloc[j].accession,
+            "control_position": int(usable_control.iloc[j].position),
+            "distance": round(float(cost[i, j]), 4),
+            "match_rank": 1,
+        })
+    frame = pd.DataFrame(rows, columns=columns)
+    return frame.sort_values(["case_accession", "case_position"]).reset_index(drop=True)
+
+
 def balance_report(
     cases: pd.DataFrame,
     controls: pd.DataFrame,

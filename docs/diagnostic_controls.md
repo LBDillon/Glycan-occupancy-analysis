@@ -37,9 +37,11 @@ narrow — as the comparison below shows.
 
 All on the common reference scale (SD = 1.3316 log-odds, from dataset sites only).
 
+Primary figures are from the deterministic optimal matching (Amendment 2).
+
 | Comparison | n | Mean | 95% CI (cluster-aware) | Site-level CI (not used) | Verdict |
 |---|---|---|---|---|---|
-| **Internal control** (primary) | 16 | **+0.649 SD** | [+0.075, +1.243] | [+0.123, +1.202] | directional, magnitude undetermined |
+| **Internal control** (primary) | 16 | **+0.458 SD** | [−0.227, +1.098] | [−0.200, +1.121] | inconclusive |
 | Bacterial extracytoplasmic | 278 | −0.174 SD | [−0.459, −0.027] | [−0.334, −0.015] | directional, magnitude undetermined |
 | Cytosolic eukaryotic | 270 | +0.062 SD | [−0.145, +0.270] | [−0.112, +0.233] | inconclusive |
 
@@ -61,9 +63,9 @@ apparent effects came from compartment and taxonomy rather than occupancy. That
 pattern was an artefact of the corrupted scores. It does not survive correction.
 
 What replaces it is less tidy. The three comparisons now point in **different
-directions**: positive against internal controls, negative against bacterial
-controls, and indistinguishable from zero against cytosolic controls. There is
-no monotone ordering to interpret.
+directions**: positive but not significant against internal controls, negative
+against bacterial controls, and indistinguishable from zero against cytosolic
+controls. There is no monotone ordering to interpret.
 
 That is a genuine inconsistency and it should be treated as one. The most
 economical reading is that the two diagnostic contrasts are dominated by their
