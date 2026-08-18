@@ -50,6 +50,15 @@ rather than a silence. Sites meeting both conditions are classified `observed_un
 elsewhere. Nothing else can enter that class, and the criteria are pinned by tests so it
 cannot quietly widen.
 
+**A note on what to call these.** `observed_unmodified` is the stored class
+value, and it claims more than the evidence supports. These sites are not shown
+to be chemically unmodified; they are sites with **no modelled glycan under
+internal-control conditions** — conditions unusually informative about absence,
+but still a statement about the model deposited rather than about the molecule.
+They are the best available internal controls and they are not definitive
+biochemical negatives. Prose and figures use the longer phrase; the short value
+survives in the data files as a legacy identifier.
+
 Mass spectrometry could in principle supply many more. A PNGase F digest in H2-18O converts
 occupied asparagines to labelled aspartate, so a sequon peptide detected with the asparagine
 intact is a genuine, quantified negative. That is a data-acquisition route rather than a code

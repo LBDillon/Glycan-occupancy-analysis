@@ -156,13 +156,28 @@ Artefacts: `results/candidate_manifest_dataset.csv`, `results/scoreability_datas
 `results/analysis_primary.json`, `results/figures/primary_primary.png`,
 `config/scoring_frozen.toml` (see `[amendment_1]`).
 
-## Not yet rerun
+## Secondary work, reported separately
 
-These used the defective scores and are **not** valid until regenerated. None
-of them belongs in the primary conclusion.
+Both have been rerun on validated scores. Neither is part of the conclusion above.
 
-- Bacterial and cytosolic comparisons — diagnostics only, confounded by
-  construction, in an appendix.
-- Design retention — a bridge to the preprint, reported separately.
-- `docs/phase4_primary_result.md` and `docs/methodology_explainer.md` still
-  quote withdrawn numbers.
+- **[Diagnostic controls](diagnostic_controls.md)** — bacterial (278 pairs,
+  −0.174 SD) and cytosolic (270 pairs, +0.062 SD). The three comparisons now
+  point in different directions, so the earlier "gradient" reading is withdrawn.
+  These are confounded by construction and do not corroborate the primary result.
+- **Design retention** — on a frozen snapshot, scoreable sites only: mean full
+  retention 0.078, 80.4% of sites lose the sequon in all 32 designs, and the
+  conditional score predicts retention at Spearman +0.559 with monotonic
+  quintiles. The sweep was interrupted and covers chains alphabetically, so its
+  coverage is not a random sample. `results/retention_analysis.json`.
+
+The earlier claim that retention differed between occupied and control sites
+(+0.084, CI [+0.007, +0.176]) is **withdrawn**: it used a site-level bootstrap,
+and the matched pairs it rested on no longer exist after rematching.
+
+## Still open
+
+- `docs/phase4_primary_result.md` and `docs/methodology_explainer.md` are
+  bannered as superseded but not rewritten.
+- The retention contrast has not been recomputed on the new 16 matched pairs.
+- No second model. Per the agreed scope, nothing else runs until this result is
+  stable.

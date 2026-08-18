@@ -179,7 +179,11 @@ robustness = {
     "leave_one_out_mean_max": round(float(loo.max()), 4),
 }
 
-print(f"=== occupied vs internal control [{LABEL}] ===")
+CONTROL_NAME = {"primary": "internal control (no modelled glycan)",
+                "k5": "internal control (no modelled glycan), k=5 sensitivity",
+                "bacterial": "bacterial extracytoplasmic control [DIAGNOSTIC]",
+                "cytosolic": "cytosolic eukaryotic control [DIAGNOSTIC]"}
+print(f"=== occupied vs {CONTROL_NAME.get(LABEL, LABEL)} ===")
 print(f"  mean paired difference   {observed:+.4f} log-odds   "
       f"({sd(observed):+.3f} SD)")
 print(f"  95% CI, cluster-aware    [{lo:+.4f}, {hi:+.4f}]   "
