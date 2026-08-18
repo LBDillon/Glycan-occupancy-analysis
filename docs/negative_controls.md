@@ -155,10 +155,25 @@ amino acid composition, and the excluded taxa with their reasons). Protein seque
 to `data/cache/negative_control_proteins.csv.gz`, since they are bulky and only the
 feature stage needs them.
 
-**Stage 2 — structural features — is not built yet.** It needs deposited structures for
-the control proteins, which is a download on the order of thousands of entries, so it is
-deliberately separated from stage 1. The feature code itself already exists and is
-shared with the main dataset (`features.residue_features`), so the work is fetching the
-structures and pointing the existing pipeline at this table. Until that runs, the control
-sets support sequence-level and composition analyses but not the structure-based scoring
-comparison.
+**Stage 2 — structural features — is built and has run.** It was separated from
+stage 1 because it needs deposited structures for the control proteins, a download on
+the order of thousands of entries. The feature code is shared with the main dataset
+(`features.residue_features`).
+
+Of 15,107 control sequons, **6,823 have structural features** (3,543 cytosolic, 3,280
+bacterial). Of those, **6,092 can be scored by ProteinMPNN** (3,024 and 3,068):
+scoreability is settled from the coordinates alone, before matching, because a residue
+with an incomplete backbone is silently returned as a non-distribution. See
+`runners/scoreability.py` and `[amendment_1]` in `config/scoring_frozen.toml`.
+
+```bash
+python runners/build_candidate_manifest.py controls
+python runners/scoreability.py results/candidate_manifest_controls.csv \
+                               results/scoreability_controls.csv
+python runners/match_diagnostics.py
+```
+
+Results are in [`diagnostic_controls.md`](diagnostic_controls.md). Both sets remain
+**diagnostics**: each is confounded by construction, and neither substitutes for the 32
+internal controls, which are the only ones holding organism, compartment and
+experimental context roughly constant.

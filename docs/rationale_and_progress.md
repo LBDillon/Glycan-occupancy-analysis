@@ -98,12 +98,12 @@ Taxonomic reach is uneven: GlyGen and GlyConnect are strongly biased toward huma
 
 ## Where the work stands
 
-The module is built, reviewed and tested: 120 tests, covering configuration, UniProt parsing
+The module is built, reviewed and tested: 205 tests, covering configuration, UniProt parsing
 and evidence grading, the site universe, the evidence join, the frozen baseline, all four
-evidence layers, the combination logic, provenance, the command line and now the structural
-feature extraction. Both the UniProt baseline and the enriched totals are frozen as
-regression fixtures, so any drift in the inputs surfaces as a failing test rather than a
-quietly different number.
+evidence layers, the combination logic, provenance, the command line, structural feature
+extraction, ProteinMPNN scoring, matching and the contrast statistics. Both the UniProt
+baseline and the enriched totals are frozen as regression fixtures, so any drift in the
+inputs surfaces as a failing test rather than a quietly different number.
 
 The dataset now separates the three classes the occupancy analysis needs:
 
@@ -125,41 +125,56 @@ stripped it is 6 out of 332, and median accessibility moves from 0.185 to 0.433.
 encoding the label. Corrected, occupied sites are overwhelmingly solvent-exposed, which is
 what oligosaccharyltransferase access requires.
 
-## Next steps: the occupancy analysis
+## The occupancy analysis: done for ProteinMPNN, and frozen
 
 The point of the resource is to ask whether protein models have learned the sequon motif or
-its biological use. That is now runnable.
+its biological use. That question has now been put to one model, and the answer is weak but
+honest. Full account in [`primary_result.md`](primary_result.md); the plain-language version
+of what changed along the way is in [`correction_2026-08-18.md`](correction_2026-08-18.md).
 
-**1. Score sites zero-shot, before any training.** Take the pretrained models as they are and
-record per-residue preferences at the sequon positions, across ProteinMPNN, ESM-IF and
-TriFlow so the result is not one model's quirk. The adapters already exist in the
-glycosylation-bias analysis. Zero-shot first is deliberate: it is the honest baseline, and
-fine-tuning only makes sense if there is recoverable signal to justify it.
+**What was run.** ProteinMPNN v_48_020, scored zero-shot on the native backbone and native
+surrounding sequence, with no training and no alteration of the sequon. The score is the mean
+log-odds of asparagine at the first position and of serine-or-threonine at the third,
+averaged over eight seeded decoding orders. Occupied sites were compared with internal
+controls matched on relative accessibility, neighbourhood packing and hydrophobic fraction,
+with NXS/NXT required to be identical.
 
-**2. Match before comparing.** Occupied sites sit disproportionately in exposed loops, and
-these models can see exposure. Without matching on accessibility, secondary structure and
-burial, any score difference would just restate that fact. The good news from the corrected
-features is that the two classes are already close on exposure — median accessibility 0.433
-occupied against 0.446 unmodified — so the comparison is not badly confounded to begin with.
+**What it found.** Occupied sites tend to score higher — every point estimate under every
+matching we tried is positive — but 16 matched pairs do not establish a precise or
+statistically robust difference. The primary estimate is +0.458 SD with a 95% interval of
+[−0.227, +1.098], which includes zero.
 
-**3. Expect a null, and design for what a null can support.** ProteinMPNN never sees glycans:
-they are non-protein records, stripped in training. A null is therefore close to guaranteed
-in advance, which makes the raw comparison weakly informative on its own. Framed as a
-negative control it is much stronger — establishing that current inverse-folding models are
-glycan-blind is the premise that motivates glycan-aware modelling. Note that 32 sites cannot
-establish a null on their own; that claim needs equivalence testing against a pre-specified
-effect size, or more negatives.
+**Why the number of pairs is so small.** 32 internal controls; 28 survive the requirement
+that ProteinMPNN can actually decode all three sequon residues; 16 find a partner within the
+matching caliper. That attrition, not the modelling, is the constraint on this analysis.
 
-**4. Treat the 32 as a calibration probe, not a training class.** The intended approach is
-positive-unlabelled learning, as in the KinoPlex kinase atlas, which faced the same shortage
-and never asserted a negative: roughly 116,000 known phosphosites against 1.7 million
-uncharacterised residues, with an Elkan-Noto correction to recover true performance. This
-resource is already that shape — 922 positives against 3,353 unlabelled. The 32 then earn
-their place by testing whether the unlabelled pool really does behave like a mixture
-containing negatives, which is the assumption the whole method rests on.
+**Two corrections worth carrying forward.** ProteinMPNN silently returns a row of ones rather
+than a probability distribution for any residue with an incomplete backbone, which inflated
+the reference scale and reversed the sign of the first result. And greedy matching made the
+significance of the answer depend on a random seed. Both are fixed, both are recorded as
+formal amendments, and the analysis is frozen at that point.
 
-Two cautions to carry into that. The 32 skew exposed, 20 of 32, so matching should be done
-pair by pair rather than assumed from the group averages. And they exist only where someone
-solved a glycoprotein structure, so they represent well-studied secreted and membrane
-proteins rather than a random draw from the unlabelled pool — which matters precisely because
-the unlabelled pool is much broader.
+**The 32 remain a calibration probe, not a training class.** Positive-unlabelled learning, as
+in the KinoPlex kinase atlas, is still the intended route for the 3,353 unlabelled sites:
+roughly 116,000 known phosphosites against 1.7 million uncharacterised residues there, with
+an Elkan-Noto correction to recover true performance. This resource is the same shape — 922
+positives against 3,353 unlabelled. The 32 earn their place by testing whether the unlabelled
+pool behaves like a mixture containing negatives, which is the assumption the method rests on.
+That work has not begun, deliberately: it should not start while the zero-shot result is this
+imprecise.
+
+Two cautions carry into it. The 32 skew exposed, 20 of 32, so matching is done pair by pair
+rather than assumed from group averages — which is what the analysis does. And they exist
+only where someone solved a glycoprotein structure, so they represent well-studied secreted
+and membrane proteins rather than a random draw from the unlabelled pool, which matters
+precisely because that pool is much broader.
+
+## What would actually move this forward
+
+Not more models. The binding constraint is 16 pairs, and no amount of ESM-IF or TriFlow
+changes that — running a panel now would produce several imprecise answers instead of one.
+
+The thing that would change it is more internal controls, and that is a data-acquisition
+problem: a PNGase F digest in H₂¹⁸O converts occupied asparagines to labelled aspartate, so a
+sequon peptide detected with its asparagine intact is a genuine, quantified negative. That is
+the route from "tends to score higher" to a result worth defending.

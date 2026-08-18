@@ -1,5 +1,15 @@
 # Phase 1 audit — control data verification
 
+> **Historical: a pre-scoring snapshot.** This records the state of the control
+> data at the gate, before any ProteinMPNN scoring ran, and is kept as the record
+> that the gate was passed. Its counts predate the corrections of 18 August 2026:
+> sites ProteinMPNN cannot decode had not yet been identified, so the totals here
+> are larger than the scoreable sets the analysis actually used.
+>
+> Current figures: [`primary_result.md`](primary_result.md) and
+> [`diagnostic_controls.md`](diagnostic_controls.md). What changed and why:
+> [`correction_2026-08-18.md`](correction_2026-08-18.md).
+
 Gate for model scoring. Nothing in Phase 2 onward may proceed on data that fails
 these checks.
 

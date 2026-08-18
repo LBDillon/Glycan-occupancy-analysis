@@ -56,11 +56,21 @@ Well-studied proteins accumulate annotations; obscure ones do not, so treating
 unannotated sites as negatives would measure curation effort and report it as
 glycobiology.
 
-`occupancy_status` therefore takes only two values in this phase:
-`occupied_supported` and `unknown`. A third value, `observed_unmodified`, is
-defined in `evidence.py` and deliberately left unpopulated: no current source
-can establish that a site was *examined and found bare*. A test asserts it is
-never emitted.
+`occupancy_status` therefore takes three values, and the third is deliberately
+narrow. From annotation alone a site is `occupied_supported` or `unknown`; no
+annotation source can establish that a site was *examined and found bare*.
+
+`observed_unmodified` is populated from structures instead, and only where
+absence is informative: the entry models a glycan at some other residue, so
+sugars demonstrably survived preparation and this depositor demonstrably
+modelled them, and the protein was expressed in a host that can glycosylate.
+**32 sites across 25 proteins** meet both conditions.
+
+They are best described as *sequons with no modelled glycan under
+internal-control conditions*. That is strong evidence of absence by structural
+standards while still being a statement about the deposited model rather than
+the molecule — not a definitive biochemical negative, but the most informative
+internal control available, and the one the occupancy comparison runs on.
 
 The same caution applies to structures. `structure_residue_resolved` means the
 residue is modelled with no glycan linkage attached. It is not evidence the site

@@ -3,14 +3,26 @@
 What can be done with the site tables this module produces, in a recommended
 order of work, and what will go wrong if the caveats are ignored.
 
-None of this is implemented here. The module's job ends at the evidence tables;
-this document is the handover.
+Option 1 below has since been carried out for ProteinMPNN; see
+[`primary_result.md`](primary_result.md). The rest remain unimplemented, and the
+module's job still ends at the evidence tables.
 
 Read [`evidence_sources.md`](evidence_sources.md) first. Every analysis below
-inherits one constraint from it: **there is no negative class.** A site with no
-supporting layer is `unknown`, and `observed_unmodified` is defined but
-deliberately never populated. Any design that needs negatives has to construct
-them, and constructing them is the hard part of most of what follows.
+inherits one constraint from it: **no negative class can be derived from
+annotation.** A site with no supporting layer is `unknown`, never a negative.
+
+Two distinct things do exist, and conflating them is the main hazard here:
+
+- **Definitive biochemical negatives — none.** Nothing establishes that a sequon
+  was examined and found unmodified. Obtaining these is a data-acquisition
+  problem — PNGase F / H₂¹⁸O occupancy glycoproteomics — not a coding one.
+- **Informative structural internal controls — 32 sites, 25 proteins.** Sequons
+  with no modelled glycan in structures that model glycans elsewhere, from hosts
+  competent to glycosylate. Absence is informative here without being proven.
+
+The second is what the occupancy comparison actually runs on, and its scarcity is
+that analysis's binding constraint: 28 of the 32 are structurally scoreable, and
+16 survive matching.
 
 ---
 
@@ -37,10 +49,11 @@ on curated annotation alone has not seen them.
 
 ### The negative set is the hard part
 
-There is no `observed_unmodified` class and there cannot be one from these
-sources. The tempting move — treat the 3,385 excluded sites as negatives — is
-wrong, and wrong in a way that will produce a good-looking and meaningless
-benchmark.
+The `observed_unmodified` class exists, but it is 32 sites and it is a structural
+internal control rather than a proven negative — enough for a matched paired
+comparison, nowhere near enough to train against. The tempting move — treat the
+3,385 excluded sites as negatives — is wrong, and wrong in a way that will
+produce a good-looking and meaningless benchmark.
 
 Those 3,385 sites are `unknown`. They are dominated by proteins nobody has
 studied closely. A classifier trained to separate 922 positives from 3,385

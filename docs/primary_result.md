@@ -187,9 +187,14 @@ Artefacts: `results/analysis_optimal.json`, `results/contrasts_optimal.csv`,
 
 ## Still open
 
-- `docs/phase4_primary_result.md` and `docs/methodology_explainer.md` are
-  bannered as superseded but not rewritten.
-- The retention contrast has not been recomputed on the current 16 pairs.
-- Caliper sensitivity not run.
+- The retention contrast has not been recomputed on the current 16 pairs. The
+  earlier one is withdrawn, not replaced.
+- Caliper sensitivity not run. It is the one analysis that could change the pair
+  count, since 12 of the 28 scoreable controls fail the caliper rather than any
+  other criterion.
 - No second model. The ProteinMPNN analysis is frozen; nothing further runs
   until the pair count improves.
+
+`docs/phase4_primary_result.md` was superseded by this document and has been
+moved to `docs/archive/phase4_primary_result_SUPERSEDED.md`.
+`docs/methodology_explainer.md` has been rewritten against the current result.

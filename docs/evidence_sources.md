@@ -24,10 +24,17 @@ across all of them; obscure proteins accumulate none. A site with no supporting
 layer is `unknown`, never a negative. Treating unannotated sites as negatives
 would measure curation effort and report it as glycobiology.
 
-This is why `occupancy_status` has a third value, `observed_unmodified`, that is
-defined in `evidence.py` and deliberately never emitted. Populating it would
-require evidence that a site was *examined and found bare*. None of the sources
-below provides that. A test asserts the value never appears.
+This is why `occupancy_status` has a third value, `observed_unmodified`, which
+**none of the annotation sources below can populate**. Establishing it requires
+evidence that a site was *examined and found bare*, and an annotation record
+cannot supply that.
+
+It is populated from structures instead, under two conditions that together make
+absence informative: the entry models a glycan elsewhere in the same structure,
+and the protein was expressed in a host competent to glycosylate. 32 sites across
+25 proteins qualify — sequons with no modelled glycan under internal-control
+conditions, which is not the same as a proven biochemical negative. See
+`structures.py` and [`negative_controls.md`](negative_controls.md).
 
 ---
 

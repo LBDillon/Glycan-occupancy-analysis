@@ -1,20 +1,10 @@
-> ## ⚠️ SUPERSEDED — the numbers in this document are withdrawn
->
-> Every ProteinMPNN score quoted below was computed with a scorer that returned
-> twenty-one ones for any residue with an incomplete backbone, giving
-> P(S)+P(T) = 2 and a score near +13.8. This corrupted 105 of 2,564 sites and
-> inflated the reference SD from 1.33 to 2.62, so all standardised effects here
-> are wrong — including the primary estimate, whose sign reverses once the
-> invalid rows are removed.
->
-> **Current result: [`primary_result.md`](primary_result.md).**
-> Correction record: `config/scoring_frozen.toml`, section `[amendment_1]`.
-
 # What we are doing, and why
 
 *A plain-language account of the reasoning behind the method, written so the
-logic can be checked independently of the code. Current as of 2026-08-18, with
-the design-retention sweep still running.*
+logic can be checked independently of the code. Current as of 2026-08-18. The
+ProteinMPNN analysis is frozen; see [`primary_result.md`](primary_result.md) for
+the result table and [`correction_2026-08-18.md`](correction_2026-08-18.md) for
+what was corrected along the way.*
 
 ## The question underneath everything
 
@@ -60,8 +50,9 @@ accumulate annotations; obscure ones do not. A study built that way measures
 curation effort and reports it as glycobiology.
 
 So the dataset carries three states rather than two: **occupied** (922),
-**observed unmodified** (32), and **unknown** (3,353). Most sites are honestly
-unknown, and the design refuses to convert that into a negative.
+**no modelled glycan under internal-control conditions** (32), and **unknown**
+(3,353). Most sites are honestly unknown, and the design refuses to convert that
+into a negative.
 
 The 32 exist only because of a narrow argument. A bare asparagine in a crystal
 structure normally proves nothing — glycans are routinely trimmed before
@@ -71,21 +62,31 @@ host that can glycosylate, then sugars demonstrably survived and this
 crystallographer demonstrably modelled them. A bare asparagine there is a
 decision, not a silence.
 
-## Why there are negative control sets as well
+**They are still not proven negatives.** They are the most informative internal
+controls available, and the earlier name for them — "observed unmodified" —
+claimed more than the evidence supports. Absence of a modelled glycan is a
+statement about the deposited model, not about the molecule.
 
-Thirty-two negatives cannot carry a null result. So two further sets of sequons
-that *cannot* be N-glycosylated were assembled: **19,337** in cytosolic
-eukaryotic proteins, which never enter the secretory pathway and so never meet
-the enzyme, and **5,865** in bacterial periplasmic and outer-membrane proteins,
-whose clades have no equivalent machinery.
+## Why there are diagnostic control sets as well
+
+Thirty-two internal controls cannot carry a null result. So two further sets of
+sequons that *cannot* be N-glycosylated were assembled: cytosolic eukaryotic
+proteins, which never enter the secretory pathway and so never meet the enzyme,
+and bacterial periplasmic and outer-membrane proteins, whose clades have no
+equivalent machinery. After structural feature extraction and the scoreability
+screen, 3,024 and 3,068 of these can be scored.
 
 Neither is a clean substitute. The cytosolic set differs from the occupied sites
-in subcellular compartment; the bacterial set differs in taxonomy. But their
-confounds do not overlap, and that is the point. A model that separates occupied
-sites from the cytosolic set but not from the 32 has learned where proteins live.
-One that separates them from the bacterial set but not the cytosolic set has
-learned taxonomy. **The gap between the comparisons is the measurement**, not any
-one of them alone.
+in subcellular compartment; the bacterial set differs in taxonomy. Their
+confounds do not overlap, which was the design intent: a model that separates
+occupied sites from the cytosolic set but not from the internal controls has
+learned where proteins live; one that separates them from the bacterial set but
+not the cytosolic set has learned taxonomy.
+
+**That reading did not survive the corrections.** The three comparisons now point
+in different directions rather than forming an interpretable ordering, and the
+gradient once read off them is withdrawn. They are reported as diagnostics, in an
+appendix, and they do not corroborate the primary result.
 
 ## Why matching was necessary before any scoring
 
@@ -95,10 +96,17 @@ see exposure. An unmatched comparison of model scores would therefore mostly
 restate that occupied sites are exposed, which is already known and says nothing
 about glycosylation.
 
-Each occupied site was matched to unoccupied sites of comparable local
-environment — accessibility, packing, neighbourhood composition. After matching,
-the largest imbalance across every comparison and feature is 0.03 standard
-deviations, comfortably inside the conventional 0.1 threshold.
+Each occupied site is matched to an internal control of comparable local
+environment — accessibility, packing, neighbourhood composition — and, since the
+corrections, with **NXS/NXT required to be identical**. Around 45% of pairs had
+previously matched an occupied NXS against an unoccupied NXT, which confounded
+subtype with occupancy.
+
+Matching is now **deterministic**: the assignment maximising the number of
+admissible pairs and, among those, minimising total distance. The earlier greedy
+matcher walked the cases in a seeded random order, which mattered enormously with
+only 28 controls — an early case could take the only admissible partner for a
+later one.
 
 ## What is being measured, and what was deliberately not
 
@@ -116,18 +124,22 @@ The whole-protein score was rejected as the primary measure. Three residues
 contribute almost nothing to an average over several hundred, so a protein-level
 number cannot answer a site-level question.
 
-## What is running now
+## One defect worth understanding, because it inverted the answer
 
-The design-retention sweep: unconstrained ProteinMPNN designs on the same
-structures, recording at every original sequon whether the motif survives. This
-asks what the model *does* when generating, as opposed to what probability it
-holds internally — a different question, because sampling combines many residue
-decisions at once.
+ProteinMPNN decodes only residues whose backbone is complete. For any residue
+missing an N, CA, C or O it returns a row of zeros, which exponentiates to
+twenty-one ones — P(asparagine) = 1, P(serine or threonine) = 2, a score near
++13.8 where real scores run from −5 to +1.
 
-It uses the preprint's own conditions (temperature 0.1, checkpoint v_48_020) with
-the sample count raised from 8 to 32, since 8 designs give a per-site error near
-0.18 — far too coarse. The first 8 of each run are still a valid
-preprint-condition sample, so both are reported from one pass.
+This affected 105 of 2,564 sites, only 8 of them dataset sites. But those few
+enormous values inflated the reference scale from 1.33 to 2.62, and every
+standardised effect was divided by it. A 4% data problem became a 100% error in
+the units, and the first reported result had the wrong sign.
+
+The fix has two independent guards, and scoreability is now settled **before**
+matching rather than after — it depends only on the coordinates, so no model pass
+is needed. Establishing it afterwards had let unscoreable sites into matched sets
+and removed them later, unbalancing the sets matching had just balanced.
 
 ---
 
@@ -142,92 +154,115 @@ sequons that are not.
 
 ## The cleanest experiment
 
-Compare **occupied** sites against **observed-unmodified** sites, matched on
-local structural context.
+Compare **occupied** sites against **internal controls** — sequons with no
+modelled glycan under conditions where a glycan would have been visible — matched
+on local structural context and sequon subtype.
 
 This is the cleanest because the two groups share nearly everything that is not
-occupancy: same organisms, same subcellular compartment, same kind of experiment,
-and — after matching — the same solvent accessibility, packing and neighbourhood
-composition. Very little is left that could explain a difference except the
-presence of the glycan itself.
+occupancy: same kind of organism, same subcellular compartment, same kind of
+experiment, and — after matching — the same solvent accessibility, packing,
+neighbourhood composition and NXS/NXT identity.
 
-Its weakness is size. Only 32 observed-unmodified sites exist, and 22 survive
-matching and exact three-residue mapping.
+Its weakness is size, and the attrition is steep: 32 internal controls exist, 28
+can be scored, and **16** find a partner inside the matching caliper.
 
 ## Why the additional pieces were added
 
-**Two mechanistic control sets**, because 22 pairs cannot support a null. They
-buy statistical power at the cost of a confound each, deliberately chosen so the
-confounds are orthogonal and can be read against one another.
+**Two diagnostic control sets**, because 16 pairs cannot support a null. They buy
+statistical power at the cost of a confound each, deliberately chosen so the
+confounds are orthogonal. In the event they disagreed with each other and with
+the primary comparison, so they now serve mainly as a caution.
 
 **A frozen configuration**, written before any labelled contrast was computed,
 fixing the score definition, the model checkpoint, the seeds, the rule for
 estimating the reference scale, and the equivalence margin. Choosing a margin
-after seeing the differences is not the same test.
+after seeing the differences is not the same test. Two amendments are recorded
+against it, both because something had to be corrected after results had been
+seen — which is exactly when a written record is worth having.
 
 **An equivalence margin of ±0.2 standard deviations**, because the expected
 answer is "no difference", and an ordinary significance test cannot deliver that.
 It is an exploratory statistical threshold, not a biologically validated one.
 
-**A cluster bootstrap**, because sites within an ortholog cluster are not
-independent and treating them as such would make every interval too narrow. One
-contrast per occupied site, never one per matched row.
+**A cluster bootstrap over connected components**, because two separate
+dependencies run through these contrasts: occupied sites in the same ortholog
+cluster are near copies, and one control protein can serve several occupied
+cases. Resampling on either alone leaves the other unhandled. One contrast per
+occupied site, never one per matched row.
 
 **A blinded convergence check**, because the model's conditional probabilities
 depend on a sampled decoding order. Eight orders were adopted only after showing
-that the 8-versus-16 difference was negligible on 50 sites chosen without
-reference to their labels.
+the 8-versus-16 difference was negligible on 50 sites chosen without reference to
+their labels.
+
+**A 200-seed matching sweep**, added after the deterministic matcher revealed how
+much the old answer had depended on its seed. This is the piece that changed the
+conclusion most.
 
 **Design retention**, because probability and behaviour are different things, and
 the preprint's finding is about behaviour. It also provides the bridge: if the
-conditional score predicts retention, the two analyses are describing one
-underlying quantity.
+conditional score predicts retention, the two analyses describe one underlying
+quantity.
 
 ## The test, and where the results sit
 
-**Primary conditional-score test — inconclusive.** Occupied versus
-observed-unmodified: −0.057 SD, 95% CI [−1.073, +0.915]. The interval is about
-five times the equivalence margin and contains zero. This does not show the model
-treats the two alike; it shows 22 pairs cannot tell. Reported as inconclusive,
-not as evidence of no effect.
+**Primary conditional-score test — inconclusive.** Occupied versus internal
+controls, 16 pairs: **+0.458 SD, 95% CI [−0.227, +1.098]**. The interval includes
+zero and spans more than five times the equivalence margin.
 
-**Control comparisons — small, negative, imprecise.** Against bacterial controls
-−0.145 SD [−0.267, −0.021]; against cytosolic −0.237 SD [−0.383, −0.084]. Both
-exclude zero but straddle the margin, so neither establishes equivalence nor a
-difference beyond it.
+**But the direction is stable.** Every point estimate under every matching tried
+is positive — the deterministic optimum, the earlier greedy seed, and all 200
+seeds of the sweep, spanning +0.286 to +0.699 SD. Nothing produced a negative
+estimate.
 
-**The pattern across the three is the informative part.** The effect shrinks as
-matching improves: cytosolic −0.237, bacterial −0.145, observed-unmodified
-−0.057. That is what the orthogonal-confound design was built to detect, and it
-is consistent with the control differences arising from compartment and taxonomy
-rather than occupancy. Consistent with, not proof of — the best-matched
-comparison is also the least precise.
+**And the significance is not.** Across the 200-seed sweep the interval excludes
+zero in only 38% of cases. Whether this result "reaches significance" was being
+decided by an arbitrary choice inside the matching algorithm rather than by the
+data — which is why that choice is no longer left to a seed.
 
-**Every conditional-score estimate is negative.** Nothing supports the model
-preferring occupied sequons.
+**The effect is in magnitude, not consistency.** Occupied sites score higher in
+just 9 of 16 pairs (sign test p = 0.80). The mean is positive because the
+negative contrasts are all small while the positive ones are large. A test that
+reads only direction finds nothing.
 
-**The bridge holds.** Conditional score predicts retention with Spearman
-ρ ≈ +0.50 over 1,186 sites, monotonically: sites in the lowest score quintile
-retain their sequon in 0% of designs, the highest in 32%. The score is measuring
-something real about what the model will do.
+**Reading the interval properly.** It runs from −0.227 to +1.098, so it is
+consistent with no difference and with a substantial positive one, and it
+excludes only large differences *favouring the controls*. That asymmetry is the
+most that 16 pairs support.
 
-**Retention itself is stark.** 81% of sites lose the sequon in every one of 32
-designs; the overall retention rate is 0.076. The preprint's finding replicates
-at site level.
+**Diagnostics disagree with each other.** Bacterial −0.174 SD [−0.459, −0.027];
+cytosolic +0.062 SD [−0.145, +0.270]. Together with the primary +0.458, the three
+point in three directions. No ordering, no interpretation offered.
 
-**One tension worth watching.** In the 22 matched pairs, retention is *higher*
-for occupied sites: +0.084, 95% CI [+0.007, +0.176], excluding zero. That points
-the opposite way to the conditional score. It rests on 8 informative pairs — 14
-of 22 are tied at zero retention on both sides — so it is fragile, and it is a
-secondary outcome with no pre-specified margin. It should be treated as something
-to test properly, not as a finding.
+**The bridge holds.** Conditional score predicts retention at Spearman **+0.559**,
+monotonically: sites in the lowest score quintile retain their sequon in 0% of
+designs, the highest in 32%. The score measures something real about what the
+model will do.
+
+**Retention itself is stark.** 80% of sites lose the sequon in every one of 32
+designs; overall retention 0.078. The preprint's finding replicates at site level,
+and its 8-design condition proves unbiased — mean 0.077 against 0.078 at 32
+designs, correlating 0.98. It was noisier per site, not wrong.
+
+**One earlier claim withdrawn.** A reported retention difference between occupied
+and control sites (+0.084, CI [+0.007, +0.176]) used a site-level bootstrap that
+ignored clustering, and rested on matched pairs that no longer exist after
+rematching. It is not replaced.
 
 ## What would settle it
 
-The binding constraint throughout is 22 pairs. Growing the observed-unmodified
-class is the single change that would make the primary comparison decisive, and
-the realistic route is occupancy glycoproteomics — a PNGase F digest in
-heavy-oxygen water converts occupied asparagines to labelled aspartate, so a
-sequon peptide detected with the asparagine intact is a genuine, quantified
-negative. That is data acquisition rather than analysis, and it is what the next
-stage of this work needs.
+The binding constraint throughout is 16 pairs, and the corrections tightened it
+rather than loosening it — the earlier count included pairs it should not have
+had. Notably, the pair count is 16 under *every* matching, so the caliper rather
+than the algorithm is what limits it: 12 of the 28 scoreable controls have no
+admissible partner.
+
+Growing the internal-control class is the single change that would make this
+decisive, and the realistic route is occupancy glycoproteomics — a PNGase F
+digest in heavy-oxygen water converts occupied asparagines to labelled aspartate,
+so a sequon peptide detected with the asparagine intact is a genuine, quantified
+negative.
+
+That is data acquisition rather than analysis. It is also why no second model has
+been run: ESM-IF or TriFlow on 16 pairs would produce several imprecise answers
+instead of one, and none of them would address the constraint.
