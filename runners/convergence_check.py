@@ -27,14 +27,15 @@ for i, r in enumerate(sample.itertuples(index=False), 1):
         continue
     idx0 = (int(r.n_model_index), int(r.plus1_model_index), int(r.plus2_model_index))
     try:
-        probs16 = conditional_probabilities(path, r.structure_chain_id, model,
+        probs16, computed = conditional_probabilities(path, r.structure_chain_id, model,
                                             n_decoding_orders=16, seed=0, positions=list(idx0))
     except Exception as exc:
         print(f"  [{i}] {r.accession} {r.structure_pdb_id}: {type(exc).__name__}", flush=True)
         continue
     entry = {"accession": r.accession, "position": r.position}
     for n in (4, 8, 16):
-        entry[f"score_{n}"] = sequon_score(probs16[:n], *idx0)["conditional_sequon_score"]
+        entry[f"score_{n}"] = sequon_score(probs16[:n], *idx0,
+                                           computed=computed)["conditional_sequon_score"]
     rows.append(entry)
     if i % 10 == 0:
         print(f"  {i}/50 ({(time.time()-t0)/i:.1f}s per site)", flush=True)

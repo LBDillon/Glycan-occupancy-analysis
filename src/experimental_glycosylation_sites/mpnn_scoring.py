@@ -21,6 +21,16 @@ circular.
 Its conditional probabilities depend on the decoding order, which is sampled.
 A single order is therefore one draw from a distribution, so scores are averaged
 over a fixed panel of seeded orders and the spread across them is retained.
+
+One failure mode has to be guarded explicitly. `conditional_probs` allocates a
+zero tensor of log-probabilities and fills only the positions that survive
+`chain_M * mask`, where `mask` is zero wherever the backbone is incomplete. A
+residue with a missing N, CA, C or O is therefore returned as a row of zeros,
+and exponentiating that row yields twenty-one ones — not a distribution, but a
+value that propagates silently into a score of about +13.8. A manifest can
+confirm that a residue has coordinates without confirming that ProteinMPNN
+accepted it, so both the computed set and the returned vectors are checked here
+rather than trusted.
 """
 from __future__ import annotations
 
@@ -43,6 +53,19 @@ DEFAULT_DECODING_ORDERS = 8
 # large finite score rather than an infinity that would poison every average
 # downstream.
 EPSILON = 1e-6
+
+# A softmax in float32, averaged over eight orders, stays within a few times
+# 1e-6 of one. A tolerance of 1e-3 is far looser than that and still four
+# orders of magnitude tighter than the 21.0 an unfilled row produces.
+PROBABILITY_SUM_TOLERANCE = 1e-3
+
+
+class IncompleteBackboneError(ValueError):
+    """A requested residue was rejected by ProteinMPNN's own backbone mask."""
+
+
+class InvalidProbabilityVector(ValueError):
+    """A returned row is not a probability distribution."""
 
 
 def _prepare_environment() -> None:
@@ -107,6 +130,12 @@ def conditional_probabilities(
     on which other positions were requested, so restricting the set returns
     identical values for them — verified against the unrestricted computation.
     Rows outside `positions` are left at zero and must not be read.
+
+    Returns `(probabilities, computed)`. `computed` is a boolean array of length
+    L that is true only where ProteinMPNN actually ran a decoder pass, which is
+    where the request and the model's own backbone mask agree. Callers must
+    consult it: the rows it marks false are zeros that exponentiate to ones, and
+    are indistinguishable from a real result by shape or dtype alone.
     """
     _prepare_environment()
     import torch
@@ -129,10 +158,19 @@ def conditional_probabilities(
 
     design_mask = chain_M * chain_M_pos
     if positions is not None:
+        length = design_mask.shape[1]
         wanted = torch.zeros_like(design_mask)
         for index in positions:
-            wanted[0, int(index)] = 1.0
+            index = int(index)
+            if not 0 <= index < length:
+                raise IndexError(
+                    f"position {index} outside chain {chain_id} of length {length}")
+            wanted[0, index] = 1.0
         design_mask = design_mask * wanted
+
+    # conditional_probs recomputes this internally as chain_M * mask; mirroring it
+    # here is what lets a caller distinguish an unfilled row from a real one.
+    computed = (design_mask * mask)[0].cpu().numpy() > 0
 
     per_order = []
     generator = torch.Generator(device="cpu").manual_seed(seed)
@@ -143,7 +181,7 @@ def conditional_probabilities(
                 X, S, mask, design_mask, residue_idx, chain_encoding_all, randn, False
             )
             per_order.append(torch.exp(log_probs)[0].cpu().numpy())
-    return np.stack(per_order)
+    return np.stack(per_order), computed
 
 
 def logit(probability: float) -> float:
@@ -151,11 +189,48 @@ def logit(probability: float) -> float:
     return float(np.log(p / (1.0 - p)))
 
 
+def check_scoreable(
+    probabilities: np.ndarray,
+    indices: "tuple[int, int, int]",
+    computed: "np.ndarray | None" = None,
+) -> None:
+    """Raise unless all three sequon rows are genuine probability distributions.
+
+    Two independent checks, because either alone can be passed by a bad result.
+    The `computed` set catches a position ProteinMPNN declined to decode; the
+    sum check catches anything else that leaves a row malformed, including a
+    row of zeros that has been exponentiated into ones. A site that fails is
+    excluded and recorded, never scored — an unfilled row scores near +13.8 and
+    would otherwise sit in the data looking like an unusually confident site.
+    """
+    if computed is not None:
+        rejected = [i for i in indices if not bool(computed[i])]
+        if rejected:
+            raise IncompleteBackboneError(
+                "ProteinMPNN did not decode model "
+                f"{'index' if len(rejected) == 1 else 'indices'} {rejected}: "
+                "incomplete backbone (missing N, CA, C or O)")
+
+    for order in range(probabilities.shape[0]):
+        for index in indices:
+            row = probabilities[order, index]
+            total = float(row.sum())
+            if abs(total - 1.0) > PROBABILITY_SUM_TOLERANCE:
+                raise InvalidProbabilityVector(
+                    f"row at model index {index}, decoding order {order} sums to "
+                    f"{total:.6g}, not 1")
+            if float(row.min()) < 0.0 or float(row.max()) > 1.0 + PROBABILITY_SUM_TOLERANCE:
+                raise InvalidProbabilityVector(
+                    f"row at model index {index}, decoding order {order} has values "
+                    f"outside [0, 1]: min {float(row.min()):.6g}, max {float(row.max()):.6g}")
+
+
 def sequon_score(
     probabilities: np.ndarray,
     n_index: int,
     plus1_index: int,
     plus2_index: int,
+    computed: "np.ndarray | None" = None,
 ) -> dict:
     """Score one sequon from a [orders, L, 21] probability array.
 
@@ -164,7 +239,13 @@ def sequon_score(
     because any residue except proline permits a sequon, so a preference there
     is not a preference for the motif; proline is recorded separately as the
     residue whose presence would abolish it.
+
+    Validation is unconditional. `computed` is optional only because a caller
+    may hold probabilities from elsewhere, but the distribution check always
+    runs, so an invalid row cannot be scored by omitting an argument.
     """
+    check_scoreable(probabilities, (n_index, plus1_index, plus2_index), computed)
+
     per_order = []
     for order in range(probabilities.shape[0]):
         p_n = probabilities[order, n_index, AA_INDEX["N"]]

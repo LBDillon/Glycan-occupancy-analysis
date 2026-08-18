@@ -3,7 +3,8 @@ import numpy as np, pandas as pd
 from pathlib import Path
 sys.path.insert(0, "src")
 from experimental_glycosylation_sites.mpnn_scoring import (
-    DEFAULT_MODEL, load_model, conditional_probabilities, sequon_score)
+    DEFAULT_MODEL, IncompleteBackboneError, InvalidProbabilityVector,
+    load_model, conditional_probabilities, sequon_score)
 
 N_ORDERS, SEED = 8, 0
 KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
@@ -43,9 +44,9 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
     wanted = sorted({int(v) for r in todo for v in
                      (r.n_model_index, r.plus1_model_index, r.plus2_model_index)})
     try:
-        probs = conditional_probabilities(path, chain_id, model,
-                                          n_decoding_orders=N_ORDERS, seed=SEED,
-                                          positions=wanted)
+        probs, computed = conditional_probabilities(path, chain_id, model,
+                                                    n_decoding_orders=N_ORDERS, seed=SEED,
+                                                    positions=wanted)
     except Exception as exc:
         failures += [{"accession": r.accession, "position": r.position,
                       "structure_pdb_id": pdb_id,
@@ -53,8 +54,17 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
         continue
 
     for r in todo:
-        sc = sequon_score(probs, int(r.n_model_index), int(r.plus1_model_index),
-                          int(r.plus2_model_index))
+        # Per site, not per chain: one residue with an incomplete backbone must
+        # not discard the other sites decoded from the same chain.
+        try:
+            sc = sequon_score(probs, int(r.n_model_index), int(r.plus1_model_index),
+                              int(r.plus2_model_index), computed=computed)
+        except (IncompleteBackboneError, InvalidProbabilityVector) as exc:
+            failures.append({"accession": r.accession, "position": r.position,
+                             "structure_pdb_id": pdb_id,
+                             "structure_chain_id": chain_id,
+                             "reason": f"{type(exc).__name__}: {str(exc)[:120]}"})
+            continue
         vectors = {k: json.dumps([round(x, 6) for x in sc.pop(k)])
                    for k in ("probs_n", "probs_plus1", "probs_plus2")}
         rows.append({**{k: getattr(r, k) for k in KEY}, "triplet": r.triplet,
