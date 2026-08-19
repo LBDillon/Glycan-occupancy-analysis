@@ -7,10 +7,16 @@ from experimental_glycosylation_sites.retention import (
     PREPRINT_CONDITION, STANDARD_CONDITION, classify_retention, design_sequences)
 
 KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
-OUT = Path("results/mpnn_retention.csv")
+
+# Manifest and destination are arguments so the same sweep serves each control
+# population without a second copy of this file.
+MANIFEST = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results/scoring_manifest.csv")
+OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("results/mpnn_retention.csv")
 N_STD, N_PRE, TEMP, SEED = STANDARD_CONDITION["n_designs"], PREPRINT_CONDITION["n_designs"], 0.1, 0
 
-manifest = pd.read_csv("results/scoring_manifest.csv", low_memory=False)
+manifest = pd.read_csv(MANIFEST, low_memory=False)
+if "scoreable" in manifest.columns:
+    manifest = manifest[manifest.scoreable.astype(bool)]
 sites = manifest.drop_duplicates(KEY).reset_index(drop=True)
 paths = {}
 for d in ("data/cache/pdb", "../ortholog_sequon_conservation/results/database_current/structures/pdb"):
