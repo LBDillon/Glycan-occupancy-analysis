@@ -24,13 +24,13 @@ import numpy as np
 import pandas as pd
 from scipy import stats as st
 
-SNAPSHOT = Path("results/mpnn_retention_frozen_2026-08-18.csv")
+SNAPSHOT = Path("results/designs/mpnn_retention_frozen_2026-08-18.csv")
 KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
 FULL = "std_frac_full_sequon_retained"
 
 ret = pd.read_csv(SNAPSHOT, low_memory=False)
-score = pd.read_csv("results/mpnn_conditional_scores.csv", low_memory=False)
-able = pd.read_csv("results/scoreability.csv", low_memory=False)
+score = pd.read_csv("results/scores/mpnn_conditional_scores.csv", low_memory=False)
+able = pd.read_csv("results/manifests/scoreability.csv", low_memory=False)
 for d in (ret, score, able):
     for k in KEY:
         if k in d: d[k] = d[k].astype(str)

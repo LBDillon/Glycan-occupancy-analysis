@@ -36,9 +36,9 @@ def save(fig, name, caption, width=112):
     fig.savefig(OUT / name, dpi=200)
     plt.close(fig); print("wrote", OUT / name)
 
-feat = pd.read_csv("results/site_structural_features.csv", low_memory=False)
-man = pd.read_csv("results/candidate_manifest_dataset.csv", low_memory=False)
-opt = json.loads(Path("results/analysis_optimal.json").read_text())
+feat = pd.read_csv("results/datasets/site_structural_features.csv", low_memory=False)
+man = pd.read_csv("results/manifests/candidate_manifest_dataset.csv", low_memory=False)
+opt = json.loads(Path("results/analysis/analysis_optimal.json").read_text())
 
 # ----------------------------------------------------------------- 1. funnel
 fig, ax = plt.subplots(figsize=(8.2, 4.0))
@@ -72,7 +72,7 @@ margin = opt["margin_standardised"]
 ax.axvspan(-margin, margin, color=MUTE, alpha=0.18, zorder=0)
 ax.axvline(0, color=INK, lw=0.9, zorder=1)
 for i, (label, key, colour) in enumerate(rows):
-    d = json.loads(Path(f"results/analysis_{key}.json").read_text())
+    d = json.loads(Path(f"results/analysis/analysis_{key}.json").read_text())
     m, (lo, hi) = d["mean_difference_sd"], d["ci95_sd"]
     ax.errorbar([m], [-i], xerr=[[m - lo], [hi - m]], fmt="o", color=colour,
                 capsize=4, lw=1.7, markersize=7, zorder=3)
@@ -93,8 +93,8 @@ save(fig, "fig2_three_comparisons.png",
      "matching improved was an artefact of a scoring defect and is withdrawn.")
 
 # ------------------------------------------------- 3. matching sensitivity
-sweep = pd.read_csv("results/matching_seed_sweep.csv")
-sens = json.loads(Path("results/matching_sensitivity.json").read_text())
+sweep = pd.read_csv("results/analysis/matching_seed_sweep.csv")
+sens = json.loads(Path("results/analysis/matching_sensitivity.json").read_text())
 sd = sens["reference_sd"]
 fig, ax = plt.subplots(figsize=(8.2, 3.5))
 ax.hist(sweep["mean"] / sd, bins=26, color=MUTE, edgecolor="white", linewidth=0.6)
@@ -113,11 +113,11 @@ save(fig, "fig3_matching_sensitivity.png",
      "now deterministic.")
 
 # ------------------------------------------------------- 4. retention bridge
-ret = pd.read_csv("results/mpnn_retention_frozen_2026-08-18.csv", low_memory=False)
-able = pd.read_csv("results/scoreability.csv", low_memory=False)
+ret = pd.read_csv("results/designs/mpnn_retention_frozen_2026-08-18.csv", low_memory=False)
+able = pd.read_csv("results/manifests/scoreability.csv", low_memory=False)
 KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
-score = pd.concat([pd.read_csv("results/mpnn_conditional_scores.csv", low_memory=False),
-                   pd.read_csv("results/mpnn_conditional_scores_unmatched.csv",
+score = pd.concat([pd.read_csv("results/scores/mpnn_conditional_scores.csv", low_memory=False),
+                   pd.read_csv("results/scores/mpnn_conditional_scores_unmatched.csv",
                                low_memory=False)],
                   ignore_index=True).drop_duplicates(KEY)
 for d in (ret, able, score):
@@ -180,7 +180,7 @@ save(fig, "fig6_scorer_defect.png",
 # is bootstrapped over PROTEINS, not sites: several sequons on one protein share
 # a structure and a set of designs, so treating them as independent would make
 # every interval far too narrow.
-man_all = pd.read_csv("results/scoring_manifest.csv", low_memory=False).drop_duplicates(KEY)
+man_all = pd.read_csv("results/manifests/scoring_manifest.csv", low_memory=False).drop_duplicates(KEY)
 for k in KEY:
     man_all[k] = man_all[k].astype(str)
 by_class = (ret.merge(man_all[KEY + ["occupancy_status"]], on=KEY, how="left")

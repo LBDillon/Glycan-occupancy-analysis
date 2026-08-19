@@ -211,18 +211,18 @@ used a site-level bootstrap and its pairs no longer exist after rematching.
 
 ```
 pipeline/04_build_candidate_manifest.py dataset
-pipeline/05_scoreability.py results/candidate_manifest_dataset.csv results/scoreability_dataset.csv
+pipeline/05_scoreability.py results/manifests/candidate_manifest_dataset.csv results/manifests/scoreability_dataset.csv
 pipeline/06_match_primary.py                     # optimal + both greedy sensitivities
-pipeline/07_score.py results/candidate_manifest_dataset.csv results/scores_dataset.csv
+pipeline/07_score.py results/manifests/candidate_manifest_dataset.csv results/scores/scores_dataset.csv
 pipeline/09_analyse_scores.py optimal          # PRIMARY
 pipeline/12_matching_sensitivity.py              # 200-seed sweep
 pipeline/23_figures_primary.py optimal
 ```
 
-Artefacts: `results/analysis_optimal.json`, `results/contrasts_optimal.csv`,
-`results/matched_pairs_optimal.csv`, `results/matching_balance_optimal.json`,
-`results/matching_sensitivity.json`, `results/matching_seed_sweep.csv`,
-`results/scores_dataset.csv`, `results/figures/primary_optimal.png`,
+Artefacts: `results/analysis/analysis_optimal.json`, `results/analysis/contrasts_optimal.csv`,
+`results/matching/matched_pairs_optimal.csv`, `results/matching/matching_balance_optimal.json`,
+`results/analysis/matching_sensitivity.json`, `results/analysis/matching_seed_sweep.csv`,
+`results/scores/scores_dataset.csv`, `results/figures/primary_optimal.png`,
 `config/scoring_frozen.toml` (`[amendment_1]`, `[amendment_2]`).
 
 ## Still open

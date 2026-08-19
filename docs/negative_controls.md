@@ -307,8 +307,8 @@ Stage 1 — sequence inventory and sequon scan. Fast, no structure downloads:
 python -m experimental_glycosylation_sites fetch-controls
 ```
 
-Writes `results/negative_control_sites.csv` (one row per sequon, labelled by
-`control_set`) and `results/negative_control_summary.json` (counts, sequon density,
+Writes `results/datasets/negative_control_sites.csv` (one row per sequon, labelled by
+`control_set`) and `results/datasets/negative_control_summary.json` (counts, sequon density,
 amino acid composition, and the excluded taxa with their reasons). Protein sequences go
 to `data/cache/negative_control_proteins.csv.gz`, since they are bulky and only the
 feature stage needs them.
@@ -326,8 +326,8 @@ with an incomplete backbone is silently returned as a non-distribution. See
 
 ```bash
 python pipeline/04_build_candidate_manifest.py controls
-python pipeline/05_scoreability.py results/candidate_manifest_controls.csv \
-                               results/scoreability_controls.csv
+python pipeline/05_scoreability.py results/manifests/candidate_manifest_controls.csv \
+                               results/manifests/scoreability_controls.csv
 python pipeline/06b_match_diagnostics.py
 ```
 

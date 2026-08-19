@@ -17,8 +17,8 @@ from experimental_glycosylation_sites.mpnn_scoring import decodable_positions
 
 MPNN_DIR = Path("../../ProteinMPNN")
 
-MANIFEST = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results/scoring_manifest.csv")
-OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("results/scoreability.csv")
+MANIFEST = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results/manifests/scoring_manifest.csv")
+OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("results/manifests/scoreability.csv")
 KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
 
 sites = pd.read_csv(MANIFEST, low_memory=False).drop_duplicates(KEY).reset_index(drop=True)

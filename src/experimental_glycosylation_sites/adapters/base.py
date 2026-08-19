@@ -21,7 +21,7 @@ probabilities can still be measured on retention.
 1. Create `adapters/<model>.py` with a class implementing one or both protocols.
 2. Register it in `adapters/__init__.py`.
 3. Run the pipeline with `--model <name>`. Scores land in
-   `results/scores_<model>.csv`, designs in `results/retention_<model>.csv`.
+   `results/scores/scores_<model>.csv`, designs in `results/retention_<model>.csv`.
 
 Two invariants any adapter must honour, both learned the hard way:
 

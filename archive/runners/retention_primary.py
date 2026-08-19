@@ -13,11 +13,11 @@ from experimental_glycosylation_sites.retention import (
     PREPRINT_CONDITION, STANDARD_CONDITION, classify_retention, design_sequences)
 
 KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
-OUT = Path("results/mpnn_retention_primary.csv")
+OUT = Path("results/designs/mpnn_retention_primary.csv")
 N_STD, N_PRE = STANDARD_CONDITION["n_designs"], PREPRINT_CONDITION["n_designs"]
 
-manifest = pd.read_csv("results/scoring_manifest.csv", low_memory=False)
-pairs = pd.read_csv("results/matched_pairs.csv", low_memory=False)
+manifest = pd.read_csv("results/manifests/scoring_manifest.csv", low_memory=False)
+pairs = pd.read_csv("results/matching/matched_pairs.csv", low_memory=False)
 prim = pairs[pairs.comparison == "vs_observed_unmodified"]
 wanted = set(zip(prim.case_accession, prim.case_position)) | \
          set(zip(prim.control_accession, prim.control_position))
@@ -25,7 +25,7 @@ sites = manifest[[(a, p) in wanted for a, p in zip(manifest.accession, manifest.
 sites = sites.drop_duplicates(KEY).reset_index(drop=True)
 
 already = set()
-for f in ("results/mpnn_retention.csv", str(OUT)):
+for f in ("results/designs/mpnn_retention.csv", str(OUT)):
     if Path(f).exists():
         already |= set(map(tuple, pd.read_csv(f, low_memory=False)[KEY].astype(str).values))
 sites = sites[[tuple(map(str, r)) not in already for r in sites[KEY].values]]

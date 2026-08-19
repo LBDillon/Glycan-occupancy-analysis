@@ -29,7 +29,7 @@ N_BOOT, BOOT_SEED = 10000, 20260818
 KEY = ["accession", "position"]
 
 LABEL = sys.argv[1] if len(sys.argv) > 1 else "optimal"
-PAIRS = Path(f"results/matched_pairs_{LABEL}.csv")
+PAIRS = Path(f"results/matching/matched_pairs_{LABEL}.csv")
 
 # Only the diagnostics draw on the external control pool. Loading it for the
 # primary comparison would make an analysis of 16 dataset pairs depend on files
@@ -60,10 +60,10 @@ def load(manifest_path, score_path):
         on=KEY, how="inner")
 
 
-dataset = load("results/candidate_manifest_dataset.csv", "results/scores_dataset.csv")
+dataset = load("results/manifests/candidate_manifest_dataset.csv", "results/scores/scores_dataset.csv")
 CONTROL_SOURCE = {
-    "secretory": ("results/manifest_matched_secretory.csv", "results/scores_secretory.csv"),
-}.get(LABEL, ("results/manifest_matched_controls.csv", "results/scores_controls.csv"))
+    "secretory": ("results/manifests/manifest_matched_secretory.csv", "results/scores/scores_secretory.csv"),
+}.get(LABEL, ("results/manifests/manifest_matched_controls.csv", "results/scores/scores_controls.csv"))
 controls = load(*CONTROL_SOURCE) if NEEDS_CONTROL_POOL else pd.DataFrame()
 site = pd.concat([dataset, controls], ignore_index=True) if len(controls) else dataset.copy()
 if "ortholog_clusters" not in site.columns:
@@ -89,7 +89,7 @@ print(f"equivalence margin (+/-0.2 SD) : +/-{margin_raw:.4f} log-odds\n")
 
 pairs = pd.read_csv(PAIRS, low_memory=False)
 contrasts = build_contrasts(pairs, site)
-contrasts.to_csv(f"results/contrasts_{LABEL}.csv", index=False)
+contrasts.to_csv(f"results/analysis/contrasts_{LABEL}.csv", index=False)
 
 reuse = contrasts.control_proteins.str.split(";").explode().value_counts()
 print(f"contrasts {len(contrasts)}   occupied proteins {contrasts.case_accession.nunique()}   "
@@ -149,7 +149,7 @@ for name, stats in by_subtype.items():
     print(f"  {name}  n={stats['n']:2d}  {stats['mean']:+.4f} log-odds "
           f"({stats['mean_sd_units']:+.3f} SD)")
 
-Path(f"results/analysis_{LABEL}.json").write_text(json.dumps({
+Path(f"results/analysis/analysis_{LABEL}.json").write_text(json.dumps({
     "comparison": LABEL, "role": ROLE,
     "question": "Does ProteinMPNN score occupied sequons higher than matched "
                 "sequons with no modelled glycan, given the native backbone and sequence?",
@@ -172,4 +172,4 @@ Path(f"results/analysis_{LABEL}.json").write_text(json.dumps({
                   "unit": "connected component of occupied ortholog clusters "
                           "and shared control proteins"},
 }, indent=2))
-print(f"\nwrote results/analysis_{LABEL}.json and results/contrasts_{LABEL}.csv")
+print(f"\nwrote results/analysis/analysis_{LABEL}.json and results/analysis/contrasts_{LABEL}.csv")

@@ -30,9 +30,9 @@ from experimental_glycosylation_sites.matching import (
 N_SEEDS, N_BOOT, BOOT_SEED, MARGIN_SD = 200, 2000, 20260818, 0.2
 KEY = ["accession", "position"]
 
-manifest = pd.read_csv("results/candidate_manifest_dataset.csv", low_memory=False)
+manifest = pd.read_csv("results/manifests/candidate_manifest_dataset.csv", low_memory=False)
 manifest = manifest[manifest.scoreable.astype(bool)].copy()
-scores = pd.read_csv("results/scores_dataset.csv", low_memory=False)
+scores = pd.read_csv("results/scores/scores_dataset.csv", low_memory=False)
 for frame in (manifest, scores):
     frame["accession"] = frame.accession.astype(str)
     frame["position"] = frame.position.astype(int)
@@ -70,7 +70,7 @@ for seed in range(N_SEEDS):
         print(f"  {seed + 1}/{N_SEEDS} seeds", flush=True)
 
 sweep = pd.DataFrame(rows)
-sweep.to_csv("results/matching_seed_sweep.csv", index=False)
+sweep.to_csv("results/analysis/matching_seed_sweep.csv", index=False)
 
 best = evaluate(match_controls_optimal(cases, controls, features=MATCH_FEATURES,
                                        caliper=DEFAULT_CALIPER, exact=DEFAULT_EXACT),
@@ -95,7 +95,7 @@ print(f"  pairs {best['n_pairs']}   mean {best['mean']:+.4f} "
       f"({best['mean']/reference_sd:+.3f} SD)")
 print(f"  95% CI [{best['ci_low']:+.4f}, {best['ci_high']:+.4f}]   {best['verdict']}")
 
-Path("results/matching_sensitivity.json").write_text(json.dumps({
+Path("results/analysis/matching_sensitivity.json").write_text(json.dumps({
     "purpose": "how much the primary result depends on the matching algorithm",
     "n_seeds": N_SEEDS, "n_boot_per_seed": N_BOOT,
     "reference_sd": round(reference_sd, 6), "margin_raw": round(margin_raw, 6),
@@ -111,4 +111,4 @@ Path("results/matching_sensitivity.json").write_text(json.dumps({
     "interpretation": "every point estimate is positive; whether the interval "
                       "excludes zero depends on which matching is selected",
 }, indent=2))
-print("\nwrote results/matching_seed_sweep.csv and results/matching_sensitivity.json")
+print("\nwrote results/analysis/matching_seed_sweep.csv and results/analysis/matching_sensitivity.json")

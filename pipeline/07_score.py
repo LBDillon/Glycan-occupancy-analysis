@@ -11,8 +11,8 @@ KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
 
 # Manifest and destination are arguments so the same scorer serves the dataset
 # sites and the diagnostic control pools without a second copy of this file.
-MANIFEST = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results/scoring_manifest.csv")
-OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("results/mpnn_conditional_scores.csv")
+MANIFEST = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results/manifests/scoring_manifest.csv")
+OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("results/scores/mpnn_conditional_scores.csv")
 FAILURES = OUT.with_name(OUT.stem + "_failures.csv")
 
 manifest = pd.read_csv(MANIFEST, low_memory=False)

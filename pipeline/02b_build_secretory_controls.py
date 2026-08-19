@@ -27,7 +27,7 @@ from experimental_glycosylation_sites.config import load_config
 from experimental_glycosylation_sites.controls import control_structure_targets
 from experimental_glycosylation_sites.structures import fetch_structures
 
-SITES = Path("results/secretory_unannotated_sites_raw.csv")
+SITES = Path("results/datasets/secretory_unannotated_sites_raw.csv")
 config = load_config(Path("config/default.toml"))
 
 sites = pd.read_csv(SITES, low_memory=False)

@@ -15,7 +15,7 @@ sys.path.insert(0, "src")
 from experimental_glycosylation_sites.manifest import build_manifest
 
 WHICH = sys.argv[1] if len(sys.argv) > 1 else "dataset"
-OUT = Path(f"results/candidate_manifest_{WHICH}.csv")
+OUT = Path(f"results/manifests/candidate_manifest_{WHICH}.csv")
 
 seqs = {}
 with gzip.open("../../data/raw/uniprot/uniprot_reviewed_glycoproteins_2026-04-27.tsv.gz",
@@ -36,22 +36,22 @@ for directory in ("data/cache/pdb",
         paths.setdefault(p.stem.upper(), p)
 
 if WHICH == "dataset":
-    rows = pd.read_csv("results/site_structural_features.csv", low_memory=False)
+    rows = pd.read_csv("results/datasets/site_structural_features.csv", low_memory=False)
     rows = rows[rows.features_available &
                 rows.occupancy_status.isin(["occupied_supported", "observed_unmodified"])].copy()
     rows["control_set"] = pd.NA
     # ortholog cluster travels with the site: it is the resampling unit later
-    assoc = pd.read_csv("results/site_pair_associations.csv", low_memory=False)
+    assoc = pd.read_csv("results/datasets/site_pair_associations.csv", low_memory=False)
     cluster = (assoc.groupby(["accession", "position"]).cluster_id
                     .agg(lambda s: ";".join(sorted({str(x) for x in s if pd.notna(x)})[:3]))
                     .rename("ortholog_clusters").reset_index())
     rows = rows.merge(cluster, on=["accession", "position"], how="left")
 elif WHICH == "secretory":
-    rows = pd.read_csv("results/secretory_unannotated_features.csv", low_memory=False)
+    rows = pd.read_csv("results/datasets/secretory_unannotated_features.csv", low_memory=False)
     rows = rows[rows.features_available].copy()
     rows["ortholog_clusters"] = pd.NA
 else:
-    rows = pd.read_csv("results/negative_control_features.csv", low_memory=False)
+    rows = pd.read_csv("results/datasets/negative_control_features.csv", low_memory=False)
     rows = rows[rows.features_available].copy()
     rows["ortholog_clusters"] = pd.NA
 
@@ -62,7 +62,7 @@ rows = rows[[c for c in keep if c in rows.columns]]
 
 manifest, exclusions = build_manifest(rows, seqs, paths)
 manifest.to_csv(OUT, index=False)
-exclusions.to_csv(f"results/candidate_manifest_{WHICH}_exclusions.csv", index=False)
+exclusions.to_csv(f"results/manifests/candidate_manifest_{WHICH}_exclusions.csv", index=False)
 
 print(f"{WHICH}: {len(rows)} candidate sites -> {len(manifest)} mapped, {len(exclusions)} excluded")
 assert len(manifest) + len(exclusions) == len(rows), "partition incomplete"

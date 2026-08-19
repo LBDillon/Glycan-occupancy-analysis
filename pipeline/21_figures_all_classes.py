@@ -26,7 +26,7 @@ OUT = Path("results/figures"); OUT.mkdir(parents=True, exist_ok=True)
 plt.rcParams.update({"font.size": 10, "axes.titlesize": 11.5, "axes.titlelocation": "left",
                      "axes.spines.top": False, "axes.spines.right": False})
 
-byclass = json.loads(Path("results/retention_by_class.json").read_text())["classes"]
+byclass = json.loads(Path("results/analysis/retention_by_class.json").read_text())["classes"]
 ORDER = ["occupied_supported", "observed_unmodified",
          "control_secretory_eukaryotic_unannotated",
          "control_bacterial_extracytoplasmic", "control_cytosolic_eukaryotic"]
@@ -66,7 +66,7 @@ COMPARISONS = [("optimal", "internal control", CTL),
                ("cytosolic", "cytosolic", MUTE)]
 margin = None
 for i, (key, label, colour) in enumerate(COMPARISONS):
-    path = Path(f"results/analysis_{key}.json")
+    path = Path(f"results/analysis/analysis_{key}.json")
     if not path.exists():
         continue
     d = json.loads(path.read_text())

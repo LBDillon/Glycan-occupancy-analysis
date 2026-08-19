@@ -10,8 +10,8 @@ KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
 
 # Manifest and destination are arguments so the same sweep serves each control
 # population without a second copy of this file.
-MANIFEST = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results/scoring_manifest.csv")
-OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("results/mpnn_retention.csv")
+MANIFEST = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results/manifests/scoring_manifest.csv")
+OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("results/designs/mpnn_retention.csv")
 N_STD, N_PRE, TEMP, SEED = STANDARD_CONDITION["n_designs"], PREPRINT_CONDITION["n_designs"], 0.1, 0
 
 manifest = pd.read_csv(MANIFEST, low_memory=False)

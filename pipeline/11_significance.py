@@ -30,16 +30,16 @@ from scipy import stats as st
 N_PERM, SEED = 20000, 20260819
 MARGIN_SD = 0.2
 
-SCORE = [("internal control", "results/contrasts_optimal.csv"),
-         ("eukaryotic secretory", "results/contrasts_secretory.csv"),
-         ("bacterial", "results/contrasts_bacterial.csv"),
-         ("cytosolic", "results/contrasts_cytosolic.csv")]
-RETENTION = [("internal control", "results/retention_paired_internal.csv"),
-             ("eukaryotic secretory", "results/retention_paired_eukaryotic.csv"),
-             ("bacterial", "results/retention_paired_bacterial.csv"),
-             ("cytosolic", "results/retention_paired_cytosolic.csv")]
+SCORE = [("internal control", "results/analysis/contrasts_optimal.csv"),
+         ("eukaryotic secretory", "results/analysis/contrasts_secretory.csv"),
+         ("bacterial", "results/analysis/contrasts_bacterial.csv"),
+         ("cytosolic", "results/analysis/contrasts_cytosolic.csv")]
+RETENTION = [("internal control", "results/analysis/retention_paired_internal.csv"),
+             ("eukaryotic secretory", "results/analysis/retention_paired_eukaryotic.csv"),
+             ("bacterial", "results/analysis/retention_paired_bacterial.csv"),
+             ("cytosolic", "results/analysis/retention_paired_cytosolic.csv")]
 
-dataset = pd.read_csv("results/scores_dataset.csv", low_memory=False)
+dataset = pd.read_csv("results/scores/scores_dataset.csv", low_memory=False)
 REFERENCE_SD = float(dataset.conditional_sequon_score.std(ddof=1))
 
 
@@ -106,7 +106,7 @@ for outcome, table in (("conditional score", SCORE), ("design retention", RETENT
 results = pd.DataFrame(rows)
 results["p_holm"] = holm(results.p_permutation.to_numpy())
 results["p_bh"] = benjamini_hochberg(results.p_permutation.to_numpy())
-results.to_csv("results/significance.csv", index=False)
+results.to_csv("results/analysis/significance.csv", index=False)
 
 print(f"cluster-level sign-flip permutation, {N_PERM:,} draws, {len(results)} tests\n")
 for outcome in results.outcome.unique():
@@ -125,12 +125,12 @@ print("equivalence assessment (conditional score only; the pre-specified inferen
 for label, path in SCORE:
     key = {"internal control": "optimal", "eukaryotic secretory": "secretory",
            "bacterial": "bacterial", "cytosolic": "cytosolic"}[label]
-    js = Path(f"results/analysis_{key}.json")
+    js = Path(f"results/analysis/analysis_{key}.json")
     if js.exists():
         d = json.loads(js.read_text())
         lo, hi = d["ci95_sd"]
         print(f"  {label:22s} [{lo:+.3f}, {hi:+.3f}] SD vs margin +/-{MARGIN_SD}  ->  {d['verdict']}")
 
-Path("results/significance.json").write_text(
+Path("results/analysis/significance.json").write_text(
     results.to_json(orient="records", indent=2))
-print("\nwrote results/significance.csv and results/significance.json")
+print("\nwrote results/analysis/significance.csv and results/analysis/significance.json")

@@ -31,7 +31,7 @@ from experimental_glycosylation_sites.matching import (
     balance_report, match_controls, match_controls_optimal, weighted_balance_report)
 
 SEED = 0
-man = pd.read_csv("results/candidate_manifest_dataset.csv", low_memory=False)
+man = pd.read_csv("results/manifests/candidate_manifest_dataset.csv", low_memory=False)
 
 total = len(man)
 man = man[man.scoreable.astype(bool)].copy()
@@ -58,7 +58,7 @@ recipes = {
 for label, build in recipes.items():
     pairs = build()
     pairs["comparison"] = "vs_internal_control"
-    pairs.to_csv(f"results/matched_pairs_{label}.csv", index=False)
+    pairs.to_csv(f"results/matching/matched_pairs_{label}.csv", index=False)
 
     report = {
         "comparison": "vs_internal_control", "label": label,
@@ -75,7 +75,7 @@ for label, build in recipes.items():
         "unweighted": balance_report(cases, controls, pairs),
         "weighted": weighted_balance_report(cases, controls, pairs),
     }
-    Path(f"results/matching_balance_{label}.json").write_text(json.dumps(report, indent=2))
+    Path(f"results/matching/matching_balance_{label}.json").write_text(json.dumps(report, indent=2))
 
     n_cases = pairs.drop_duplicates(["case_accession", "case_position"]).shape[0]
     print(f"\n--- {label} ({report['role']}) ---")

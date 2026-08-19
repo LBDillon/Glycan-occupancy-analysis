@@ -25,20 +25,20 @@ FULL = "std_frac_full_sequon_retained"
 N_BOOT, BOOT_SEED = 10000, 20260818
 
 COMPARISONS = [
-    ("internal control", "results/matched_pairs_optimal.csv"),
-    ("eukaryotic secretory", "results/matched_pairs_secretory.csv"),
-    ("bacterial", "results/matched_pairs_bacterial.csv"),
-    ("cytosolic", "results/matched_pairs_cytosolic.csv"),
+    ("internal control", "results/matching/matched_pairs_optimal.csv"),
+    ("eukaryotic secretory", "results/matching/matched_pairs_secretory.csv"),
+    ("bacterial", "results/matching/matched_pairs_bacterial.csv"),
+    ("cytosolic", "results/matching/matched_pairs_cytosolic.csv"),
 ]
 
-ret = pd.read_csv("results/retention_all_classes.csv", low_memory=False)
+ret = pd.read_csv("results/designs/retention_all_classes.csv", low_memory=False)
 ret["accession"] = ret.accession.astype(str)
 ret["position"] = ret.position.astype(int)
 # A site can appear under more than one structure; keep one retention value each.
 ret = ret.drop_duplicates(["accession", "position"])
 retention = dict(zip(zip(ret.accession, ret.position), ret[FULL]))
 
-man = pd.read_csv("results/candidate_manifest_dataset.csv", low_memory=False)
+man = pd.read_csv("results/manifests/candidate_manifest_dataset.csv", low_memory=False)
 man["accession"] = man.accession.astype(str)
 man["position"] = man.position.astype(int)
 man = man.drop_duplicates(["accession", "position"])
@@ -91,12 +91,12 @@ for label, path in COMPARISONS:
         "wilcoxon_p": round(wilcoxon, 4),
         "n_resampling_units": int(frame.resample_unit.nunique()),
     }
-    frame.to_csv(f"results/retention_paired_{label.split()[0]}.csv", index=False)
+    frame.to_csv(f"results/analysis/retention_paired_{label.split()[0]}.csv", index=False)
 
-Path("results/retention_paired.json").write_text(json.dumps({
+Path("results/analysis/retention_paired.json").write_text(json.dumps({
     "status": "secondary and descriptive; no pre-specified margin; not pre-registered",
     "unit": "one occupied site, against the control matched to it",
     "bootstrap": "connected components of ortholog clusters and shared control proteins",
     "comparisons": summary,
 }, indent=2))
-print("\nwrote results/retention_paired.json")
+print("\nwrote results/analysis/retention_paired.json")

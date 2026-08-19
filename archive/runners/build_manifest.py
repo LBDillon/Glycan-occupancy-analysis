@@ -3,10 +3,10 @@ from pathlib import Path
 sys.path.insert(0, "src")
 from experimental_glycosylation_sites.manifest import build_manifest, within_structure_pairs
 
-pairs = pd.read_csv("results/matched_pairs.csv", low_memory=False)
-dfeat = pd.read_csv("results/site_structural_features.csv", low_memory=False)
-cfeat = pd.read_csv("results/negative_control_features.csv", low_memory=False)
-assoc = pd.read_csv("results/site_pair_associations.csv", low_memory=False)
+pairs = pd.read_csv("results/matching/matched_pairs.csv", low_memory=False)
+dfeat = pd.read_csv("results/datasets/site_structural_features.csv", low_memory=False)
+cfeat = pd.read_csv("results/datasets/negative_control_features.csv", low_memory=False)
+assoc = pd.read_csv("results/datasets/site_pair_associations.csv", low_memory=False)
 
 # sequences: dataset from the UniProt snapshot, controls from the control cache
 seqs = {}
@@ -54,8 +54,8 @@ rows = rows.merge(feat, on=["accession", "position"], how="left")
 rows = rows.merge(cluster, on=["accession", "position"], how="left")
 
 manifest, exclusions = build_manifest(rows, seqs, paths)
-manifest.to_csv("results/scoring_manifest.csv", index=False)
-exclusions.to_csv("results/scoring_manifest_exclusions.csv", index=False)
+manifest.to_csv("results/manifests/scoring_manifest.csv", index=False)
+exclusions.to_csv("results/manifests/scoring_manifest_exclusions.csv", index=False)
 
 print(f"input rows: {len(rows)}   manifest: {len(manifest)}   excluded: {len(exclusions)}")
 assert len(manifest) + len(exclusions) == len(rows), "partition incomplete"

@@ -100,13 +100,13 @@ problem. It is unexplained and recorded as such.
 
 ## Artefacts
 
-`results/matched_pairs_{bacterial,cytosolic}.csv`,
-`results/matching_balance_{bacterial,cytosolic}.json`,
-`results/contrasts_{bacterial,cytosolic}.csv`,
-`results/analysis_{bacterial,cytosolic}.json`,
-`results/scores_controls.csv`, `results/manifest_matched_controls.csv`,
-`results/scoreability_controls.csv`.
+`results/matching/matched_pairs_{bacterial,cytosolic}.csv`,
+`results/matching/matching_balance_{bacterial,cytosolic}.json`,
+`results/analysis/contrasts_{bacterial,cytosolic}.csv`,
+`results/analysis/analysis_{bacterial,cytosolic}.json`,
+`results/scores/scores_controls.csv`, `results/manifests/manifest_matched_controls.csv`,
+`results/manifests/scoreability_controls.csv`.
 
 Reproduce with `pipeline/06b_match_diagnostics.py`, then `pipeline/07_score.py` on
-`results/manifest_matched_controls.csv`, then
+`results/manifests/manifest_matched_controls.csv`, then
 `pipeline/09_analyse_scores.py bacterial` and `... cytosolic`.

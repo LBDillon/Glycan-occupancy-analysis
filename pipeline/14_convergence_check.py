@@ -6,7 +6,7 @@ from experimental_glycosylation_sites.mpnn_scoring import (
     load_model, conditional_probabilities, sequon_score)
 
 KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
-m = pd.read_csv("results/scoring_manifest.csv", low_memory=False)
+m = pd.read_csv("results/manifests/scoring_manifest.csv", low_memory=False)
 unique = m.drop_duplicates(KEY).reset_index(drop=True)
 
 # BLINDED: sampled with a fixed seed from all unique scoreable sites, without
@@ -41,7 +41,7 @@ for i, r in enumerate(sample.itertuples(index=False), 1):
         print(f"  {i}/50 ({(time.time()-t0)/i:.1f}s per site)", flush=True)
 
 df = pd.DataFrame(rows)
-df.to_csv("results/convergence_check.csv", index=False)
+df.to_csv("results/analysis/convergence_check.csv", index=False)
 
 # reference SD from the blinded sample, on the 16-order scores
 ref_sd = float(df.score_16.std(ddof=1))
@@ -62,6 +62,6 @@ passes = (out["8_vs_16"]["median_sd_units"] < 0.02
           and out["8_vs_16"]["p95_sd_units"] < 0.05
           and out["8_vs_16"]["correlation"] > 0.99)
 out["decision"] = "adopt 8 decoding orders" if passes else "escalate to 16 decoding orders"
-Path("results/convergence_check.json").write_text(json.dumps(out, indent=2))
+Path("results/analysis/convergence_check.json").write_text(json.dumps(out, indent=2))
 print()
 print(json.dumps(out, indent=2))

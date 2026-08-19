@@ -29,8 +29,8 @@ CLASSES = [
 ]
 
 SOURCES = [
-    ("results/mpnn_retention_frozen_2026-08-18.csv", "results/scoring_manifest.csv"),
-    ("results/mpnn_retention_secretory.csv", "results/manifest_matched_secretory.csv"),
+    ("results/designs/mpnn_retention_frozen_2026-08-18.csv", "results/manifests/scoring_manifest.csv"),
+    ("results/designs/mpnn_retention_secretory.csv", "results/manifests/manifest_matched_secretory.csv"),
 ]
 
 frames = []
@@ -50,7 +50,7 @@ data = pd.concat(frames, ignore_index=True).drop_duplicates(KEY)
 # Sites the model cannot decode are excluded: sample() writes their native
 # residue back unchanged, so their retention describes the parser, not the model.
 able = pd.concat([pd.read_csv(p, low_memory=False)
-                  for p in ("results/scoreability.csv", "results/scoreability_secretory.csv")
+                  for p in ("results/manifests/scoreability.csv", "results/manifests/scoreability_secretory.csv")
                   if Path(p).exists()], ignore_index=True)
 for key in KEY:
     able[key] = able[key].astype(str)
@@ -100,11 +100,11 @@ if occ:
             continue
         print(f"  {entry['label']:32s} {occ['mean_retention'] - entry['mean_retention']:+.4f}")
 
-Path("results/retention_by_class.json").write_text(json.dumps({
+Path("results/analysis/retention_by_class.json").write_text(json.dumps({
     "unit": "one site; 32 unconstrained designs per chain at temperature 0.1",
     "bootstrap": "over proteins, not sites",
     "excluded": "sites ProteinMPNN cannot decode",
     "classes": summary,
 }, indent=2))
-data.to_csv("results/retention_all_classes.csv", index=False)
-print("\nwrote results/retention_by_class.json and results/retention_all_classes.csv")
+data.to_csv("results/designs/retention_all_classes.csv", index=False)
+print("\nwrote results/analysis/retention_by_class.json and results/designs/retention_all_classes.csv")

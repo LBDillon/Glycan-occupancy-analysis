@@ -14,7 +14,7 @@ sys.path.insert(0, "src")
 from experimental_glycosylation_sites.features import build_features
 from experimental_glycosylation_sites.structures import build_site_evidence
 
-sites = pd.read_csv("results/secretory_unannotated_sites_raw.csv", low_memory=False)
+sites = pd.read_csv("results/datasets/secretory_unannotated_sites_raw.csv", low_memory=False)
 proteins = pd.read_csv("data/cache/secretory_unannotated_proteins.csv.gz", low_memory=False)
 sequences = dict(zip(proteins.Entry, proteins.Sequence.fillna("")))
 
@@ -63,7 +63,7 @@ for index, (_, part) in enumerate(groups, 1):
               f"({elapsed/index:.2f}s each, eta {(len(groups)-index)*elapsed/index/60:.0f} min)",
               flush=True)
 feats = pd.concat(chunks, ignore_index=True)
-feats.to_csv("results/secretory_unannotated_features.csv", index=False)
+feats.to_csv("results/datasets/secretory_unannotated_features.csv", index=False)
 
 check = feats.merge(sites[["accession", "position", "control_set"]]
                     .rename(columns={"control_set": "source_set"}),

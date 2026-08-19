@@ -16,12 +16,12 @@ import numpy as np
 import pandas as pd
 
 LABEL = sys.argv[1] if len(sys.argv) > 1 else "optimal"
-contrasts = pd.read_csv(f"results/contrasts_{LABEL}.csv")
-stats = json.loads(Path(f"results/analysis_{LABEL}.json").read_text())
+contrasts = pd.read_csv(f"results/analysis/contrasts_{LABEL}.csv")
+stats = json.loads(Path(f"results/analysis/analysis_{LABEL}.json").read_text())
 
 # The seed-sweep figure is read from the sweep's own output rather than written
 # in here, so the caption cannot drift away from the analysis it describes.
-SWEEP = Path("results/matching_sensitivity.json")
+SWEEP = Path("results/analysis/matching_sensitivity.json")
 sweep = json.loads(SWEEP.read_text()) if SWEEP.exists() else None
 
 INK, OCC, CTL = "#22252b", "#1f6f8b", "#b05c3b"

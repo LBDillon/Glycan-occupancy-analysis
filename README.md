@@ -43,8 +43,8 @@ unbalancing sets that matching had just balanced.
 python pipeline/04_build_candidate_manifest.py dataset
 python pipeline/04_build_candidate_manifest.py controls
 python pipeline/04_build_candidate_manifest.py secretory
-python pipeline/05_scoreability.py results/candidate_manifest_dataset.csv \
-                                   results/scoreability_dataset.csv
+python pipeline/05_scoreability.py results/manifests/candidate_manifest_dataset.csv \
+                                   results/manifests/scoreability_dataset.csv
 ```
 
 ### 4. Match
@@ -57,7 +57,7 @@ python pipeline/06b_match_diagnostics.py   # bacterial, cytosolic, secretory
 ### 5. Score and design — the two model-dependent stages
 
 ```bash
-python pipeline/07_score.py  <manifest.csv> results/scores_<set>.csv     # ~5s/chain
+python pipeline/07_score.py  <manifest.csv> results/scores/scores_<set>.csv     # ~5s/chain
 python pipeline/08_design.py <manifest.csv> results/retention_<set>.csv  # ~25s/chain
 ```
 
@@ -89,13 +89,13 @@ Supporting checks: `12_matching_sensitivity.py` (200-seed sweep),
 | Path | Contents |
 |---|---|
 | `data/raw/`, `data/cache/` | inputs and API/structure caches; never written by analysis |
-| `results/candidate_manifest_*.csv` | one row per site, with its three model indices |
-| `results/scoreability_*.csv` | which sites the model can evaluate, decided pre-matching |
-| `results/matched_pairs_*.csv` | the pairs each comparison rests on |
-| `results/scores_*.csv` | **sequon scores** — one row per site per model |
+| `results/manifests/candidate_manifest_*.csv` | one row per site, with its three model indices |
+| `results/manifests/scoreability_*.csv` | which sites the model can evaluate, decided pre-matching |
+| `results/matching/matched_pairs_*.csv` | the pairs each comparison rests on |
+| `results/scores/scores_*.csv` | **sequon scores** — one row per site per model |
 | `results/retention_*.csv`, `mpnn_retention*.csv` | **designs** — retention per site |
-| `results/analysis_*.json`, `contrasts_*.csv` | contrasts, intervals, verdicts |
-| `results/significance.csv` | all eight tests with corrections |
+| `results/analysis/analysis_*.json`, `contrasts_*.csv` | contrasts, intervals, verdicts |
+| `results/analysis/significance.csv` | all eight tests with corrections |
 | `results/figures/` | every figure |
 | `archive/` | superseded runners and outputs, kept for provenance |
 
@@ -125,7 +125,7 @@ may implement either or both:
 1. Copy `adapters/proteinmpnn.py` to `adapters/<model>.py`.
 2. Implement `decodable_positions`, `score_site`, and/or `design`.
 3. Register it in `adapters/__init__.py`.
-4. Run stages 5–7 with the new model; outputs land in `results/scores_<model>.csv`
+4. Run stages 5–7 with the new model; outputs land in `results/scores/scores_<model>.csv`
    and `results/retention_<model>.csv`, and the comparison figures gain a series.
 
 **Two invariants, both learned the hard way**
@@ -358,7 +358,7 @@ site appears exactly once across `experimental_sites_all.csv` and
 
 ### Current build
 
-From the latest full run (`results/summary.json`):
+From the latest full run (`results/datasets/summary.json`):
 
 | Quantity | Value |
 |---|---|
@@ -444,7 +444,7 @@ What to do instead:
 
 1. **Compare fingerprints.** Which input changed? Match the printed fingerprints
    against the `sha256` values recorded in the last known-good
-   `results/provenance.json`. The first sixteen characters are what the test
+   `results/datasets/provenance.json`. The first sixteen characters are what the test
    prints.
 2. **A new UniProt snapshot** is the most common cause. Sites gain and lose
    evidence codes between releases, and counts move legitimately. That is a data

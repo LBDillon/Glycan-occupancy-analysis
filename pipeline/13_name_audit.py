@@ -35,9 +35,9 @@ def gene_tokens(value):
     return {g.upper() for g in re.split(r"[\s;]+", value.strip()) if g}
 
 
-occ = pd.read_csv("results/occupied_protein_info.csv", low_memory=False)
-ctl = pd.read_csv("results/secretory_unannotated_protein_info.csv", low_memory=False)
-sites = pd.read_csv("results/secretory_unannotated_sites_raw.csv", low_memory=False)
+occ = pd.read_csv("results/datasets/occupied_protein_info.csv", low_memory=False)
+ctl = pd.read_csv("results/datasets/secretory_unannotated_protein_info.csv", low_memory=False)
+sites = pd.read_csv("results/datasets/secretory_unannotated_sites_raw.csv", low_memory=False)
 ctl = ctl[ctl.Entry.astype(str).isin(set(sites.accession.astype(str)))].copy()
 
 # Check 0 — did the keyword exclusion also remove automated annotation?
@@ -58,16 +58,16 @@ ctl["suspect_family"] = ctl["Protein names"].fillna("").astype(str).str.contains
 
 ctl["suspect"] = ctl.shared_gene | ctl.suspect_family
 ctl[["Entry", "Protein names", "shared_gene", "suspect_family", "suspect"]].to_csv(
-    "results/secretory_unannotated_name_audit.csv", index=False)
+    "results/datasets/secretory_unannotated_name_audit.csv", index=False)
 print(f"suspect by shared gene symbol : {int(ctl.shared_gene.sum())}")
 print(f"suspect by protein family     : {int(ctl.suspect_family.sum())}")
 print(f"suspect overall               : {int(ctl.suspect.sum())} of {len(ctl)}")
 
 # Check 3 — how many actually reach the analysis, and does removing them matter?
-pairs = pd.read_csv("results/matched_pairs_secretory.csv")
+pairs = pd.read_csv("results/matching/matched_pairs_secretory.csv")
 suspects = set(ctl.loc[ctl.suspect, "Entry"].astype(str))
 pairs["suspect"] = pairs.control_accession.astype(str).isin(suspects)
-pairs.to_csv("results/matched_pairs_secretory_audited.csv", index=False)
+pairs.to_csv("results/matching/matched_pairs_secretory_audited.csv", index=False)
 print(f"\nmatched control sites from suspect proteins: "
       f"{int(pairs.suspect.sum())} of {len(pairs)} ({100*pairs.suspect.mean():.1f}%)")
 
@@ -82,8 +82,8 @@ def load(manifest_path, score_path):
     return manifest.merge(scores[KEY + ["conditional_sequon_score"]], on=KEY, how="inner")
 
 
-dataset = load("results/candidate_manifest_dataset.csv", "results/scores_dataset.csv")
-controls = load("results/manifest_matched_secretory.csv", "results/scores_secretory.csv")
+dataset = load("results/manifests/candidate_manifest_dataset.csv", "results/scores/scores_dataset.csv")
+controls = load("results/manifests/manifest_matched_secretory.csv", "results/scores/scores_secretory.csv")
 site = pd.concat([dataset, controls], ignore_index=True)
 if "ortholog_clusters" not in site.columns:
     site["ortholog_clusters"] = pd.NA

@@ -1,7 +1,7 @@
 # Significance testing
 
 Eight tests: four control sets × two outcomes. Run with
-`python pipeline/11_significance.py`. Raw numbers in `results/significance.csv`.
+`python pipeline/11_significance.py`. Raw numbers in `results/analysis/significance.csv`.
 
 ## Headline
 

@@ -4,7 +4,7 @@ sys.path.insert(0, "src")
 from experimental_glycosylation_sites.structures import build_site_evidence
 from experimental_glycosylation_sites.features import build_features
 
-sites = pd.read_csv("results/negative_control_sites.csv", low_memory=False)
+sites = pd.read_csv("results/datasets/negative_control_sites.csv", low_memory=False)
 proteins = pd.read_csv("data/cache/negative_control_proteins.csv.gz", low_memory=False)
 sequences = dict(zip(proteins.Entry, proteins.Sequence.fillna("")))
 
@@ -39,7 +39,7 @@ merged = scoped.merge(ev, on=["accession", "position"], how="left", validate="on
 merged["occupancy_status"] = "control_" + merged.control_set
 
 feats = build_features(merged, paths, carry_columns=("control_set",))
-feats.to_csv("results/negative_control_features.csv", index=False)
+feats.to_csv("results/datasets/negative_control_features.csv", index=False)
 
 # provenance must agree with the source inventory, by key
 check = feats.merge(sites[["accession", "position", "control_set"]]

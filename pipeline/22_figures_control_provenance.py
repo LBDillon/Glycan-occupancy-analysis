@@ -33,12 +33,12 @@ def count_rows(path, mask=None):
 
 
 # ---------------------------------------------------------------- panel A data
-raw = count_rows("results/secretory_unannotated_sites_raw.csv")
-feats = count_rows("results/secretory_unannotated_features.csv",
+raw = count_rows("results/datasets/secretory_unannotated_sites_raw.csv")
+feats = count_rows("results/datasets/secretory_unannotated_features.csv",
                    lambda f: f.features_available)
-scoreable = count_rows("results/candidate_manifest_secretory.csv",
+scoreable = count_rows("results/manifests/candidate_manifest_secretory.csv",
                        lambda f: f.scoreable.astype(bool))
-matched = count_rows("results/matched_pairs_secretory.csv")
+matched = count_rows("results/matching/matched_pairs_secretory.csv")
 
 stages = [
     ("eukaryotic secretory\nproteins with a structure", 7423),
@@ -75,9 +75,9 @@ ax.annotate("this step is the entire\nnegative label", xy=(3619, y[1]),
 # are not a compromise, they are simply tiny - so the honest reading is that the
 # top-right corner is empty of anything large, not that every set trades off.
 matched_n = {"secretory": matched,
-             "bacterial": count_rows("results/matched_pairs_bacterial.csv"),
-             "cytosolic": count_rows("results/matched_pairs_cytosolic.csv"),
-             "internal": count_rows("results/matched_pairs_optimal.csv")}
+             "bacterial": count_rows("results/matching/matched_pairs_bacterial.csv"),
+             "cytosolic": count_rows("results/matching/matched_pairs_cytosolic.csv"),
+             "internal": count_rows("results/matching/matched_pairs_optimal.csv")}
 
 SETS = [
     ("Internal\ncontrols", matched_n["internal"] or 16, 0.93, 0.93, CTL),

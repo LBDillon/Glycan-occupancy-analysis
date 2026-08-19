@@ -115,7 +115,7 @@ The dataset now separates the three classes the occupancy analysis needs:
 
 Structural context features — relative solvent accessibility, exposure bin, neighbourhood
 composition, distance to the chain terminus — are computed for the 364 sites with mapped
-coordinates (all 32 unmodified, 332 occupied) in `results/site_structural_features.csv`.
+coordinates (all 32 unmodified, 332 occupied) in `results/datasets/site_structural_features.csv`.
 Sites without coordinates are retained and flagged rather than filtered out.
 
 One correction is worth recording, because it would have inverted a conclusion. Solvent

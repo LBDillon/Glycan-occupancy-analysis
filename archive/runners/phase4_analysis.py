@@ -9,12 +9,12 @@ RNG = np.random.default_rng(20260817)
 N_BOOT = 5000
 
 scores = pd.concat([
-    pd.read_csv("results/mpnn_conditional_scores.csv", low_memory=False),
-    pd.read_csv("results/mpnn_conditional_scores_unmatched.csv", low_memory=False),
+    pd.read_csv("results/scores/mpnn_conditional_scores.csv", low_memory=False),
+    pd.read_csv("results/scores/mpnn_conditional_scores_unmatched.csv", low_memory=False),
 ], ignore_index=True).drop_duplicates(KEY)
 
-feats = pd.read_csv("results/site_structural_features.csv", low_memory=False)
-manifest = pd.read_csv("results/scoring_manifest.csv", low_memory=False)
+feats = pd.read_csv("results/datasets/site_structural_features.csv", low_memory=False)
+manifest = pd.read_csv("results/manifests/scoring_manifest.csv", low_memory=False)
 
 # ---- reference SD: all scoreable dataset sites, pooled, labels not consulted ----
 dataset_keys = set(zip(feats[feats.features_available &
@@ -38,7 +38,7 @@ lookup = scores.set_index(["accession", "position"])[SCORE].to_dict()
 clusters = manifest.drop_duplicates(["accession", "position"]).set_index(
     ["accession", "position"]).ortholog_clusters.to_dict()
 
-pairs = pd.read_csv("results/matched_pairs.csv", low_memory=False)
+pairs = pd.read_csv("results/matching/matched_pairs.csv", low_memory=False)
 report = {"reference_sd": round(REF_SD, 4), "margin_raw": round(MARGIN_RAW, 4),
           "margin_sd_units": MARGIN_SD, "n_dataset_sites_for_sd": len(dataset_scores),
           "comparisons": {}}
@@ -110,7 +110,7 @@ for comparison, group in pairs.groupby("comparison"):
              "standardised": round(float(g.contrast.mean() / REF_SD), 4)}
         for st, g in c.groupby("subtype") if st
     }
-    c.to_csv(f"results/contrasts_{comparison}.csv", index=False)
+    c.to_csv(f"results/analysis/contrasts_{comparison}.csv", index=False)
 
 for name, r in report["comparisons"].items():
     print(f"\n{name}")
