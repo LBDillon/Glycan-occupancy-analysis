@@ -1,7 +1,7 @@
-# The seven figures, in plain language
+# The nine figures, in plain language
 
 Each one answers a single question. Regenerate them all with
-`python runners/summary_figures.py`.
+`python pipeline/20_figures_summary.py`.
 
 ---
 
@@ -25,25 +25,23 @@ to spend effort.
 
 ---
 
-## Figure 2 — The three comparisons disagree
+## Figure 2 — Four comparisons, and the best-powered sits on zero
 
 ![three comparisons](../results/figures/fig2_three_comparisons.png)
 
-**What it shows:** the result of comparing occupied sites against each of the
-three control sets. The dot is the estimate, the bar is the 95% confidence
-interval, and the grey band is the difference we agreed in advance would be too
-small to care about.
+**What it shows:** occupied sites compared against each of the four control
+sets. The dot is the estimate, the bar is the 95% confidence interval, and the
+grey band is the difference agreed in advance to be too small to care about.
 
-The primary comparison (top, teal) sits at +0.458 — occupied sites score higher —
-but its interval crosses zero, so we cannot rule out no difference. The two
-diagnostic comparisons point elsewhere: bacterial slightly negative, cytosolic
-essentially nothing.
+The primary comparison (top) sits at +0.458 but on only 16 pairs, so its interval
+is enormous. The eukaryotic secretory comparison — the one that matches the
+occupied sites on both taxonomy and compartment — supplies 262 pairs and lands at
++0.073, essentially on zero, with an interval four times narrower.
 
-**The point:** these three do not tell a consistent story. An earlier version of
-this analysis showed all three negative and shrinking neatly as the matching got
-better, which looked like meaningful evidence. That pattern came from a bug. It
-is gone, and nothing has replaced it — the diagnostics simply do not corroborate
-the primary result.
+**The point:** the better-powered and better-matched the comparison, the closer
+to zero it sits. An earlier version showed all comparisons negative and shrinking
+neatly as matching improved, which looked like evidence; that pattern came from a
+scoring bug and is withdrawn.
 
 ---
 
@@ -127,7 +125,7 @@ that is not a genuine probability distribution.
 
 ---
 
-## Figure 7 — Occupied and unoccupied sequons are destroyed equally
+## Figure 7 — Retention differs between control sets, so a class average is not the test
 
 ![retention by class](../results/figures/fig7_retention_by_class.png)
 
@@ -136,36 +134,88 @@ site is a real glycosylation site or a control. Error bars are bootstrapped over
 whole proteins rather than sites, because several sequons on one protein share
 one set of designs and are not independent.
 
-Occupied sites keep the sequon 8.0% of the time. Bacterial controls, 7.7%.
-Cytosolic controls, 6.6%. The intervals overlap almost completely.
+Occupied sites keep the sequon 8.0% of the time. Bacterial 7.7%, cytosolic 6.6%
+— but the eukaryotic secretory set only 3.6%.
 
-**The point:** this is the clearest result in the project and the best powered —
-around a thousand sites per control group, against sixteen matched pairs for the
-primary comparison. Whether a sequon actually carries a glycan makes no
-detectable difference to how often the model destroys it.
+**The point:** the control sets differ from each other, so a class average cannot
+answer the question. Whatever separates eukaryotic secretory proteins from
+bacterial and cytosolic ones is riding along in this comparison.
 
-The internal-control bar sits much lower, but on 21 sites, and its interval runs
-nearly to the others. Nothing should be read into it.
+Because every control was matched site-by-site to an occupied site, the paired
+contrast is available and is the right test — see Figure 9 and
+[`significance.md`](significance.md). An earlier version of this figure was
+titled "occupied sequons are destroyed at the same rate as unoccupied ones",
+which was drawn from these class averages before a taxonomy- and
+compartment-matched control set existed. That claim has been withdrawn.
 
 ---
 
-## What the seven say together
+## Figure 8 — How the control sets are built, and what each costs
+
+![control provenance](../results/figures/fig8_control_provenance.png)
+
+**What it shows:** left, every filter applied to build the eukaryotic secretory
+control set, from 7,423 candidate proteins down to 262 usable matched pairs.
+Right, all four control sets placed against the two things that matter — how well
+the population matches the occupied sites, and how defensible the negative label
+is. Marker area is the number of usable pairs.
+
+**The point:** the internal controls sit in the corner you would want, strong on
+both axes — they are not a compromise, they are simply tiny. Every other set buys
+two orders of magnitude more pairs by giving up one axis: the cytosolic and
+bacterial sets change the population, the eukaryotic secretory set weakens the
+label. Nothing large occupies the good corner, and that is the whole problem.
+
+The highlighted bar on the left is the step that constitutes the entire negative
+label for the new set — the absence of a UniProt glycoprotein keyword.
+
+---
+
+## Figure 9 — Both measurements, all classes
+
+![all classes](../results/figures/fig9_all_classes.png)
+
+**What it shows:** left, what the model *writes* — design retention for all five
+classes. Right, what the model *believes* — the conditional-score difference
+against each control set.
+
+**The point:** two different quantities, measured on different scales, and they
+agree. Neither shows the model distinguishing occupied sequons by a margin this
+design can resolve.
+
+The paired versions of the retention contrast — each occupied site against the
+control matched to it, rather than class averages — are in
+[`significance.md`](significance.md). They show occupied sequons retained more
+often in both comparisons that hold eukaryotic secretory context constant, and
+not at all in the two confounded sets, but nothing that survives correction for
+the number of comparisons run.
+
+---
+
+## What the nine say together
 
 The dataset is sound and the measurement works — Figure 4 shows the score tracks
 real model behaviour, and Figure 5 shows the behaviour is dramatic and worth
 studying.
 
-**Figure 7 is the strongest answer we have**, and it is a null: at n≈1,000 per
-group, the model removes real glycosylation sequons exactly as readily as
-sequons that merely match the motif.
+**The answer is a null that does not quite close.** Across four control sets and
+two outcomes, no comparison shows the model distinguishing occupied sequons by a
+margin the design can resolve, and no test survives correction for the number of
+comparisons made (Figures 2 and 9, `significance.md`).
 
-The probability-based comparison is weaker. Occupied sites do tend to score
-higher (Figures 2 and 3), and that direction survives everything we threw at it,
-but 16 pairs cannot make it precise — and Figure 1 explains why there are only 16.
+**The best-matched, best-powered comparison sits on zero.** The eukaryotic
+secretory set matches taxonomy and compartment and gives 262 pairs: +0.073 SD,
+interval [−0.056, +0.346]. The point estimate is inside the equivalence margin;
+only the upper bound escapes it. Perhaps twice the pairs would settle it.
 
-Note the two branches are not in conflict. A small preference in conditional
-probability can coexist with no difference in what actually gets generated,
-because generation combines hundreds of decisions and a small bias at one
-position is easily swamped.
+**One pattern is worth testing properly.** Occupied sequons are retained more
+often than their matched partners in both comparisons that hold eukaryotic
+secretory context constant, and not at all in the two confounded sets — the
+opposite of what confounding would produce. It does not reach significance and
+it was found by looking, so it is a hypothesis for new data, not a result.
+
+**The original 16-pair comparison is not wrong, just uninformative.** Figure 1
+explains why there are only 16, and Figure 8 why no larger set has an equally
+firm negative label.
 
 Figure 6 is the reason to trust the current numbers more than the earlier ones.

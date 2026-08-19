@@ -322,13 +322,13 @@ Of 15,107 control sequons, **6,823 have structural features** (3,543 cytosolic, 
 bacterial). Of those, **6,092 can be scored by ProteinMPNN** (3,024 and 3,068):
 scoreability is settled from the coordinates alone, before matching, because a residue
 with an incomplete backbone is silently returned as a non-distribution. See
-`runners/scoreability.py` and `[amendment_1]` in `config/scoring_frozen.toml`.
+`pipeline/05_scoreability.py` and `[amendment_1]` in `config/scoring_frozen.toml`.
 
 ```bash
-python runners/build_candidate_manifest.py controls
-python runners/scoreability.py results/candidate_manifest_controls.csv \
+python pipeline/04_build_candidate_manifest.py controls
+python pipeline/05_scoreability.py results/candidate_manifest_controls.csv \
                                results/scoreability_controls.csv
-python runners/match_diagnostics.py
+python pipeline/06b_match_diagnostics.py
 ```
 
 Results are in [`diagnostic_controls.md`](diagnostic_controls.md). Both sets remain

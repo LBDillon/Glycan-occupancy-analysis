@@ -3,6 +3,14 @@
 **These are not the primary result and cannot substitute for it.** The primary
 comparison is [`primary_result.md`](primary_result.md).
 
+**A fourth control set now exists** — eukaryotic secretory, unannotated — which is
+*not* a diagnostic. It matches the occupied sites on both taxonomy and
+compartment, so it carries neither confound described below, and it supplies 262
+matched pairs against the primary's 16. It gives +0.073 SD, CI [−0.056, +0.346].
+Its trade is a weaker negative label rather than a confounded population; see
+[`negative_controls.md`](negative_controls.md) and
+[`primary_result.md`](primary_result.md). The two sets below remain diagnostics.
+
 Both control sets are confounded by construction, and deliberately so. The
 cytosolic set matches taxonomy and differs in subcellular compartment; the
 bacterial set matches compartment and differs in taxonomy. They were built to be
@@ -99,6 +107,6 @@ problem. It is unexplained and recorded as such.
 `results/scores_controls.csv`, `results/manifest_matched_controls.csv`,
 `results/scoreability_controls.csv`.
 
-Reproduce with `runners/match_diagnostics.py`, then `runners/score_all.py` on
+Reproduce with `pipeline/06b_match_diagnostics.py`, then `pipeline/07_score.py` on
 `results/manifest_matched_controls.csv`, then
-`runners/primary_analysis.py bacterial` and `... cytosolic`.
+`pipeline/09_analyse_scores.py bacterial` and `... cytosolic`.

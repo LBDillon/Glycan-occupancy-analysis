@@ -1,6 +1,6 @@
 """Design retention as a PAIRED contrast, not a class average.
 
-The class-average view (runners/retention_by_class.py) compares whole
+The class-average view (pipeline/10_analyse_retention_by_class.py) compares whole
 populations, so any difference between them in fold, size or composition rides
 along. Every control set here was matched site-by-site to occupied sites on
 local structure and sequon subtype, so the paired contrast is available and is

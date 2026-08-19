@@ -231,9 +231,21 @@ consistent with no difference and with a substantial positive one, and it
 excludes only large differences *favouring the controls*. That asymmetry is the
 most that 16 pairs support.
 
-**Diagnostics disagree with each other.** Bacterial −0.174 SD [−0.459, −0.027];
-cytosolic +0.062 SD [−0.145, +0.270]. Together with the primary +0.458, the three
-point in three directions. No ordering, no interpretation offered.
+**A fourth, better-powered comparison was then added.** The internal-control
+class is not being grown, so a eukaryotic secretory set was built that matches
+the occupied sites on taxonomy *and* compartment — removing both confounds at
+once — and accepts a weaker negative label instead. 262 matched pairs:
+**+0.073 SD, CI [−0.056, +0.346]**, the narrowest interval in the study, sitting
+essentially on zero with its point estimate inside the equivalence margin.
+
+**Diagnostics disagree with each other.** Bacterial −0.157 SD; cytosolic +0.067
+SD. With the primary +0.458 and the parallel +0.073, the four do not form an
+interpretable ordering. No interpretation is offered.
+
+**Nothing reaches significance.** Eight tests across four control sets and two
+outcomes, using a cluster-level permutation test rather than Wilcoxon because the
+pairs are not independent. Smallest raw p 0.030; nothing survives Holm or
+Benjamini–Hochberg correction. See [`significance.md`](significance.md).
 
 **The bridge holds.** Across 2,423 scoreable sites the conditional score predicts
 retention at Spearman **+0.547**, monotonically: sites in the lowest score

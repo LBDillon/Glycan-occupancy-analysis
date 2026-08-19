@@ -1,6 +1,6 @@
 """Structural features for the secretory-eukaryotic-unannotated control set.
 
-Same machinery as runners/control_features.py, pointed at the new set. Kept as
+Same machinery as archive/runners/control_features.py, pointed at the new set. Kept as
 its own runner because the set has a different provenance and a different, and
 weaker, claim behind its negative label — mixing it into the same output file
 would make it easy to forget which is which.

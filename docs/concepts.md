@@ -78,7 +78,7 @@ Both are confounded on purpose, and in opposite ways:
 The original hope was that using both would triangulate: if a signal survives
 both confounds, it is more likely real. That reasoning is described below.
 
-### What data underlie the three comparisons in Figure 2?
+### What data underlie the comparisons in Figure 2?
 
 The same ProteinMPNN conditional sequon score, computed the same way on all
 sites. The only thing that differs is which control group the occupied sites are
@@ -304,22 +304,48 @@ the Figure 6 section below.
 
 ### Does the model remove non-glycosylated motifs at the same rate?
 
-**Yes — and this is one of the more informative results we have.** From data
-already collected:
+This changed once a properly matched control set existed, and the change is
+instructive.
+
+**Class averages say yes.** Comparing whole populations:
 
 | Class | n | Mean retention | Lost in every design |
 |---|---|---|---|
 | Occupied | 285 | 0.080 | 78.6% |
 | Bacterial control | 1,096 | 0.077 | 79.5% |
 | Cytosolic control | 1,021 | 0.066 | 84.4% |
+| Eukaryotic secretory control | 255 | 0.036 | 85.5% |
 | Internal control | 21 | 0.006 | 90.5% |
 
-ProteinMPNN destroys experimentally validated glycosylation sequons at
-essentially the same rate as sequons that are merely motif matches. The internal
-controls look lower, but n=21.
+**But a class average is the wrong test.** The control sets differ from one
+another — the eukaryotic secretory set sits at half the retention of the
+bacterial and cytosolic sets — so averaging across populations mixes in whatever
+else distinguishes them. Every control was matched site-by-site to an occupied
+site, so the paired contrast is available and is the right comparison.
 
-This is a much better-powered statement than the primary comparison, and it points
-the same way: no detectable glycosylation awareness.
+**Paired, the answer is less clean:**
+
+| Comparison | Pairs | Occupied | Control | Difference | p (cluster permutation) |
+|---|---|---|---|---|---|
+| Internal control | 16 | 0.160 | 0.008 | +0.152 | 0.125 |
+| Eukaryotic secretory | 245 | 0.081 | 0.037 | +0.043 | 0.030 |
+| Bacterial | 254 | 0.079 | 0.076 | +0.002 | 0.816 |
+| Cytosolic | 251 | 0.078 | 0.075 | +0.003 | 0.821 |
+
+Occupied sequons are retained *more* than their matched partners in both
+comparisons that hold eukaryotic secretory context constant, and not at all in
+the two confounded sets. That ordering is the opposite of what confounding by
+compartment or taxonomy would produce, which is what makes it interesting.
+
+**It does not reach significance.** Across the eight tests run (four control
+sets × two outcomes), nothing survives multiple-comparison correction — the
+smallest corrected p is 0.120. See [`significance.md`](significance.md), which
+also explains why the Wilcoxon p of 0.008 originally quoted for the secretory
+contrast was too optimistic: it treated 245 pairs as independent when the
+effective sample size is 73 clusters.
+
+So the honest answer is: **no detectable difference that survives correction**,
+with a suggestive pattern worth testing on data that did not generate it.
 
 ### Is this different from the background mutation rate at non-motif positions?
 

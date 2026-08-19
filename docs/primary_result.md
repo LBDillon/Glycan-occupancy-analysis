@@ -132,8 +132,8 @@ Two amendments, both recorded in `config/scoring_frozen.toml`.
 | Sequon subtype | ~45% of pairs matched NXS to NXT | matched exactly |
 | Control-protein reuse | ignored in the bootstrap | resampling unit is the connected component |
 | Matching | greedy, seed-dependent | deterministic optimum |
-| `matched_pairs.csv` | no runner produced it | `runners/match_primary.py` |
-| Unmatched-site scoring | depended on a `/tmp` file | `runners/build_candidate_manifest.py` |
+| `matched_pairs.csv` | no runner produced it | `pipeline/06_match_primary.py` |
+| Unmatched-site scoring | depended on a `/tmp` file | `pipeline/04_build_candidate_manifest.py` |
 
 The originally reported −0.057 SD is withdrawn: it was computed against the
 inflated reference SD, from scores including invalid rows.
@@ -151,6 +151,44 @@ inflated reference SD, from scores including invalid rows.
 - ProteinMPNN parses only ATOM records, so glycans are invisible to it. Any
   effect is an occupancy-associated statistical preference, not evidence that
   the model represents glycosylation mechanistically.
+
+## The parallel comparison — better powered, same answer
+
+Because the internal-control class is not being grown, a fourth control set was
+built: eukaryotic, secreted or membrane, with a solved structure and **no**
+glycoprotein annotation. It matches the occupied sites on taxonomy *and*
+compartment — neither confound the diagnostics carry — at the cost of a weaker
+negative label, since absence of annotation is not annotated absence.
+
+| | Value |
+|---|---|
+| Matched pairs | **262** |
+| Mean paired difference | **+0.097 log-odds (+0.073 SD)** |
+| 95% CI, cluster-aware | **[−0.056, +0.346] SD** |
+| Verdict | inconclusive |
+
+The point estimate is *inside* the equivalence margin; only the upper bound
+escapes it. This is the narrowest interval in the study — four times tighter than
+the primary — and it sits essentially on zero. Roughly twice the pairs would
+likely settle the question.
+
+Contamination is real and quantified: about half of eukaryotic secretory proteins
+with a structure carry a glycoprotein keyword, so the unannotated half certainly
+holds unrecorded sites. A name audit found 32 of 1,543 control proteins suspect,
+8 of which reach the matched pairs; removing them changes nothing (+0.073 →
++0.074 SD). See `pipeline/13_name_audit.py` and
+[`negative_controls.md`](negative_controls.md).
+
+## Significance
+
+Eight tests — four control sets × two outcomes — with a cluster-level permutation
+test rather than Wilcoxon, because the pairs are not independent.
+**No test survives correction**: smallest raw p 0.030, smallest Holm 0.237,
+smallest Benjamini–Hochberg 0.120. Full detail in
+[`significance.md`](significance.md).
+
+The pre-specified inference was never a p-value but the equivalence assessment
+above, which is unaffected.
 
 ## Secondary work
 
@@ -172,13 +210,13 @@ used a site-level bootstrap and its pairs no longer exist after rematching.
 ## Reproducing
 
 ```
-runners/build_candidate_manifest.py dataset
-runners/scoreability.py results/candidate_manifest_dataset.csv results/scoreability_dataset.csv
-runners/match_primary.py                     # optimal + both greedy sensitivities
-runners/score_all.py results/candidate_manifest_dataset.csv results/scores_dataset.csv
-runners/primary_analysis.py optimal          # PRIMARY
-runners/matching_sensitivity.py              # 200-seed sweep
-runners/primary_plot.py optimal
+pipeline/04_build_candidate_manifest.py dataset
+pipeline/05_scoreability.py results/candidate_manifest_dataset.csv results/scoreability_dataset.csv
+pipeline/06_match_primary.py                     # optimal + both greedy sensitivities
+pipeline/07_score.py results/candidate_manifest_dataset.csv results/scores_dataset.csv
+pipeline/09_analyse_scores.py optimal          # PRIMARY
+pipeline/12_matching_sensitivity.py              # 200-seed sweep
+pipeline/23_figures_primary.py optimal
 ```
 
 Artefacts: `results/analysis_optimal.json`, `results/contrasts_optimal.csv`,

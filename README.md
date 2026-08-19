@@ -6,6 +6,163 @@ sequon-conservation database.
 - Evidence source guide: [`docs/evidence_sources.md`](docs/evidence_sources.md)
 - Downstream analysis options: [`docs/analysis_options.md`](docs/analysis_options.md)
 
+---
+
+# Running the whole thing
+
+Everything runs from this directory. Stages are numbered in execution order;
+letters mark optional branches. All of it is reproducible from committed code —
+`results/` is gitignored and rebuilds from these scripts.
+
+```bash
+cd analysis/experimental_glycosylation_sites
+export KMP_DUPLICATE_LIB_OK=TRUE OMP_NUM_THREADS=1   # macOS duplicate libomp
+```
+
+### 1. Build the site tables
+
+```bash
+python -m experimental_glycosylation_sites run          # the 4,307-site universe
+python -m experimental_glycosylation_sites fetch-controls
+python pipeline/02b_build_secretory_controls.py         # eukaryotic secretory set
+```
+
+### 2. Structural features
+
+```bash
+python pipeline/03b_secretory_features.py               # ~35 min
+```
+
+### 3. Manifest, then scoreability — in that order
+
+Scoreability is settled **before** matching, from coordinates alone. Doing it
+afterwards lets unscoreable sites into matched sets and removes them later,
+unbalancing sets that matching had just balanced.
+
+```bash
+python pipeline/04_build_candidate_manifest.py dataset
+python pipeline/04_build_candidate_manifest.py controls
+python pipeline/04_build_candidate_manifest.py secretory
+python pipeline/05_scoreability.py results/candidate_manifest_dataset.csv \
+                                   results/scoreability_dataset.csv
+```
+
+### 4. Match
+
+```bash
+python pipeline/06_match_primary.py        # internal controls: optimal + sensitivities
+python pipeline/06b_match_diagnostics.py   # bacterial, cytosolic, secretory
+```
+
+### 5. Score and design — the two model-dependent stages
+
+```bash
+python pipeline/07_score.py  <manifest.csv> results/scores_<set>.csv     # ~5s/chain
+python pipeline/08_design.py <manifest.csv> results/retention_<set>.csv  # ~25s/chain
+```
+
+### 6. Analyse
+
+```bash
+python pipeline/09_analyse_scores.py optimal        # PRIMARY
+python pipeline/09_analyse_scores.py secretory      # parallel, best powered
+python pipeline/10_analyse_retention_by_class.py
+python pipeline/10b_analyse_retention_paired.py
+python pipeline/11_significance.py                  # all 8 tests, corrected
+```
+
+### 7. Figures
+
+```bash
+python pipeline/20_figures_summary.py
+python pipeline/21_figures_all_classes.py
+python pipeline/22_figures_control_provenance.py
+python pipeline/23_figures_primary.py optimal
+```
+
+Supporting checks: `12_matching_sensitivity.py` (200-seed sweep),
+`13_name_audit.py` (are the "unannotated" controls really unannotated),
+`14_convergence_check.py` (how many decoding orders are enough).
+
+## Where things live
+
+| Path | Contents |
+|---|---|
+| `data/raw/`, `data/cache/` | inputs and API/structure caches; never written by analysis |
+| `results/candidate_manifest_*.csv` | one row per site, with its three model indices |
+| `results/scoreability_*.csv` | which sites the model can evaluate, decided pre-matching |
+| `results/matched_pairs_*.csv` | the pairs each comparison rests on |
+| `results/scores_*.csv` | **sequon scores** — one row per site per model |
+| `results/retention_*.csv`, `mpnn_retention*.csv` | **designs** — retention per site |
+| `results/analysis_*.json`, `contrasts_*.csv` | contrasts, intervals, verdicts |
+| `results/significance.csv` | all eight tests with corrections |
+| `results/figures/` | every figure |
+| `archive/` | superseded runners and outputs, kept for provenance |
+
+Datasets used: a dated UniProt snapshot, GlyGen and GlyConnect API caches, and
+deposited PDB/mmCIF structures. All read-only and referenced by path — see
+**Inputs are read-only** below.
+
+---
+
+# Adding another model
+
+The analysis downstream of scoring is model-agnostic: matching, contrasts, the
+cluster bootstrap, significance testing and the figures all work on tables keyed
+by `(accession, position)`. Adding ESM-IF, ESM3 or anything else means writing
+**one adapter** and touching nothing else.
+
+`src/experimental_glycosylation_sites/adapters/` defines two protocols. A model
+may implement either or both:
+
+| Protocol | Question it answers | Feeds |
+|---|---|---|
+| `SequonScorer` | what probability does the model hold at the three sequon residues? | `07_score.py` |
+| `SequenceDesigner` | what does the model write when redesigning the chain? | `08_design.py` |
+
+**Steps**
+
+1. Copy `adapters/proteinmpnn.py` to `adapters/<model>.py`.
+2. Implement `decodable_positions`, `score_site`, and/or `design`.
+3. Register it in `adapters/__init__.py`.
+4. Run stages 5–7 with the new model; outputs land in `results/scores_<model>.csv`
+   and `results/retention_<model>.csv`, and the comparison figures gain a series.
+
+**Two invariants, both learned the hard way**
+
+- **Never score a residue the model did not actually evaluate.** ProteinMPNN
+  returns a zero row for residues with incomplete backbones, which exponentiates
+  to twenty-one ones and scores +13.8. That defect inverted the sign of the first
+  result. Report such sites as unscoreable; the scorer raises rather than
+  returning a value.
+- **`decodable_positions` must not need a model pass.** Scoreability has to be
+  answerable before matching, or matched sets lose members afterwards.
+
+Verify conformance:
+
+```python
+from experimental_glycosylation_sites import adapters
+from experimental_glycosylation_sites.adapters.base import SequonScorer, SequenceDesigner
+a = adapters.load("proteinmpnn")
+isinstance(a, SequonScorer), isinstance(a, SequenceDesigner)   # (True, True)
+```
+
+---
+
+# Where to start reading
+
+| Document | For |
+|---|---|
+| [`docs/primary_result.md`](docs/primary_result.md) | the result and its limits |
+| [`docs/figures.md`](docs/figures.md) | all nine figures explained in prose |
+| [`docs/concepts.md`](docs/concepts.md) | what the terms mean, in plain language |
+| [`docs/significance.md`](docs/significance.md) | the eight tests and why none survives correction |
+| [`docs/negative_controls.md`](docs/negative_controls.md) | the four control sets and what evidence stands behind each |
+| [`docs/correction_2026-08-18.md`](docs/correction_2026-08-18.md) | what was corrected and why |
+| `config/scoring_frozen.toml` | the frozen configuration and both amendments |
+
+---
+
 ## Purpose
 
 The ortholog sequon-conservation database is built around **pairs**. Each row is

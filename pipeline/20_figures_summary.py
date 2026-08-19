@@ -3,7 +3,7 @@
 Deliberately plain. Each answers a single question a reader would ask, and
 nothing is combined that could be read separately. Regenerate with:
 
-    python runners/summary_figures.py
+    python pipeline/20_figures_summary.py
 """
 import json
 import textwrap
