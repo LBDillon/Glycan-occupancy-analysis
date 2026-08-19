@@ -222,12 +222,13 @@ for i, (key, label, colour) in enumerate(ORDER):
 ax.set_xticks(range(len(tick_labels))); ax.set_xticklabels(tick_labels, fontsize=9)
 ax.set_ylabel("fraction of 32 designs keeping the sequon")
 ax.set_ylim(0, max(by_class.groupby("occupancy_status")[FULL].mean()) * 1.9)
-ax.set_title("Occupied sequons are destroyed at the same rate as unoccupied ones")
+ax.set_title("Retention differs by control set, so the class average is not the test")
 save(fig, "fig7_retention_by_class.png",
      "Mean per-site retention by class, with 95% intervals bootstrapped over proteins "
-     "rather than sites. Occupied sites and the two large control sets are "
-     "indistinguishable: whether a sequon actually carries a glycan makes no difference "
-     "to how often ProteinMPNN removes it. This is the best-powered comparison in the "
-     "project - roughly a thousand sites per control group against sixteen matched pairs "
-     "for the primary analysis - and it points the same way. The internal-control bar is "
-     "lower but rests on 21 sites.")
+     "rather than sites. Occupied sites sit level with the bacterial and cytosolic "
+     "controls but well above the eukaryotic secretory set, so the control sets differ "
+     "from each other and a class average cannot answer the question. The paired "
+     "contrast in fig9/retention_paired.json is the test: each occupied site against the "
+     "control matched to it. There, occupied sites are retained MORE than their "
+     "eukaryotic secretory partners (+0.043, CI [+0.009, +0.068]) while the two "
+     "confounded sets show nothing. The internal-control bar rests on 21 sites.")
