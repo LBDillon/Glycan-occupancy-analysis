@@ -49,7 +49,20 @@ evidence = pd.concat(chunks, ignore_index=True)
 merged = scoped.merge(evidence, on=["accession", "position"], how="left", validate="one_to_one")
 merged["occupancy_status"] = "control_" + merged.control_set
 
-feats = build_features(merged, paths, carry_columns=("control_set",))
+# Chunked purely for visibility. build_features is one uninstrumented call, so
+# a single invocation over 1,500 structures runs for half an hour with no way to
+# tell progress from a stall. Solvent-accessibility is computed per structure, so
+# chunking by structure changes nothing about the result.
+chunks, t0 = [], time.time()
+groups = list(merged.groupby("structure_pdb_id", dropna=False))
+for index, (_, part) in enumerate(groups, 1):
+    chunks.append(build_features(part, paths, carry_columns=("control_set",)))
+    if index % 100 == 0 or index == len(groups):
+        elapsed = time.time() - t0
+        print(f"  featured {index}/{len(groups)} structures "
+              f"({elapsed/index:.2f}s each, eta {(len(groups)-index)*elapsed/index/60:.0f} min)",
+              flush=True)
+feats = pd.concat(chunks, ignore_index=True)
 feats.to_csv("results/secretory_unannotated_features.csv", index=False)
 
 check = feats.merge(sites[["accession", "position", "control_set"]]

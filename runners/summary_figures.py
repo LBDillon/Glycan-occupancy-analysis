@@ -63,8 +63,9 @@ save(fig, "fig1_attrition.png",
      "inside the matching caliper.")
 
 # ------------------------------------------------------- 2. three comparisons
-fig, ax = plt.subplots(figsize=(8.2, 2.9))
+fig, ax = plt.subplots(figsize=(8.6, 3.4))
 rows = [("Internal control\n(primary)", "optimal", OCC),
+        ("Eukaryotic secretory\n(parallel)", "secretory", "#3f7d5a"),
         ("Bacterial\n(diagnostic)", "bacterial", MUTE),
         ("Cytosolic\n(diagnostic)", "cytosolic", MUTE)]
 margin = opt["margin_standardised"]
@@ -77,15 +78,19 @@ for i, (label, key, colour) in enumerate(rows):
                 capsize=4, lw=1.7, markersize=7, zorder=3)
     ax.text(hi + 0.07, -i, f"{m:+.3f}  (n={d['n_contrasts']})", va="center",
             fontsize=8.8, color=colour)
-ax.set_yticks([0, -1, -2]); ax.set_yticklabels([r[0] for r in rows])
+ax.set_yticks([-i for i in range(len(rows))])
+ax.set_yticklabels([r[0] for r in rows])
 ax.set_xlabel("occupied − control (SD units)"); ax.set_xlim(-0.85, 1.65)
-ax.set_title("The three comparisons disagree in direction")
-ax.set_ylim(-2.6, 0.6)
+ax.set_title("Four comparisons: the best-powered one sits on zero")
+ax.set_ylim(-len(rows) + 0.4, 0.6)
 save(fig, "fig2_three_comparisons.png",
-     "Shaded band is the pre-specified equivalence margin. Only the primary comparison holds "
-     "organism, compartment and experimental context roughly constant; the diagnostics are "
-     "confounded by construction. An earlier reading in which all three were negative and "
-     "shrank as matching improved was an artefact of a scoring defect and is withdrawn.")
+     "Shaded band is the pre-specified equivalence margin. The internal-control comparison "
+     "has the strongest negative label but only 16 pairs, so its interval is enormous. The "
+     "eukaryotic secretory set matches the occupied sites on both taxonomy and compartment "
+     "and supplies 262 pairs, at the cost of a weaker label; it lands almost exactly on zero "
+     "and is the best-powered estimate available. The two diagnostics are confounded by "
+     "construction. An earlier reading in which all comparisons were negative and shrank as "
+     "matching improved was an artefact of a scoring defect and is withdrawn.")
 
 # ------------------------------------------------- 3. matching sensitivity
 sweep = pd.read_csv("results/matching_seed_sweep.csv")

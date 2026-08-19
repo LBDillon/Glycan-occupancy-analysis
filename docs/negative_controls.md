@@ -44,6 +44,108 @@ combining two confounded sets, it removes both confounds at once and accepts a w
 negative label in exchange. It is the comparison to read first, with its contamination
 caveat attached.
 
+## What each set uses as evidence for "no glycan here"
+
+This is the part that matters most, because the four sets do **not** make the
+same kind of claim. They are ordered here from strongest negative label to
+weakest.
+
+### First, what counts as a positive
+
+A site is `occupied_supported` if **any** of three independent layers supports
+it. The layers are not required to agree.
+
+| Layer | What it requires |
+|---|---|
+| UniProt | a `CARBOHYD` feature at that exact residue whose ECO codes reach `ECO:0000269` (manual experimental) or `ECO:0007744` (manual combinatorial) |
+| GlyGen | a reported glycan at that accession and position |
+| Structure | a covalent ASN–glycan linkage on that residue in a deposited entry (`LINK` records in PDB, `_struct_conn` in mmCIF) |
+
+`ECO:0000305` (curator inference) is deliberately **not** sufficient. It is
+tracked separately and reported as a sensitivity set, because a curator's
+inference is not an experiment.
+
+Everything below is about the mirror-image question, which is much harder.
+
+### Tier 1 — observed absence: the 32 internal controls
+
+The only set where absence was actually *looked at*. All four conditions must
+hold:
+
+1. the residue is resolved in a deposited structure;
+2. it carries no glycan linkage;
+3. the **same structure** models at least one glycan at some other residue;
+4. the protein was expressed in a host competent to glycosylate.
+
+Conditions 3 and 4 are what make the absence informative. They establish that
+sugars survived sample preparation and that this depositor was both able and
+willing to model them. A bare asparagine under those conditions is a decision
+rather than a silence.
+
+Still not proof: the glycan may have been present, disordered, and left
+unmodelled. This is a statement about the deposited model, not the molecule.
+
+### Tier 2 — absence by biology: cytosolic and bacterial
+
+No annotation is consulted for the negative claim at all. The argument is
+mechanistic: the enzyme and the substrate never meet.
+
+| | Cytosolic eukaryotic | Bacterial extracytoplasmic |
+|---|---|---|
+| Inclusion | `GO:0005829` (cytosol), `taxonomy_id:2759` | `taxonomy_id:2`, periplasm / outer membrane / secreted (`KW-0574`, `KW-0998`, `KW-0964`) |
+| Exclusion | signal peptide `KW-0732`, transmembrane `KW-0812`, glycoprotein `KW-0325` | glycoprotein `KW-0325`, plus every clade with known machinery |
+| Why no glycan | never enters the secretory pathway, so never meets OST | the clade has no OST or N-glycosyltransferase |
+
+The clade exclusions matter and are done by **known machinery**, not by
+annotation: Archaea wholesale (AglB is a genuine OST), plus *Campylobacter*
+(PglB), *Helicobacter*, *Haemophilus*, *Actinobacillus*, *Yersinia* and
+*Kingella* (HMW1C-type N-glycosyltransferases, which act on N-X-S/T). Excluding
+these by "not annotated as glycosylated" would repeat exactly the error this
+project exists to avoid.
+
+The glycoprotein-keyword exclusion is kept as a second line of defence, never as
+the primary argument.
+
+### Tier 3 — absence of annotation: the eukaryotic secretory set
+
+The weakest claim, and the reason it is labelled honestly.
+
+| | |
+|---|---|
+| Inclusion | `taxonomy_id:2759`, `database:pdb`, and secreted **or** transmembrane **or** signal peptide (`KW-0964`, `KW-0812`, `KW-0732`) |
+| Exclusion | glycoprotein `KW-0325` |
+| Why no glycan | **nobody has recorded one** |
+
+That is the whole argument. There is no mechanistic reason these sequons cannot
+be glycosylated — they are in the right compartment, in the right kind of
+organism, on the right kind of protein. The only thing standing behind the
+negative label is that UniProt has no glycoprotein keyword for the entry.
+
+Two things partially defend it:
+
+- **A cross-check against our own layers.** Every one of the 4,418 sequons was
+  tested against the 922 occupied sites, the GlyGen evidence table and the
+  structural glycan linkages. Zero hits. So the negative label does not rest on
+  a single source agreeing with itself.
+- **The direction of the error.** Contamination makes the groups more alike, so
+  it pulls any difference towards zero.
+
+Neither makes it a clean negative, and it should never be described as one.
+
+### Summary
+
+| Set | Evidence for "no glycan" | Strength | Sequons |
+|---|---|---|---|
+| Internal controls | observed bare, in a structure that shows glycans elsewhere | strongest | 32 |
+| Cytosolic eukaryotic | compartment makes contact with OST impossible | strong, confounded | 19,337 |
+| Bacterial extracytoplasmic | clade has no glycosylation machinery | strong, confounded | 5,865 |
+| Eukaryotic secretory | no annotation exists | weakest, unconfounded | 4,418 |
+
+The trade runs diagonally: the sets with the firmest negative label are the ones
+whose populations differ most from the occupied sites, and the set that matches
+the occupied sites best has the least defensible label. No set is best on both
+axes, which is why more than one is reported.
+
 ## Set 1 — cytosolic eukaryotic
 
 Proteins localised to the cytosol, with no signal peptide and no transmembrane region.
