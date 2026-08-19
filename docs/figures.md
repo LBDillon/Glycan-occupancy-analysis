@@ -81,8 +81,8 @@ fifth keeps it 30% of the time. It rises smoothly all the way across.
 
 **The point:** the abstract number we measure and the concrete thing the model
 does are two views of the same quantity. This matters because it links this
-analysis to the preprint, which was about generated sequences rather than
-internal probabilities.
+analysis to the earlier scoping analysis, which looked at generated sequences
+rather than internal probabilities.
 
 ---
 
@@ -97,8 +97,8 @@ first bar is far taller than it looks.
 Over 80% of sites lose the sequon in **every single design**. Only 50 sites, about
 2%, keep it every time.
 
-**The point:** this replicates the preprint's central finding at the level of
-individual sites. If you hand a glycoprotein to ProteinMPNN and ask it to
+**The point:** this confirms, at the level of individual sites and at scale, what
+the earlier scoping analysis suggested from a handful of proteins. If you hand a glycoprotein to ProteinMPNN and ask it to
 redesign the surface, you should expect the glycosylation sites to disappear.
 Nothing in the model's training told it they mattered.
 

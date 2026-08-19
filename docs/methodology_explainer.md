@@ -11,8 +11,9 @@ what was corrected along the way.*
 Protein design models such as ProteinMPNN are used to redesign real proteins,
 many of which are glycosylated. The models are trained on structures stripped of
 glycans, so a natural worry is that they treat a glycosylation site as an
-ordinary patch of surface and quietly remove it. The preprint established that
-they frequently do remove natural sequons.
+ordinary patch of surface and quietly remove it. An earlier scoping analysis on
+a handful of proteins suggested they frequently do remove natural sequons; this
+module is what tests that properly.
 
 That leaves a sharper question. When ProteinMPNN keeps or destroys an N-X-S/T
 motif, is it responding to anything biological? Specifically: does it treat a
@@ -200,7 +201,7 @@ much the old answer had depended on its seed. This is the piece that changed the
 conclusion most.
 
 **Design retention**, because probability and behaviour are different things, and
-the preprint's finding is about behaviour. It also provides the bridge: if the
+the earlier scoping analysis was about behaviour. It also provides the bridge: if the
 conditional score predicts retention, the two analyses describe one underlying
 quantity.
 
@@ -240,8 +241,8 @@ quintile retain their sequon in 0% of designs, the highest in 30%. The score
 measures something real about what the model will do.
 
 **Retention itself is stark.** **81.6%** of sites lose the sequon in every one of
-32 designs; overall retention 0.072. The preprint's finding replicates at site
-level, and its 8-design condition proves unbiased — mean 0.0722 against 0.0721 at
+32 designs; overall retention 0.072. The scoping analysis's impression holds up at
+site level and at scale, and its 8-design setting proves unbiased — mean 0.0722 against 0.0721 at
 32 designs, correlating 0.98. It was noisier per site, not wrong.
 
 These figures are from the completed sweep. An earlier interim pass at 57%

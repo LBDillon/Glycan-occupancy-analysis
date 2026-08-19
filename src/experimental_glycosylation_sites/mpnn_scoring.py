@@ -44,8 +44,8 @@ import numpy as np
 ALPHABET = "ARNDCQEGHILKMFPSTWYVX"
 AA_INDEX = {aa: i for i, aa in enumerate(ALPHABET)}
 
-# The checkpoint used by the preprint, so the conditional scores and the later
-# design-retention analysis describe the same model.
+# The checkpoint used by the earlier scoping analysis, so the conditional scores
+# and the design-retention analysis describe the same model.
 DEFAULT_MODEL = "v_48_020"
 DEFAULT_DECODING_ORDERS = 8
 

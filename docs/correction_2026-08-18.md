@@ -104,7 +104,7 @@ different route: an undecodable residue keeps its native identity in every
 generated design, so it appears preserved without the model ever having a choice.
 Excluding those sites, retention still tracks the conditional score closely
 (Spearman +0.547 over 2,423 sites, rising monotonically across score quintiles), which is the
-bridge to the preprint. It is reported separately and forms no part of the
+bridge to the earlier scoping analysis. It is reported separately and forms no part of the
 primary conclusion.
 
 ## What this round does not settle

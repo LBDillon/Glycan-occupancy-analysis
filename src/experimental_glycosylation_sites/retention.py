@@ -21,16 +21,19 @@ import pandas as pd
 
 from .mpnn_scoring import ALPHABET, _prepare_environment
 
-# The preprint's generation settings, recovered from its repository history, so
-# retention here is comparable with the behaviour it reports.
-PREPRINT_CONDITION = {"name": "preprint", "temperature": 0.1, "n_designs": 8}
+# The generation settings used by the earlier scoping analysis - a quick baseline
+# run over a handful of proteins, not a published preprint - recovered from its
+# repository history so retention here is comparable with what it saw. The key
+# name is kept as "preprint" only because it is already written into result files.
+SCOPING_CONDITION = {"name": "preprint", "temperature": 0.1, "n_designs": 8}
+PREPRINT_CONDITION = SCOPING_CONDITION  # backwards-compatible alias
 
 # Eight designs give a per-site retention estimate with a standard error near
 # 0.18 at p=0.5 — far too coarse for a site-level analysis. The standardised
-# condition keeps the preprint's temperature and raises only the sample count, to
+# condition keeps that temperature and raises only the sample count, to
 # 32, which brings that standard error to about 0.09 at a cost the full corpus
 # can absorb. Designs are independent draws, so the first eight of a 32-design
-# run are themselves a valid preprint-condition sample and are reported as such
+# run are themselves a valid scoping-condition sample and are reported as such
 # rather than generated separately.
 STANDARD_CONDITION = {"name": "standard", "temperature": 0.1, "n_designs": 32}
 
