@@ -35,12 +35,15 @@ PAIRS = Path(f"results/matched_pairs_{LABEL}.csv")
 # primary comparison would make an analysis of 16 dataset pairs depend on files
 # it never reads, so a stale control file could silently move a result that does
 # not involve controls at all.
-NEEDS_CONTROL_POOL = LABEL in ("bacterial", "cytosolic")
+NEEDS_CONTROL_POOL = LABEL in ("bacterial", "cytosolic", "secretory")
 
-ROLE = {"optimal": "PRIMARY", "greedy_seed0": "sensitivity (greedy, seed 0)",
+ROLE = {"optimal": "PRIMARY (internal controls, annotated absence)",
+        "greedy_seed0": "sensitivity (greedy, seed 0)",
         "k5": "sensitivity (greedy, k=5)",
         "bacterial": "DIAGNOSTIC (bacterial extracytoplasmic)",
-        "cytosolic": "DIAGNOSTIC (cytosolic eukaryotic)"}.get(LABEL, LABEL)
+        "cytosolic": "DIAGNOSTIC (cytosolic eukaryotic)",
+        "secretory": "PARALLEL (eukaryotic secretory, unannotated absence)",
+        }.get(LABEL, LABEL)
 
 
 def load(manifest_path, score_path):
@@ -58,8 +61,10 @@ def load(manifest_path, score_path):
 
 
 dataset = load("results/candidate_manifest_dataset.csv", "results/scores_dataset.csv")
-controls = (load("results/manifest_matched_controls.csv", "results/scores_controls.csv")
-            if NEEDS_CONTROL_POOL else pd.DataFrame())
+CONTROL_SOURCE = {
+    "secretory": ("results/manifest_matched_secretory.csv", "results/scores_secretory.csv"),
+}.get(LABEL, ("results/manifest_matched_controls.csv", "results/scores_controls.csv"))
+controls = load(*CONTROL_SOURCE) if NEEDS_CONTROL_POOL else pd.DataFrame()
 site = pd.concat([dataset, controls], ignore_index=True) if len(controls) else dataset.copy()
 if "ortholog_clusters" not in site.columns:
     site["ortholog_clusters"] = pd.NA

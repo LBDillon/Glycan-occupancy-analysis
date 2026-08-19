@@ -30,11 +30,19 @@ across all of them.
 | Structural internal controls (the 32) | organism, compartment, experiment | very small; structurally biased | 32 |
 | Cytosolic eukaryotic | taxonomy, curation depth | subcellular compartment | 19,337 |
 | Bacterial extracytoplasmic | compartment, membrane translocation | taxonomy, fold repertoire | 5,865 |
+| Eukaryotic secretory, unannotated | taxonomy **and** compartment | the negative label itself | 4,418 |
 
-Read them together. If a model separates occupied sites from the cytosolic set but not
-from the 32, it has learned where proteins live. If it separates them from the bacterial
-set but not from the cytosolic set, it has learned taxonomy. **The gap between the
-comparisons is the measurement**, not any single comparison.
+The first three were designed to be read together: their confounds do not overlap, so
+if a model separates occupied sites from the cytosolic set but not the 32 it has learned
+where proteins live, and if it separates them from the bacterial set but not the
+cytosolic set it has learned taxonomy.
+
+That triangulation was undermined in practice — corrected scores put the three
+comparisons in three different directions with no interpretable ordering, so the gap
+between them stopped being a measurement. Set 3 takes a different route: rather than
+combining two confounded sets, it removes both confounds at once and accepts a weaker
+negative label in exchange. It is the comparison to read first, with its contamination
+caveat attached.
 
 ## Set 1 — cytosolic eukaryotic
 
@@ -85,6 +93,54 @@ excluded by **known machinery**:
 | *Kingella* | HMW1C homologue |
 
 The annotation filter is kept as a second line of defence, not as the primary one.
+
+## Set 3 — eukaryotic secretory, unannotated
+
+Added 2026-08-19, after the internal-control class was ruled out as a growth
+route. This set makes the opposite trade from the other two, and it is the
+reason it exists.
+
+Sets 1 and 2 each hold the negative label firmly — these proteins genuinely
+cannot be N-glycosylated — and pay for it with a confound: compartment for the
+cytosolic set, taxonomy for the bacterial one. Set 3 removes **both** confounds
+by taking eukaryotic secreted and membrane proteins, the same kind of protein in
+the same kind of cell as the occupied sites, and pays for it in the label
+instead. These sequons are *not annotated* as glycosylated, which is not the same
+as being *annotated unglycosylated*.
+
+**Query:** reviewed, `taxonomy_id:2759`, `database:pdb`, secreted or
+transmembrane or signal-peptide (`KW-0964`, `KW-0812`, `KW-0732`), and NOT
+`KW-0325` (Glycoprotein).
+
+**Scale:** 3,619 proteins, 4,418 sequons in 1,543 of them, one deposited
+structure fetched per protein. Human-dominated (912 human, 283 mouse), which
+matches the occupied set's taxonomy closely.
+
+**Purity:** zero overlap with any of this project's own positive evidence — the
+922 occupied sites, GlyGen, and structural glycan linkages all return nothing.
+The UniProt keyword exclusion is doing real work rather than deferring to a
+source we already used.
+
+### The contamination, stated up front
+
+About **half** of all eukaryotic secretory proteins with a solved structure carry
+a glycoprotein keyword (4,067 against 3,619). So the unannotated half certainly
+contains genuine glycosylation sites that nobody has recorded. This set has false
+negatives by construction and there is no way to remove them without the
+annotation that is missing by definition.
+
+What saves it is the *direction* of the error. False negatives make the two
+groups more alike, so they pull any measured difference **towards zero**. That
+cuts two ways and the asymmetry matters:
+
+- The set can support **"no difference detected"** well, because dilution is
+  working against finding a difference and one still was not found.
+- The set could **not** be used to argue a positive finding away, and equally, a
+  positive difference here would be *more* striking than it looks, since it
+  survived dilution rather than being created by it.
+
+This should be decided before the result is seen, and it is recorded here for
+that reason.
 
 ## A second use, independent of the modelling
 

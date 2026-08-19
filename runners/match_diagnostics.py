@@ -15,25 +15,42 @@ from pathlib import Path
 sys.path.insert(0, "src")
 from experimental_glycosylation_sites.matching import (
     DEFAULT_CALIPER, DEFAULT_EXACT, MATCH_FEATURES,
-    balance_report, match_controls, weighted_balance_report)
+    balance_report, match_controls_optimal, weighted_balance_report)
 
-K, SEED = 1, 0
+SEED = 0
 data = pd.read_csv("results/candidate_manifest_dataset.csv", low_memory=False)
-ctrl = pd.read_csv("results/candidate_manifest_controls.csv", low_memory=False)
 cases = data[data.scoreable.astype(bool)
              & (data.occupancy_status == "occupied_supported")].copy()
 
-for label, status in (("bacterial", "control_bacterial_extracytoplasmic"),
-                      ("cytosolic", "control_cytosolic_eukaryotic")):
+POOLS = {
+    "bacterial": ("results/candidate_manifest_controls.csv",
+                  "control_bacterial_extracytoplasmic"),
+    "cytosolic": ("results/candidate_manifest_controls.csv",
+                  "control_cytosolic_eukaryotic"),
+    "secretory": ("results/candidate_manifest_secretory.csv",
+                  "control_secretory_eukaryotic_unannotated"),
+}
+
+for label, (source, status) in POOLS.items():
+    if not Path(source).exists():
+        print(f"\n--- {label}: {source} not built yet, skipping ---")
+        continue
+    ctrl = pd.read_csv(source, low_memory=False)
     pool = ctrl[ctrl.scoreable.astype(bool) & (ctrl.occupancy_status == status)].copy()
-    pairs = match_controls(cases, pool, features=MATCH_FEATURES, k=K,
-                           caliper=DEFAULT_CALIPER, seed=SEED, exact=DEFAULT_EXACT)
+    if pool.empty:
+        print(f"\n--- {label}: no scoreable sites with status {status}, skipping ---")
+        continue
+    # Deterministic, matching the primary comparison (Amendment 2).
+    pairs = match_controls_optimal(cases, pool, features=MATCH_FEATURES,
+                                   caliper=DEFAULT_CALIPER, exact=DEFAULT_EXACT)
     pairs["comparison"] = f"vs_{label}_control"
     pairs.to_csv(f"results/matched_pairs_{label}.csv", index=False)
 
     report = {"comparison": f"vs_{label}_control", "status": "diagnostic only",
               "matching": {"features": list(MATCH_FEATURES), "exact": list(DEFAULT_EXACT),
-                           "k": K, "caliper": DEFAULT_CALIPER, "seed": SEED},
+                           "algorithm": "maximum-cardinality, minimum-total-distance",
+                           "deterministic": True, "k": 1,
+                           "caliper": DEFAULT_CALIPER},
               "unweighted": balance_report(cases, pool, pairs),
               "weighted": weighted_balance_report(cases, pool, pairs)}
     Path(f"results/matching_balance_{label}.json").write_text(json.dumps(report, indent=2))

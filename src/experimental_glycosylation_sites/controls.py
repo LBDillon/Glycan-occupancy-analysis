@@ -67,6 +67,30 @@ CONTROL_SETS: dict[str, dict] = {
             "positives on taxonomy; differs in compartment."
         ),
     },
+    "secretory_eukaryotic_unannotated": {
+        # The trade the other two sets do not make: this one matches the occupied
+        # sites on BOTH taxonomy and compartment, and pays for it by weakening the
+        # negative label from "cannot be glycosylated" to "not annotated as
+        # glycosylated". Absence of annotation is not absence of glycan, so this
+        # set certainly contains false negatives - about half of all eukaryotic
+        # secretory proteins with structures carry a glycoprotein keyword, so the
+        # unannotated half is not clean. Those false negatives dilute towards the
+        # null, which is the conservative direction when the expected answer is
+        # "no difference", and that has to be stated whenever the set is used.
+        "query": (
+            "reviewed:true AND taxonomy_id:2759 AND database:pdb "
+            "AND (keyword:KW-0964 OR keyword:KW-0812 OR keyword:KW-0732) "
+            "AND NOT keyword:KW-0325"
+        ),
+        "rationale": (
+            "Eukaryotic secreted or membrane proteins with a solved structure and "
+            "no glycoprotein annotation. Matches the positives on taxonomy AND "
+            "compartment - no confound by construction - at the cost of a weaker "
+            "negative label. Complements the other two sets, which invert that "
+            "trade."
+        ),
+        "evidence_basis": "absence of annotation, not annotated absence",
+    },
     "bacterial_extracytoplasmic": {
         "query": (
             "reviewed:true AND taxonomy_id:2 AND database:pdb "

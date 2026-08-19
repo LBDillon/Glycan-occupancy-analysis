@@ -6,7 +6,7 @@ unscoreable sites into matched sets and removes them afterwards, which quietly
 unbalances the sets that matching had just balanced. This runner takes the
 whole candidate pool instead and knows nothing about matching.
 
-Usage:  build_candidate_manifest.py [dataset|controls]
+Usage:  build_candidate_manifest.py [dataset|controls|secretory]
 """
 import csv, gzip, sys
 import pandas as pd
@@ -22,8 +22,11 @@ with gzip.open("../../data/raw/uniprot/uniprot_reviewed_glycoproteins_2026-04-27
                "rt", encoding="utf-8", newline="") as fh:
     for row in csv.DictReader(fh, delimiter="\t"):
         seqs[row["Entry"]] = row.get("Sequence", "")
-ctrl = pd.read_csv("data/cache/negative_control_proteins.csv.gz", low_memory=False)
-seqs.update(dict(zip(ctrl.Entry, ctrl.Sequence.fillna(""))))
+for cache in ("data/cache/negative_control_proteins.csv.gz",
+              "data/cache/secretory_unannotated_proteins.csv.gz"):
+    if Path(cache).exists():
+        ctrl = pd.read_csv(cache, low_memory=False)
+        seqs.update(dict(zip(ctrl.Entry, ctrl.Sequence.fillna(""))))
 
 paths = {}
 for directory in ("data/cache/pdb",
@@ -43,6 +46,10 @@ if WHICH == "dataset":
                     .agg(lambda s: ";".join(sorted({str(x) for x in s if pd.notna(x)})[:3]))
                     .rename("ortholog_clusters").reset_index())
     rows = rows.merge(cluster, on=["accession", "position"], how="left")
+elif WHICH == "secretory":
+    rows = pd.read_csv("results/secretory_unannotated_features.csv", low_memory=False)
+    rows = rows[rows.features_available].copy()
+    rows["ortholog_clusters"] = pd.NA
 else:
     rows = pd.read_csv("results/negative_control_features.csv", low_memory=False)
     rows = rows[rows.features_available].copy()

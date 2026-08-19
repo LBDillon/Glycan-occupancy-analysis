@@ -1,4 +1,4 @@
-# The six figures, in plain language
+# The seven figures, in plain language
 
 Each one answers a single question. Regenerate them all with
 `python runners/summary_figures.py`.
@@ -127,14 +127,45 @@ that is not a genuine probability distribution.
 
 ---
 
-## What the six say together
+## Figure 7 — Occupied and unoccupied sequons are destroyed equally
+
+![retention by class](../results/figures/fig7_retention_by_class.png)
+
+**What it shows:** how often ProteinMPNN keeps the sequon, split by whether the
+site is a real glycosylation site or a control. Error bars are bootstrapped over
+whole proteins rather than sites, because several sequons on one protein share
+one set of designs and are not independent.
+
+Occupied sites keep the sequon 8.0% of the time. Bacterial controls, 7.7%.
+Cytosolic controls, 6.6%. The intervals overlap almost completely.
+
+**The point:** this is the clearest result in the project and the best powered —
+around a thousand sites per control group, against sixteen matched pairs for the
+primary comparison. Whether a sequon actually carries a glycan makes no
+detectable difference to how often the model destroys it.
+
+The internal-control bar sits much lower, but on 21 sites, and its interval runs
+nearly to the others. Nothing should be read into it.
+
+---
+
+## What the seven say together
 
 The dataset is sound and the measurement works — Figure 4 shows the score tracks
 real model behaviour, and Figure 5 shows the behaviour is dramatic and worth
 studying.
 
-The answer to the actual question is weak. Occupied sites do tend to score higher
-(Figures 2 and 3), and that direction survives everything we threw at it. But 16
-pairs cannot make it precise, and Figure 1 explains exactly why there are only 16.
+**Figure 7 is the strongest answer we have**, and it is a null: at n≈1,000 per
+group, the model removes real glycosylation sequons exactly as readily as
+sequons that merely match the motif.
+
+The probability-based comparison is weaker. Occupied sites do tend to score
+higher (Figures 2 and 3), and that direction survives everything we threw at it,
+but 16 pairs cannot make it precise — and Figure 1 explains why there are only 16.
+
+Note the two branches are not in conflict. A small preference in conditional
+probability can coexist with no difference in what actually gets generated,
+because generation combines hundreds of decisions and a small bias at one
+position is easily swamped.
 
 Figure 6 is the reason to trust the current numbers more than the earlier ones.

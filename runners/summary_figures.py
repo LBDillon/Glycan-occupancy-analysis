@@ -169,3 +169,60 @@ save(fig, "fig6_scorer_defect.png",
      "zeros that exponentiates to twenty-one ones, giving P(N)=1 and P(S)+P(T)=2. Only 4% of "
      "sites were affected, but they inflated the reference SD from 1.33 to 2.62 — every "
      "standardised effect was divided by that number, and the first result had the wrong sign.")
+
+# ------------------------------------------------- 7. retention by class
+# The best-powered comparison in the project, and it had no figure. Uncertainty
+# is bootstrapped over PROTEINS, not sites: several sequons on one protein share
+# a structure and a set of designs, so treating them as independent would make
+# every interval far too narrow.
+man_all = pd.read_csv("results/scoring_manifest.csv", low_memory=False).drop_duplicates(KEY)
+for k in KEY:
+    man_all[k] = man_all[k].astype(str)
+by_class = (ret.merge(man_all[KEY + ["occupancy_status"]], on=KEY, how="left")
+               .dropna(subset=["occupancy_status"]))
+
+ORDER = [("occupied_supported", "occupied\n(experimental glycan)", OCC),
+         ("control_bacterial_extracytoplasmic", "bacterial\ncontrol", MUTE),
+         ("control_cytosolic_eukaryotic", "cytosolic\ncontrol", MUTE),
+         ("observed_unmodified", "internal\ncontrol", CTL)]
+
+def protein_bootstrap(frame, n_boot=4000, seed=11):
+    """Resample whole proteins; a protein's sequons share one set of designs."""
+    rng = np.random.default_rng(seed)
+    groups = [g[FULL].to_numpy() for _, g in frame.groupby("accession")]
+    if len(groups) < 2:
+        return np.nan, np.nan
+    draws = np.empty(n_boot)
+    for i in range(n_boot):
+        pick = rng.integers(0, len(groups), len(groups))
+        draws[i] = np.concatenate([groups[j] for j in pick]).mean()
+    return np.percentile(draws, [2.5, 97.5])
+
+fig, ax = plt.subplots(figsize=(7.6, 3.8))
+tick_labels = []
+for i, (key, label, colour) in enumerate(ORDER):
+    grp = by_class[by_class.occupancy_status == key]
+    if grp.empty:
+        continue
+    mean = grp[FULL].mean()
+    lo, hi = protein_bootstrap(grp)
+    ax.bar(i, mean, color=colour, width=0.6)
+    if np.isfinite(lo):
+        ax.errorbar(i, mean, yerr=[[mean - lo], [hi - mean]], fmt="none",
+                    ecolor=INK, capsize=5, lw=1.4)
+    ax.text(i, (hi if np.isfinite(hi) else mean) + 0.004,
+            f"{mean:.3f}", ha="center", fontsize=9.5)
+    tick_labels.append(f"{label}\nn={len(grp):,}")
+
+ax.set_xticks(range(len(tick_labels))); ax.set_xticklabels(tick_labels, fontsize=9)
+ax.set_ylabel("fraction of 32 designs keeping the sequon")
+ax.set_ylim(0, max(by_class.groupby("occupancy_status")[FULL].mean()) * 1.9)
+ax.set_title("Occupied sequons are destroyed at the same rate as unoccupied ones")
+save(fig, "fig7_retention_by_class.png",
+     "Mean per-site retention by class, with 95% intervals bootstrapped over proteins "
+     "rather than sites. Occupied sites and the two large control sets are "
+     "indistinguishable: whether a sequon actually carries a glycan makes no difference "
+     "to how often ProteinMPNN removes it. This is the best-powered comparison in the "
+     "project - roughly a thousand sites per control group against sixteen matched pairs "
+     "for the primary analysis - and it points the same way. The internal-control bar is "
+     "lower but rests on 21 sites.")
