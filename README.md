@@ -246,6 +246,7 @@ isinstance(a, SequonScorer), isinstance(a, SequenceDesigner)   # (True, True)
 | [`docs/correction_2026-08-20_alphabet.md`](docs/correction_2026-08-20_alphabet.md) | **the alphabet defect — read before quoting any ProteinMPNN number** |
 | [`docs/second_model_esm_if.md`](docs/second_model_esm_if.md) | ESM-IF: what its conditional is, the index mapping, how to run it |
 | [`docs/third_model_esmc.md`](docs/third_model_esmc.md) | ESMC: sequence-only baseline, the two masking schemes, the environment split |
+| [`docs/adding_models_explainer.md`](docs/adding_models_explainer.md) | **how the benchmark went from one model to three, and what went wrong on the way** |
 | `config/scoring_frozen.toml` | the frozen configuration and both amendments |
 
 ---
