@@ -10,11 +10,14 @@ This is the better-powered half of the project. The conditional score asks what
 probability the model holds at a site; this asks what it actually writes. Both
 are reported, and they should be read together.
 """
-import json, sys
+import argparse, json, sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, "src")
+from experimental_glycosylation_sites import analysis_paths as paths
 
 KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
 FULL = "std_frac_full_sequon_retained"
@@ -28,10 +31,12 @@ CLASSES = [
     ("control_cytosolic_eukaryotic", "cytosolic control"),
 ]
 
-SOURCES = [
-    ("results/designs/mpnn_retention_frozen_2026-08-18.csv", "results/manifests/scoring_manifest.csv"),
-    ("results/designs/mpnn_retention_secretory.csv", "results/manifests/manifest_matched_secretory.csv"),
-]
+_parser = argparse.ArgumentParser(description=__doc__)
+paths.add_variant_argument(_parser)
+VARIANT = _parser.parse_args().variant
+
+SOURCES = paths.retention_sources(VARIANT)
+print(f"variant: {VARIANT or '(legacy)'}")
 
 frames = []
 for retention_path, manifest_path in SOURCES:
@@ -106,5 +111,5 @@ Path("results/analysis/retention_by_class.json").write_text(json.dumps({
     "excluded": "sites ProteinMPNN cannot decode",
     "classes": summary,
 }, indent=2))
-data.to_csv("results/designs/retention_all_classes.csv", index=False)
+data.to_csv(str(paths.retention_all_classes(VARIANT)), index=False)
 print("\nwrote results/analysis/retention_by_class.json and results/designs/retention_all_classes.csv")

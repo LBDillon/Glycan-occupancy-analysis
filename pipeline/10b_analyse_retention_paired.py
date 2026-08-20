@@ -11,7 +11,7 @@ Retention remains a secondary, descriptive outcome. It has no pre-specified
 equivalence margin, and this analysis was not pre-registered — it was run after
 the eukaryotic secretory set was added. Read it as a lead, not a conclusion.
 """
-import json, sys
+import argparse, json, sys
 from pathlib import Path
 
 import numpy as np
@@ -19,6 +19,7 @@ import pandas as pd
 from scipy import stats as st
 
 sys.path.insert(0, "src")
+from experimental_glycosylation_sites import analysis_paths as paths
 from experimental_glycosylation_sites.contrasts import assign_resample_units, cluster_bootstrap
 
 FULL = "std_frac_full_sequon_retained"
@@ -31,7 +32,16 @@ COMPARISONS = [
     ("cytosolic", "results/matching/matched_pairs_cytosolic.csv"),
 ]
 
-ret = pd.read_csv("results/designs/retention_all_classes.csv", low_memory=False)
+_parser = argparse.ArgumentParser(description=__doc__)
+paths.add_variant_argument(_parser)
+VARIANT = _parser.parse_args().variant
+print(f"variant: {VARIANT or '(legacy)'}")
+
+_source = paths.retention_all_classes(VARIANT)
+if not _source.exists():
+    raise SystemExit(f"{_source} not found -- run 10_analyse_retention_by_class.py "
+                     f"with the same --variant first.")
+ret = pd.read_csv(_source, low_memory=False)
 ret["accession"] = ret.accession.astype(str)
 ret["position"] = ret.position.astype(int)
 # A site can appear under more than one structure; keep one retention value each.
@@ -91,12 +101,12 @@ for label, path in COMPARISONS:
         "wilcoxon_p": round(wilcoxon, 4),
         "n_resampling_units": int(frame.resample_unit.nunique()),
     }
-    frame.to_csv(f"results/analysis/retention_paired_{label.split()[0]}.csv", index=False)
+    frame.to_csv(paths.retention_paired(label.split()[0], VARIANT), index=False)
 
-Path("results/analysis/retention_paired.json").write_text(json.dumps({
+paths.retention_paired_json(VARIANT).write_text(json.dumps({
     "status": "secondary and descriptive; no pre-specified margin; not pre-registered",
     "unit": "one occupied site, against the control matched to it",
     "bootstrap": "connected components of ortholog clusters and shared control proteins",
     "comparisons": summary,
 }, indent=2))
-print("\nwrote results/analysis/retention_paired.json")
+print(f"\nwrote {paths.retention_paired_json(VARIANT)}")

@@ -20,26 +20,40 @@ the conditional score the pre-specified inference is an equivalence assessment
 against a ±0.2 SD margin, which a p-value cannot deliver. A small p there means
 "not identical", not "meaningfully different".
 """
-import json
+import argparse, json, sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from scipy import stats as st
 
+sys.path.insert(0, "src")
+from experimental_glycosylation_sites import analysis_paths as paths
+
 N_PERM, SEED = 20000, 20260819
 MARGIN_SD = 0.2
 
-SCORE = [("internal control", "results/analysis/contrasts_optimal.csv"),
-         ("eukaryotic secretory", "results/analysis/contrasts_secretory.csv"),
-         ("bacterial", "results/analysis/contrasts_bacterial.csv"),
-         ("cytosolic", "results/analysis/contrasts_cytosolic.csv")]
-RETENTION = [("internal control", "results/analysis/retention_paired_internal.csv"),
-             ("eukaryotic secretory", "results/analysis/retention_paired_eukaryotic.csv"),
-             ("bacterial", "results/analysis/retention_paired_bacterial.csv"),
-             ("cytosolic", "results/analysis/retention_paired_cytosolic.csv")]
+_parser = argparse.ArgumentParser(description=__doc__)
+paths.add_variant_argument(_parser)
+VARIANT = _parser.parse_args().variant
 
-dataset = pd.read_csv("results/scores/scores_dataset.csv", low_memory=False)
+# The label a comparison carries in the score tables, and the stem 10b writes
+# its paired retention under. Kept side by side so the two outcomes cannot drift
+# apart silently.
+COMPARISONS = [("internal control", "optimal", "internal"),
+               ("eukaryotic secretory", "secretory", "eukaryotic"),
+               ("bacterial", "bacterial", "bacterial"),
+               ("cytosolic", "cytosolic", "cytosolic")]
+
+SCORE = [(label, paths.contrasts(key, VARIANT)) for label, key, _ in COMPARISONS]
+RETENTION = [(label, paths.retention_paired(stem, VARIANT))
+             for label, _, stem in COMPARISONS]
+
+_dataset_scores = paths.scores("dataset", VARIANT)
+if not _dataset_scores.exists():
+    raise SystemExit(f"{_dataset_scores} not found -- pass --variant to name the run.")
+print(f"variant: {VARIANT or '(legacy)'}  [{paths.describe_source(_dataset_scores)}]")
+dataset = pd.read_csv(_dataset_scores, low_memory=False)
 REFERENCE_SD = float(dataset.conditional_sequon_score.std(ddof=1))
 
 
@@ -106,7 +120,7 @@ for outcome, table in (("conditional score", SCORE), ("design retention", RETENT
 results = pd.DataFrame(rows)
 results["p_holm"] = holm(results.p_permutation.to_numpy())
 results["p_bh"] = benjamini_hochberg(results.p_permutation.to_numpy())
-results.to_csv("results/analysis/significance.csv", index=False)
+results.to_csv(paths.significance(VARIANT), index=False)
 
 print(f"cluster-level sign-flip permutation, {N_PERM:,} draws, {len(results)} tests\n")
 for outcome in results.outcome.unique():
@@ -125,12 +139,12 @@ print("equivalence assessment (conditional score only; the pre-specified inferen
 for label, path in SCORE:
     key = {"internal control": "optimal", "eukaryotic secretory": "secretory",
            "bacterial": "bacterial", "cytosolic": "cytosolic"}[label]
-    js = Path(f"results/analysis/analysis_{key}.json")
+    js = paths.analysis_json(key, VARIANT)
     if js.exists():
         d = json.loads(js.read_text())
         lo, hi = d["ci95_sd"]
         print(f"  {label:22s} [{lo:+.3f}, {hi:+.3f}] SD vs margin +/-{MARGIN_SD}  ->  {d['verdict']}")
 
-Path("results/analysis/significance.json").write_text(
+paths.significance(VARIANT, "json").write_text(
     results.to_json(orient="records", indent=2))
-print("\nwrote results/analysis/significance.csv and results/analysis/significance.json")
+print(f"\nwrote {paths.significance(VARIANT)} and {paths.significance(VARIANT, 'json')}")

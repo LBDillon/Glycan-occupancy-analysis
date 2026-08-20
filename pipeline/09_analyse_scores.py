@@ -13,7 +13,7 @@ Contrast construction, the resampling unit and the bootstrap live in
 `experimental_glycosylation_sites.contrasts`, shared with the matching
 sensitivity sweep so the two cannot compute their intervals differently.
 """
-import json, sys
+import argparse, json, sys
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +21,7 @@ import pandas as pd
 from scipy import stats as st
 
 sys.path.insert(0, "src")
+from experimental_glycosylation_sites import analysis_paths as paths
 from experimental_glycosylation_sites.contrasts import (
     build_contrasts, classify, cluster_bootstrap)
 
@@ -28,7 +29,15 @@ MARGIN_SD = 0.2                  # frozen, exploratory
 N_BOOT, BOOT_SEED = 10000, 20260818
 KEY = ["accession", "position"]
 
-LABEL = sys.argv[1] if len(sys.argv) > 1 else "optimal"
+_parser = argparse.ArgumentParser(description=__doc__)
+_parser.add_argument("label", nargs="?", default="optimal")
+paths.add_variant_argument(_parser)
+_args = _parser.parse_args()
+LABEL, VARIANT = _args.label, _args.variant
+
+# Matching is model-independent -- it is built from RSA, neighbour counts and
+# hydrophobic fraction, never from model output -- so the pairs are shared by
+# every variant and carry no suffix.
 PAIRS = Path(f"results/matching/matched_pairs_{LABEL}.csv")
 
 # Only the diagnostics draw on the external control pool. Loading it for the
@@ -60,10 +69,20 @@ def load(manifest_path, score_path):
         on=KEY, how="inner")
 
 
-dataset = load("results/manifests/candidate_manifest_dataset.csv", "results/scores/scores_dataset.csv")
+DATASET_SCORES = paths.scores("dataset", VARIANT)
+if not DATASET_SCORES.exists():
+    raise SystemExit(
+        f"{DATASET_SCORES} not found.\n"
+        "Pass --variant to name the run you mean (e.g. --variant alphabet_corrected, "
+        "--variant esm_if). Reading the wrong score file is silent, so this stage "
+        "refuses to guess.")
+
+dataset = load("results/manifests/candidate_manifest_dataset.csv", DATASET_SCORES)
 CONTROL_SOURCE = {
-    "secretory": ("results/manifests/manifest_matched_secretory.csv", "results/scores/scores_secretory.csv"),
-}.get(LABEL, ("results/manifests/manifest_matched_controls.csv", "results/scores/scores_controls.csv"))
+    "secretory": ("results/manifests/manifest_matched_secretory.csv",
+                  paths.scores("secretory", VARIANT)),
+}.get(LABEL, ("results/manifests/manifest_matched_controls.csv",
+              paths.scores("controls", VARIANT)))
 controls = load(*CONTROL_SOURCE) if NEEDS_CONTROL_POOL else pd.DataFrame()
 site = pd.concat([dataset, controls], ignore_index=True) if len(controls) else dataset.copy()
 if "ortholog_clusters" not in site.columns:
@@ -80,7 +99,9 @@ reference_population = (
     f"{int((dataset.occupancy_status == 'observed_unmodified').sum())} internal control); "
     "labels not consulted; control sites excluded by construction")
 
+SOURCE = paths.describe_source(DATASET_SCORES)
 print(f"comparison                     : {LABEL}  [{ROLE}]")
+print(f"variant / model                : {VARIANT or '(legacy)'}  [{SOURCE}]")
 print(f"reference population           : {reference_population}")
 if len(controls):
     print(f"matched control sites loaded   : {len(controls)}")
@@ -89,7 +110,8 @@ print(f"equivalence margin (+/-0.2 SD) : +/-{margin_raw:.4f} log-odds\n")
 
 pairs = pd.read_csv(PAIRS, low_memory=False)
 contrasts = build_contrasts(pairs, site)
-contrasts.to_csv(f"results/analysis/contrasts_{LABEL}.csv", index=False)
+paths.contrasts(LABEL, VARIANT).parent.mkdir(parents=True, exist_ok=True)
+contrasts.to_csv(paths.contrasts(LABEL, VARIANT), index=False)
 
 reuse = contrasts.control_proteins.str.split(";").explode().value_counts()
 print(f"contrasts {len(contrasts)}   occupied proteins {contrasts.case_accession.nunique()}   "
@@ -149,11 +171,12 @@ for name, stats in by_subtype.items():
     print(f"  {name}  n={stats['n']:2d}  {stats['mean']:+.4f} log-odds "
           f"({stats['mean_sd_units']:+.3f} SD)")
 
-Path(f"results/analysis/analysis_{LABEL}.json").write_text(json.dumps({
+paths.analysis_json(LABEL, VARIANT).write_text(json.dumps({
     "comparison": LABEL, "role": ROLE,
-    "question": "Does ProteinMPNN score occupied sequons higher than matched "
-                "sequons with no modelled glycan, given the native backbone and sequence?",
-    "model": "ProteinMPNN v_48_020", "conditioning": "conditional", "n_decoding_orders": 8,
+    "question": "Does the model score occupied sequons higher than matched "
+                "sequons with no modelled glycan?",
+    "variant": VARIANT or "(legacy)",
+    "model_provenance": SOURCE,        # read from the score file, never restated here
     "reference_sd": round(reference_sd, 6),
     "reference_sd_population": reference_population,
     "margin_standardised": MARGIN_SD, "margin_raw": round(margin_raw, 6),
@@ -172,4 +195,4 @@ Path(f"results/analysis/analysis_{LABEL}.json").write_text(json.dumps({
                   "unit": "connected component of occupied ortholog clusters "
                           "and shared control proteins"},
 }, indent=2))
-print(f"\nwrote results/analysis/analysis_{LABEL}.json and results/analysis/contrasts_{LABEL}.csv")
+print(f"\nwrote {paths.analysis_json(LABEL, VARIANT)} and {paths.contrasts(LABEL, VARIANT)}")

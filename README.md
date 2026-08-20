@@ -97,6 +97,10 @@ python pipeline/30_package_for_colab.py --out results/colab_bundle --tar
 
 ### 6. Analyse
 
+Every analysis stage takes `--variant`, naming which run's numbers to read and
+write. Omitting it reproduces the original ProteinMPNN filenames and numbers
+exactly.
+
 ```bash
 python pipeline/09_analyse_scores.py optimal        # PRIMARY
 python pipeline/09_analyse_scores.py secretory      # parallel, best powered
@@ -104,6 +108,25 @@ python pipeline/10_analyse_retention_by_class.py
 python pipeline/10b_analyse_retention_paired.py
 python pipeline/11_significance.py                  # all 8 tests, corrected
 ```
+
+A second model, or the corrected ProteinMPNN run, is the same commands with a tag:
+
+```bash
+python pipeline/09_analyse_scores.py optimal --variant alphabet_corrected
+python pipeline/09_analyse_scores.py optimal --variant esm_if
+python pipeline/11_significance.py               --variant esm_if
+```
+
+The tag suffixes every input and output — `scores_dataset_esm_if.csv` in,
+`analysis_optimal_esm_if.json` out — so two models' results never overwrite each
+other. **A variant whose score file is missing stops with an error rather than
+falling back to the default**, because reading the wrong score file is otherwise
+silent. Model provenance in the output JSON is read from the score file's own
+`model` / `conditioning` / `n_orders` columns, never restated by the analysis.
+
+Matching carries no variant: it is built from RSA, neighbour counts and
+hydrophobic fraction, never from model output, so every model shares one set of
+pairs.
 
 ### 7. Figures
 
