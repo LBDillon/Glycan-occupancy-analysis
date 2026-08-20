@@ -19,6 +19,16 @@ module load "${PY_MODULE}" "${CUDA_MODULE}"
 mkdir -p "${PROJECT_ROOT}"/{logs,cache,results}
 cd "${PROJECT_ROOT}"
 
+# ARC home directories have a small quota, and pip caches wheels -- torch alone
+# is ~2.5 GB, twice over for two venvs. Left at their defaults these land in
+# $HOME/.cache and blow the quota partway through, which surfaces later as an
+# unrelated-looking "Disk quota exceeded" on the next thing that touches home.
+# Point every cache and temp directory at /data before installing anything.
+export PIP_CACHE_DIR="${PROJECT_ROOT}/cache/pip"
+export XDG_CACHE_HOME="${PROJECT_ROOT}/cache/xdg"
+export TMPDIR="${PROJECT_ROOT}/cache/tmp"
+mkdir -p "${PIP_CACHE_DIR}" "${XDG_CACHE_HOME}" "${TMPDIR}"
+
 # --- code -----------------------------------------------------------------
 [[ -d module ]] || git clone --depth 1 "${REPO_URL}" module
 [[ -d ProteinMPNN ]] || git clone --depth 1 https://github.com/dauparas/ProteinMPNN.git ProteinMPNN
@@ -85,6 +95,9 @@ cat > "${PROJECT_ROOT}/env.sh" <<ENVEOF
 export PROJECT_ROOT="${PROJECT_ROOT}"
 export TORCH_HOME="${PROJECT_ROOT}/cache/torch"
 export HF_HOME="${PROJECT_ROOT}/cache/hf"
+export PIP_CACHE_DIR="${PROJECT_ROOT}/cache/pip"
+export XDG_CACHE_HOME="${PROJECT_ROOT}/cache/xdg"
+export TMPDIR="${PROJECT_ROOT}/cache/tmp"
 export HF_HUB_OFFLINE=1
 export PROTEINMPNN_DIR="${PROJECT_ROOT}/ProteinMPNN"
 export KMP_DUPLICATE_LIB_OK=TRUE
