@@ -52,13 +52,49 @@ def parse_args(argv, default_manifest: str, default_out: str, *,
     return parser.parse_args(argv)
 
 
+# Where ProteinMPNN's checkout might be. `../../ProteinMPNN` is correct inside
+# SugarFix, where this module sits two levels below the repo root -- but wrong
+# anywhere the module is the root, which is exactly the standalone/Colab layout.
+# Hardcoding it meant the ProteinMPNN runs failed off-laptop while ESM-IF ran
+# fine, so probe instead, and let the environment override.
+PROTEINMPNN_CANDIDATES = ("../../ProteinMPNN", "/content/ProteinMPNN",
+                          "../ProteinMPNN", "ProteinMPNN", "~/ProteinMPNN")
+
+
+def proteinmpnn_dir() -> Path:
+    """Locate ProteinMPNN, honouring $PROTEINMPNN_DIR first.
+
+    Identified by `protein_mpnn_utils.py` rather than by the directory merely
+    existing, so an empty or half-cloned checkout is rejected here with a clear
+    message instead of failing later inside an import.
+    """
+    import os
+
+    candidates = []
+    override = os.environ.get("PROTEINMPNN_DIR")
+    if override:
+        candidates.append(override)
+    candidates.extend(PROTEINMPNN_CANDIDATES)
+
+    for candidate in candidates:
+        path = Path(candidate).expanduser()
+        if (path / "protein_mpnn_utils.py").exists():
+            return path
+
+    raise FileNotFoundError(
+        "ProteinMPNN not found. Looked for protein_mpnn_utils.py in: "
+        + ", ".join(str(Path(c).expanduser()) for c in candidates)
+        + ". Clone it (https://github.com/dauparas/ProteinMPNN) or set "
+          "PROTEINMPNN_DIR to its checkout.")
+
+
 def build_adapter(name: str, device: str = "cpu"):
     """Construct a registered adapter, passing the device it understands."""
     from . import adapters
 
     if name == "proteinmpnn":
         return adapters.load(name, device=device,
-                             proteinmpnn_dir=Path("../../ProteinMPNN"))
+                             proteinmpnn_dir=proteinmpnn_dir())
     return adapters.load(name, device=device)
 
 
