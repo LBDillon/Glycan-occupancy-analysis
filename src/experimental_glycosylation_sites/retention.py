@@ -54,8 +54,21 @@ def design_sequences(
     temperature: float,
     device: str = "cpu",
     seed: int = 0,
+    max_batch: "int | None" = None,
 ) -> list[str]:
-    """Unconstrained designs for one chain, as one-letter sequences."""
+    """Unconstrained designs for one chain, as one-letter sequences.
+
+    All `n_designs` are decoded as one batch: `sample()` already carries a batch
+    dimension, and the featurised tensors describe a single backbone, so tiling
+    them turns 32 sequential decodes into one. Sampling one at a time projected
+    to roughly 32 hours over this corpus, which no Colab session survives.
+
+    Each batch row draws its own `randn`, so the decoding orders stay independent
+    and the designs are independent samples rather than 32 copies.
+
+    `max_batch` caps the batch when memory is tight; on OOM the batch is halved
+    and retried rather than losing the chain.
+    """
     _prepare_environment()
     import torch
 
@@ -76,21 +89,43 @@ def design_sequences(
 
     # 'X' is the unknown-residue token and is never a design output
     omit = np.array([aa == "X" for aa in ALPHABET], dtype=np.float32)
-
-    sequences = []
+    bias = np.zeros(len(ALPHABET), dtype=np.float32)
     generator = torch.Generator(device="cpu").manual_seed(seed)
-    with torch.no_grad():
-        for _ in range(n_designs):
-            randn = torch.randn(chain_M.shape, generator=generator).to(device)
+
+    def tile(tensor, size):
+        return tensor.repeat(size, *([1] * (tensor.dim() - 1)))
+
+    def decode(size: int) -> list[str]:
+        randn = torch.randn((size,) + tuple(chain_M.shape[1:]),
+                            generator=generator).to(device)
+        with torch.no_grad():
             sample = model.sample(
-                X, randn, S, chain_M, chain_encoding_all, residue_idx, mask=mask,
-                temperature=temperature, omit_AAs_np=omit,
-                bias_AAs_np=np.zeros(len(ALPHABET), dtype=np.float32),
-                chain_M_pos=chain_M_pos,
-                omit_AA_mask=omit_AA_mask,
-                bias_by_res=bias_by_res,
+                tile(X, size), randn, tile(S, size), tile(chain_M, size),
+                tile(chain_encoding_all, size), tile(residue_idx, size),
+                mask=tile(mask, size), temperature=temperature, omit_AAs_np=omit,
+                bias_AAs_np=bias, chain_M_pos=tile(chain_M_pos, size),
+                omit_AA_mask=tile(omit_AA_mask, size),
+                bias_by_res=tile(bias_by_res, size),
             )
-            sequences.append("".join(ALPHABET[i] for i in sample["S"][0].cpu().numpy()))
+        return ["".join(ALPHABET[i] for i in row)
+                for row in sample["S"].cpu().numpy()]
+
+    sequences: list[str] = []
+    remaining = n_designs
+    size = min(max_batch or n_designs, n_designs)
+    while remaining > 0:
+        try:
+            chunk = decode(min(size, remaining))
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
+            if size > 1 and "out of memory" in str(exc).lower():
+                if device.startswith("cuda"):
+                    torch.cuda.empty_cache()
+                size = max(1, size // 2)
+                print(f"    OOM; retrying with batch {size}", flush=True)
+                continue
+            raise
+        sequences.extend(chunk)
+        remaining -= len(chunk)
     return sequences
 
 

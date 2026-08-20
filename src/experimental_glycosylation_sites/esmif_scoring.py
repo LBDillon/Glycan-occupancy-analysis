@@ -90,12 +90,13 @@ _PATCHED = False
 def patch_biotite() -> None:
     """Make fair-esm 2.0.0 work with biotite >= 1.0, without shifting indices.
 
-    Two independent breakages. `filter_backbone` was renamed
+    Three independent breakages. `filter_backbone` was renamed
     `filter_peptide_backbone`, which stops `esm.inverse_folding` importing at
-    all. And `ProteinSequence.convert_letter_3to1` raises on residue names it
-    does not know, which aborts an entire chain over one modified residue; since
-    the coordinate array is built separately from the sequence string, returning
-    `X` keeps every residue in place and costs only that residue's identity.
+    all. `ProteinSequence.convert_letter_3to1` raises on residue names it does
+    not know, which aborts an entire chain over one modified residue; since the
+    coordinate array is built separately from the sequence string, returning `X`
+    keeps every residue in place and costs only that residue's identity. And
+    `PDBxFile` was renamed `CIFFile`, which fails every mmCIF entry.
     """
     global _PATCHED
     if _PATCHED:
@@ -105,6 +106,15 @@ def patch_biotite() -> None:
 
     if not hasattr(bs, "filter_backbone") and hasattr(bs, "filter_peptide_backbone"):
         bs.filter_backbone = bs.filter_peptide_backbone  # type: ignore[attr-defined]
+
+    # biotite >= 1.0 renamed PDBxFile to CIFFile. ESM-IF's load_structure calls
+    # pdbx.PDBxFile.read() for any .cif input, so without this every mmCIF entry
+    # fails -- 41 structures and 114 sites on this corpus, and invisibly, because
+    # the failure is recorded per site rather than raised.
+    import biotite.structure.io.pdbx as pdbx
+
+    if not hasattr(pdbx, "PDBxFile") and hasattr(pdbx, "CIFFile"):
+        pdbx.PDBxFile = pdbx.CIFFile  # type: ignore[attr-defined]
 
     from biotite.sequence import ProteinSequence
 
@@ -334,7 +344,7 @@ STANDARD_AA = "ACDEFGHIKLMNPQRSTVWY"
 
 def design_sequences(mapping: ChainMapping, model, alphabet, n_designs: int,
                      temperature: float, device: str = "cpu",
-                     seed: int = 0) -> "list[str]":
+                     seed: int = 0, max_batch: "int | None" = None) -> "list[str]":
     """`n_designs` unconstrained sequences for one chain, in MANIFEST index space.
 
     All `n_designs` are decoded as one batch. ESM-IF is autoregressive, so a
@@ -357,41 +367,61 @@ def design_sequences(mapping: ChainMapping, model, alphabet, n_designs: int,
     from esm.inverse_folding.util import CoordBatchConverter
 
     dictionary = model.decoder.dictionary
-    converter = CoordBatchConverter(dictionary)
-    # One entry per design, all the same backbone: the batch dimension IS the
-    # sample dimension, so the encoder runs once and every decoder step advances
-    # all designs together.
-    batch_coords, confidence, _, _, padding_mask = converter(
-        [(mapping.coords, None, None)] * n_designs, device=device)
-
     length = len(mapping.coords)
-    mask_idx = dictionary.get_idx("<mask>")
-    tokens = torch.full((n_designs, 1 + length), mask_idx,
-                        dtype=torch.long, device=device)
-    tokens[:, 0] = dictionary.get_idx("<cath>")
-
-    allowed = torch.tensor([dictionary.get_idx(aa) for aa in STANDARD_AA],
-                           dtype=torch.long, device=device)
-
     generator = torch.Generator(device="cpu").manual_seed(seed)
-    incremental_state = {}
-    with torch.no_grad():
-        encoder_out = model.encoder(batch_coords, padding_mask, confidence)
-        for step in range(1, length + 1):
-            logits, _ = model.decoder(tokens[:, :step], encoder_out,
-                                      incremental_state=incremental_state)
-            # [B, vocab, 1] -> [B, vocab] for the single new position
-            step_logits = logits[:, :, -1].float()
-            probabilities = F.softmax(step_logits[:, allowed] / temperature, dim=-1)
-            # Sampling is driven from a CPU generator so a run is reproducible
-            # from its seed whether it executes on CPU or GPU.
-            choice = torch.multinomial(probabilities.cpu(), 1, generator=generator)
-            tokens[:, step] = allowed[choice.squeeze(-1).to(device)]
 
-    esm_designs = [
-        "".join(dictionary.get_tok(t) for t in row)
-        for row in tokens[:, 1:].cpu().tolist()
-    ]
+    def decode(size: int) -> "list[str]":
+        converter = CoordBatchConverter(dictionary)
+        # One entry per design, all the same backbone: the batch dimension IS
+        # the sample dimension, so the encoder runs once and every decoder step
+        # advances all designs together.
+        batch_coords, confidence, _, _, padding_mask = converter(
+            [(mapping.coords, None, None)] * size, device=device)
+
+        mask_idx = dictionary.get_idx("<mask>")
+        tokens = torch.full((size, 1 + length), mask_idx,
+                            dtype=torch.long, device=device)
+        tokens[:, 0] = dictionary.get_idx("<cath>")
+        allowed = torch.tensor([dictionary.get_idx(aa) for aa in STANDARD_AA],
+                               dtype=torch.long, device=device)
+
+        incremental_state = {}
+        with torch.no_grad():
+            encoder_out = model.encoder(batch_coords, padding_mask, confidence)
+            for step in range(1, length + 1):
+                logits, _ = model.decoder(tokens[:, :step], encoder_out,
+                                          incremental_state=incremental_state)
+                # [B, vocab, 1] -> [B, vocab] for the single new position
+                step_logits = logits[:, :, -1].float()
+                probabilities = F.softmax(step_logits[:, allowed] / temperature, dim=-1)
+                # Sampling is driven from a CPU generator so a run is
+                # reproducible from its seed whether it executes on CPU or GPU.
+                choice = torch.multinomial(probabilities.cpu(), 1, generator=generator)
+                tokens[:, step] = allowed[choice.squeeze(-1).to(device)]
+
+        return ["".join(dictionary.get_tok(t) for t in row)
+                for row in tokens[:, 1:].cpu().tolist()]
+
+    # Batching is what makes this affordable, but memory scales with
+    # batch x length, so a long chain that is fine at 32 designs can exhaust an
+    # accelerator. Halve and retry rather than losing the chain: a slower chain
+    # costs minutes, a dropped one silently shrinks the retention table.
+    esm_designs: "list[str]" = []
+    remaining = n_designs
+    size = min(max_batch or n_designs, n_designs)
+    while remaining > 0:
+        try:
+            chunk = decode(min(size, remaining))
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
+            if size > 1 and "out of memory" in str(exc).lower():
+                torch.cuda.empty_cache() if device.startswith("cuda") else None
+                size = max(1, size // 2)
+                print(f"    OOM at length {length}; retrying with batch {size}",
+                      flush=True)
+                continue
+            raise
+        esm_designs.extend(chunk)
+        remaining -= len(chunk)
 
     to_manifest = {esm: manifest for manifest, esm in mapping.to_esm.items()}
     rebuilt = []

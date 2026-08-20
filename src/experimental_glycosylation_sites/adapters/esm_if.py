@@ -29,8 +29,9 @@ class ESMIFAdapter:
     name = "esm_if"
 
     def __init__(self, device: str = "cpu", model_name: str = DEFAULT_MODEL,
-                 seed: int = 0):
+                 seed: int = 0, max_batch: "int | None" = None):
         self.device = device
+        self.max_batch = max_batch
         self.model_name = model_name
         self.seed = seed
         self._model = None
@@ -115,4 +116,5 @@ class ESMIFAdapter:
         mapping = self._mapping(structure_path, chain_id)
         return design_sequences(mapping, self.model, self.alphabet,
                                 n_designs=n_designs, temperature=temperature,
-                                device=self.device, seed=seed)
+                                device=self.device, seed=seed,
+                                max_batch=self.max_batch)

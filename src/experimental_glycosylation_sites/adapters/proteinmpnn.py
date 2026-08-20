@@ -23,12 +23,14 @@ class ProteinMPNNAdapter:
 
     def __init__(self, proteinmpnn_dir: Path = Path("../../ProteinMPNN"),
                  checkpoint: str = DEFAULT_MODEL, device: str = "cpu",
-                 n_decoding_orders: int = DEFAULT_DECODING_ORDERS, seed: int = 0):
+                 n_decoding_orders: int = DEFAULT_DECODING_ORDERS, seed: int = 0,
+                 max_batch: "int | None" = None):
         self.dir = Path(proteinmpnn_dir)
         self.checkpoint = checkpoint
         self.device = device
         self.n_decoding_orders = n_decoding_orders
         self.seed = seed
+        self.max_batch = max_batch
         self._model = None
 
     @property
@@ -75,4 +77,5 @@ class ProteinMPNNAdapter:
                temperature: float, seed: int = 0) -> list[str]:
         return design_sequences(structure_path, chain_id, self.model,
                                 n_designs=n_designs, temperature=temperature,
-                                device=self.device, seed=seed)
+                                device=self.device, seed=seed,
+                                max_batch=self.max_batch)
