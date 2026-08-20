@@ -1,4 +1,4 @@
-# The nine figures, in plain language
+# The figures, in plain language
 
 Each one answers a single question. Regenerate them all with
 `python pipeline/20_figures_summary.py`.
@@ -192,7 +192,25 @@ the number of comparisons run.
 
 ---
 
-## What the nine say together
+## Draft schematics (10–14)
+
+Five drafts made on request. Only figure 11 carries data; the rest explain what
+the pipeline does and what is at stake. **All are drafts — the shapes and
+wording are meant to be argued with.**
+
+| Figure | What it shows |
+|---|---|
+| `fig10_mechanism.png` | Why any of this matters. Three panels: what is really there (an exposed asparagine carrying a glycan), what ProteinMPNN sees (the same backbone, no glycan — they are identical to it), and what it designs (a hydrophobic residue that packs better and deletes the site). Usually a sound design move; here it aglycosylates the protein. Schematic, not a real structure. |
+| `fig11_dataset_summary.png` | What is actually in each dataset — size before and after matching, taxonomic spread, and how exposed the sequons are. The taxonomy panel is a **caveat**: the eukaryotic secretory set matches on kingdom and compartment but not species (28% human against occupied's 43%), and species composition is not matched anywhere in the study. |
+| `fig12_scoring_process.png` | What scoring a sequon involves, end to end: structure → scoreability check → model reads backbone plus native sequence → probabilities at the three positions → log-odds → one number. |
+| `fig13_design_process.png` | What the design branch involves: structure → 32 unconstrained sequences → read the three original positions → classify → retention fraction. Nothing is fixed or biased, so the sequon is free to vanish. |
+| `fig14_awareness_spectrum.png` | A proposed scale from glycan-blind to glycan-aware, with what the evidence says about where ProteinMPNN sits and what would move a model along it. **The axis itself is the open question** — worth settling before this is used in a write-up. |
+
+Regenerate with `python pipeline/24_figures_schematics.py`.
+
+---
+
+## What the results figures say together
 
 The dataset is sound and the measurement works — Figure 4 shows the score tracks
 real model behaviour, and Figure 5 shows the behaviour is dramatic and worth
