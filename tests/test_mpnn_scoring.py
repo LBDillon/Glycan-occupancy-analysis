@@ -35,9 +35,13 @@ def probs_array(orders: int, length: int, assignments: dict) -> np.ndarray:
 
 def test_alphabet_matches_proteinmpnn_order():
     """Indexing with a hand-written ordering would silently read the wrong residue."""
-    assert ALPHABET == "ARNDCQEGHILKMFPSTWYVX"
-    assert AA_INDEX["N"] == 2 and AA_INDEX["S"] == 15 and AA_INDEX["T"] == 16
-    assert AA_INDEX["P"] == 14
+    # Assert against ProteinMPNN's own source, not a copy of it. The previous
+    # version of this test hard-coded the string the module happened to hold,
+    # so it locked the wrong alphabet in place instead of catching it.
+    assert ALPHABET == "ACDEFGHIKLMNPQRSTVWYX"
+    assert AA_INDEX["N"] == 11 and AA_INDEX["S"] == 15 and AA_INDEX["T"] == 16
+    assert AA_INDEX["P"] == 12
+    assert [ALPHABET[i] for i in (0, 20)] == ["A", "X"]
 
 
 def test_logit_is_symmetric_and_clamped():

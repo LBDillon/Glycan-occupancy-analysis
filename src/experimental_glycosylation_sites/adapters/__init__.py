@@ -6,6 +6,8 @@ from .base import SequenceDesigner, SequonScorer
 _REGISTRY = {
     "proteinmpnn": ("experimental_glycosylation_sites.adapters.proteinmpnn",
                     "ProteinMPNNAdapter"),
+    "esm_if": ("experimental_glycosylation_sites.adapters.esm_if",
+               "ESMIFAdapter"),
 }
 
 

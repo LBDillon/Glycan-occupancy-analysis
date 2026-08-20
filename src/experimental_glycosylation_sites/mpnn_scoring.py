@@ -39,9 +39,24 @@ from pathlib import Path
 
 import numpy as np
 
-# ProteinMPNN's own alphabet, in its own order. Index into probability vectors
-# with this, never with a hand-written ordering.
-ALPHABET = "ARNDCQEGHILKMFPSTWYVX"
+# ProteinMPNN's token alphabet, in its own order. Index into probability vectors
+# and into the S tensor with this, never with a hand-written ordering.
+#
+# CORRECTED 2026-08-20. This constant previously read "ARNDCQEGHILKMFPSTWYVX",
+# which is not the model's token alphabet: it is `alpha_1`, a local three-letter
+# to one-letter lookup table living inside `parse_PDB_biounits`, paired there
+# with `alpha_3` and ending in "-" rather than "X". The alphabet the model
+# actually speaks is set in `tied_featurize` and read back in `_S_to_seq`, both
+# of which use the string below.
+#
+# Verify rather than trust — decoding the S tensor with the right alphabet
+# reproduces the native sequence, and with the wrong one does not:
+#
+#     S = tied_featurize([protein], ...)[1]
+#     "".join(ALPHABET[i] for i in S[0].numpy()) == protein["seq"]   # ~99.5%
+#
+# The 0.5% shortfall is residues parse_PDB maps to X, not disagreement.
+ALPHABET = "ACDEFGHIKLMNPQRSTVWYX"
 AA_INDEX = {aa: i for i, aa in enumerate(ALPHABET)}
 
 # The checkpoint used by the earlier scoping analysis, so the conditional scores

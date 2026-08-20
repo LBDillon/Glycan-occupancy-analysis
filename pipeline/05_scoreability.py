@@ -1,4 +1,4 @@
-"""Which manifest sites ProteinMPNN can actually decode.
+"""Which manifest sites the chosen model can actually decode.
 
 Run before matching, not after. A site whose backbone is incomplete at any of
 its three sequon residues cannot be scored, and ProteinMPNN signals this only
@@ -7,27 +7,34 @@ twenty-one ones and scores near +13.8. Establishing this up front keeps
 unscoreable sites out of the matching pool, so matched sets do not lose members
 after they are balanced.
 
-No model forward pass is needed — the mask is a property of the coordinates.
+No model forward pass is needed — for either model, scoreability is a property
+of the coordinates alone. ESM-IF adds a second reason a site can be unscoreable:
+its parser (biotite) need not agree residue-for-residue with the parser the
+manifest's indices came from (Biopython), so a manifest index with no ESM-IF
+counterpart is reported here rather than discovered during scoring.
+
+Usage:  05_scoreability.py [manifest] [out] [--model NAME] [--device DEV]
 """
 import sys, time
 import pandas as pd
 from pathlib import Path
 sys.path.insert(0, "src")
-from experimental_glycosylation_sites.mpnn_scoring import decodable_positions
+from experimental_glycosylation_sites.runner_support import (
+    build_adapter, parse_args, resolve_device, structure_paths)
 
-MPNN_DIR = Path("../../ProteinMPNN")
-
-MANIFEST = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("results/manifests/scoring_manifest.csv")
-OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("results/manifests/scoreability.csv")
+args = parse_args(sys.argv[1:],
+                  "results/manifests/scoring_manifest.csv",
+                  "results/manifests/scoreability.csv",
+                  description=__doc__)
 KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
 
+MANIFEST, OUT = Path(args.manifest), Path(args.out)
 sites = pd.read_csv(MANIFEST, low_memory=False).drop_duplicates(KEY).reset_index(drop=True)
+paths = structure_paths(tuple(args.structure_dir))
 
-paths = {}
-for d in ("data/cache/pdb",
-          "../ortholog_sequon_conservation/results/database_current/structures/pdb"):
-    for p in list(Path(d).glob("*.pdb")) + list(Path(d).glob("*.cif")):
-        paths.setdefault(p.stem.upper(), p)
+device = resolve_device(args.device)
+adapter = build_adapter(args.model, device)
+print(f"model {args.model} on {device}", flush=True)
 
 rows, cache, t0 = [], {}, time.time()
 groups = list(sites.groupby(["structure_pdb_id", "structure_chain_id"]))
@@ -41,7 +48,7 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
             cache[key] = ("structure_not_cached", None)
         else:
             try:
-                cache[key] = (None, decodable_positions(path, chain_id, MPNN_DIR))
+                cache[key] = (None, adapter.decodable_positions(path, chain_id))
             except Exception as exc:
                 cache[key] = (f"{type(exc).__name__}: {str(exc)[:60]}", None)
     reason, decodable = cache[key]
@@ -63,6 +70,7 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
               f"eta {(len(groups)-gi)*el/gi/60:.0f} min)", flush=True)
 
 out = pd.DataFrame(rows)
+OUT.parent.mkdir(parents=True, exist_ok=True)
 out.to_csv(OUT, index=False)
 print(f"\n{int(out.scoreable.sum())} of {len(out)} sites scoreable")
 print(out[~out.scoreable].reason.str.replace(r"_\[.*", "", regex=True).value_counts().to_string())

@@ -1,5 +1,17 @@
 # experimental_glycosylation_sites
 
+> **⚠ Correction, 2026-08-20 — ProteinMPNN results are being regenerated.**
+> `mpnn_scoring.ALPHABET` held a three-letter lookup table from inside
+> `parse_PDB_biounits` instead of ProteinMPNN's token alphabet. Consequence:
+> `p_asn_at_n` was reading **P(aspartate)**, and designed sequences were decoded
+> with the wrong letters. P(Ser) and P(Thr) were correct by coincidence, so the
+> hydroxyl half of every sequon score is sound and the asparagine half is not.
+> **Do not quote any ProteinMPNN score, retention figure or SD-standardised
+> effect produced before this date** — including the numbers currently in
+> `docs/primary_result.md`, `docs/significance.md` and `docs/figures.md`.
+> Scoreability, matching and the manifests are unaffected. Full account:
+> [`docs/correction_2026-08-20_alphabet.md`](docs/correction_2026-08-20_alphabet.md).
+
 Site-level N-linked glycosylation occupancy evidence derived from the ortholog
 sequon-conservation database.
 
@@ -56,9 +68,31 @@ python pipeline/06b_match_diagnostics.py   # bacterial, cytosolic, secretory
 
 ### 5. Score and design — the two model-dependent stages
 
+Both take `--model` (default `proteinmpnn`) and `--device` (default `cpu`), so a
+second model needs no second copy of either file.
+
 ```bash
 python pipeline/07_score.py  <manifest.csv> results/scores/scores_<set>.csv     # ~5s/chain
 python pipeline/08_design.py <manifest.csv> results/retention_<set>.csv  # ~25s/chain
+
+python pipeline/07_score.py  <manifest.csv> results/scores/scores_<set>_esm_if.csv --model esm_if
+python pipeline/08_design.py <manifest.csv> results/designs/retention_<set>_esm_if.csv --model esm_if
+```
+
+ESM-IF also needs its own scoreability pass — its parser is biotite, not
+Biopython, so which sites it can address is a different question:
+
+```bash
+python pipeline/05_scoreability.py <manifest.csv> <out.csv> --model esm_if
+```
+
+**On a GPU.** Bundle the ~900 structures these stages actually open (~1.2 GB, a
+fifth of that gzipped, versus 13 GB for the whole cache) and run the notebook:
+
+```bash
+python pipeline/30_package_for_colab.py --out results/colab_bundle --tar
+# upload results/colab_bundle.tar to Drive, then open
+# notebooks/esm_if_and_mpnn_gpu.ipynb in Colab
 ```
 
 ### 6. Analyse
@@ -112,6 +146,9 @@ cluster bootstrap, significance testing and the figures all work on tables keyed
 by `(accession, position)`. Adding ESM-IF, ESM3 or anything else means writing
 **one adapter** and touching nothing else.
 
+Two models are registered: `proteinmpnn` and `esm_if` (see
+[`docs/second_model_esm_if.md`](docs/second_model_esm_if.md)).
+
 `src/experimental_glycosylation_sites/adapters/` defines two protocols. A model
 may implement either or both:
 
@@ -120,13 +157,20 @@ may implement either or both:
 | `SequonScorer` | what probability does the model hold at the three sequon residues? | `07_score.py` |
 | `SequenceDesigner` | what does the model write when redesigning the chain? | `08_design.py` |
 
+`SequonScorer` splits its work in two so that neither model wastes effort:
+`prepare_chain(path, chain, positions)` does the once-per-chain computation and
+returns an opaque context, `score_from(context, indices, expected_triplet)` reads
+one sequon out of it, and `score_site` is the two composed. ProteinMPNN pays per
+position, so it wants every position on a chain at once; ESM-IF decodes the whole
+chain in one pass, so its second sequon should cost nothing.
+
 **Steps**
 
 1. Copy `adapters/proteinmpnn.py` to `adapters/<model>.py`.
-2. Implement `decodable_positions`, `score_site`, and/or `design`.
+2. Implement `decodable_positions`, `prepare_chain`/`score_from`/`score_site`,
+   and/or `design`, plus `describe()` for the provenance columns.
 3. Register it in `adapters/__init__.py`.
-4. Run stages 5–7 with the new model; outputs land in `results/scores/scores_<model>.csv`
-   and `results/retention_<model>.csv`, and the comparison figures gain a series.
+4. Run stages 5–7 with `--model <name>`; the comparison figures gain a series.
 
 **Two invariants, both learned the hard way**
 
@@ -137,6 +181,13 @@ may implement either or both:
   returning a value.
 - **`decodable_positions` must not need a model pass.** Scoreability has to be
   answerable before matching, or matched sets lose members afterwards.
+- **Never trust the manifest's index across a parser boundary.** `model_index`
+  is an ordinal into the chain as Biopython reads it. A model whose own parser
+  disagrees must translate, and must verify that the mapped residues reproduce
+  the manifest's triplet — ESM-IF disagreed on ~5% of sites before its mapping
+  was built. Related: the alphabet a model returns probabilities in is an
+  assumption until you round-trip it against that model's own output. Assuming
+  it is what produced the 2026-08-20 correction.
 
 Verify conformance:
 
@@ -159,6 +210,8 @@ isinstance(a, SequonScorer), isinstance(a, SequenceDesigner)   # (True, True)
 | [`docs/significance.md`](docs/significance.md) | the eight tests and why none survives correction |
 | [`docs/negative_controls.md`](docs/negative_controls.md) | the four control sets and what evidence stands behind each |
 | [`docs/correction_2026-08-18.md`](docs/correction_2026-08-18.md) | what was corrected and why |
+| [`docs/correction_2026-08-20_alphabet.md`](docs/correction_2026-08-20_alphabet.md) | **the alphabet defect — read before quoting any ProteinMPNN number** |
+| [`docs/second_model_esm_if.md`](docs/second_model_esm_if.md) | ESM-IF: what its conditional is, the index mapping, how to run it |
 | `config/scoring_frozen.toml` | the frozen configuration and both amendments |
 
 ---

@@ -37,18 +37,38 @@ class ProteinMPNNAdapter:
             self._model = load_model(self.dir, self.checkpoint, self.device)
         return self._model
 
+    def describe(self) -> dict:
+        """Provenance the runners stamp onto every row they write."""
+        return {"model": self.checkpoint, "conditioning": "conditional",
+                "n_orders": self.n_decoding_orders, "seed": self.seed}
+
     # --- SequonScorer -------------------------------------------------------
     def decodable_positions(self, structure_path: Path, chain_id: str) -> np.ndarray:
         """Backbone completeness; needs no model pass, so it can precede matching."""
         return decodable_positions(structure_path, chain_id, self.dir)
 
-    def score_site(self, structure_path: Path, chain_id: str, indices):
-        """Score one sequon. Raises if the model did not evaluate all three."""
-        probabilities, computed = conditional_probabilities(
+    def prepare_chain(self, structure_path: Path, chain_id: str, positions=None):
+        """One decoder sweep for every position wanted on this chain.
+
+        ProteinMPNN's `conditional_probs` runs a full decoder pass per position,
+        so a 300-residue chain costs 300 passes when three residues are wanted.
+        Passing `positions` restricts it to those, and the per-position result is
+        unchanged by which others were requested.
+        """
+        return conditional_probabilities(
             structure_path, chain_id, self.model, device=self.device,
             n_decoding_orders=self.n_decoding_orders, seed=self.seed,
-            positions=list(indices))
+            positions=None if positions is None else list(positions))
+
+    def score_from(self, context, indices, expected_triplet=None):
+        """Score one sequon from a prepared chain. Raises if any row is unfilled."""
+        probabilities, computed = context
         return sequon_score(probabilities, *indices, computed=computed)
+
+    def score_site(self, structure_path: Path, chain_id: str, indices):
+        """Score one sequon. Raises if the model did not evaluate all three."""
+        context = self.prepare_chain(structure_path, chain_id, list(indices))
+        return self.score_from(context, indices)
 
     # --- SequenceDesigner ---------------------------------------------------
     def design(self, structure_path: Path, chain_id: str, n_designs: int,

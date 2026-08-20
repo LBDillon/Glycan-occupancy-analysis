@@ -68,6 +68,41 @@ class SequonScorer(Protocol):
         computed once and read for every sequon on it.
         """
 
+    # --- the batched path -------------------------------------------------
+    # `score_site` is the honest unit of the interface, but scoring a manifest
+    # one site at a time is wasteful in opposite ways for different models, and
+    # neither waste is the caller's business:
+    #
+    #   ProteinMPNN runs one decoder pass PER POSITION, so it wants to be told
+    #   every position on a chain at once and compute only those.
+    #   ESM-IF runs ONE teacher-forced pass for the whole chain, so the second
+    #   and subsequent sequons on a chain should cost nothing at all.
+    #
+    # Both are served by splitting the work: `prepare_chain` does whatever the
+    # model does once per chain and returns an opaque context, `score_from`
+    # reads a sequon out of it. `score_site` is then just the two composed, and
+    # a runner that groups its manifest by chain uses the pair directly.
+
+    def prepare_chain(self, structure_path: Path, chain_id: str,
+                      positions: "list[int] | None" = None):
+        """Do the once-per-chain work; return an opaque context for `score_from`.
+
+        `positions` is every model index the caller will ask about on this
+        chain, so a model that pays per position can restrict itself to them. A
+        model that computes the whole chain regardless may ignore it.
+        """
+
+    def score_from(self, context, indices: "tuple[int, int, int]",
+                   expected_triplet: "str | None" = None) -> dict:
+        """Score one sequon from a prepared chain context.
+
+        Same contract as `score_site`: raise rather than return a value the
+        model did not genuinely produce. `expected_triplet` is the residue
+        identity the manifest recorded; an adapter whose parser may disagree
+        with the manifest's MUST check it and raise on a mismatch, because a
+        silent off-by-some scores the wrong residue and still looks plausible.
+        """
+
 
 @runtime_checkable
 class SequenceDesigner(Protocol):
