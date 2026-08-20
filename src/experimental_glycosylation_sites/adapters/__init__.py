@@ -8,6 +8,9 @@ _REGISTRY = {
                     "ProteinMPNNAdapter"),
     "esm_if": ("experimental_glycosylation_sites.adapters.esm_if",
                "ESMIFAdapter"),
+    # Sequence-only. Needs EvolutionaryScale's `esm`, which cannot be installed
+    # alongside `fair-esm` -- both claim the import name `esm`.
+    "esmc": ("experimental_glycosylation_sites.adapters.esmc", "ESMCAdapter"),
 }
 
 

@@ -146,8 +146,18 @@ cluster bootstrap, significance testing and the figures all work on tables keyed
 by `(accession, position)`. Adding ESM-IF, ESM3 or anything else means writing
 **one adapter** and touching nothing else.
 
-Two models are registered: `proteinmpnn` and `esm_if` (see
-[`docs/second_model_esm_if.md`](docs/second_model_esm_if.md)).
+Three models are registered:
+
+| Name | Conditions on | Implements | Notes |
+|---|---|---|---|
+| `proteinmpnn` | backbone + all other native residues, 8 decoding orders | scorer + designer | [correction](docs/correction_2026-08-20_alphabet.md) |
+| `esm_if` | backbone + native prefix (autoregressive) | scorer + designer | [doc](docs/second_model_esm_if.md) |
+| `esmc` | **sequence only** (masked LM) | scorer | [doc](docs/third_model_esmc.md) |
+
+**`esmc` cannot be installed alongside `esm_if`.** `fair-esm` and
+EvolutionaryScale's `esm` both claim the top-level import name `esm`. Use a
+separate environment for each; the registry lazy-imports, so the absent model is
+unavailable rather than breaking the package.
 
 `src/experimental_glycosylation_sites/adapters/` defines two protocols. A model
 may implement either or both:
@@ -212,6 +222,7 @@ isinstance(a, SequonScorer), isinstance(a, SequenceDesigner)   # (True, True)
 | [`docs/correction_2026-08-18.md`](docs/correction_2026-08-18.md) | what was corrected and why |
 | [`docs/correction_2026-08-20_alphabet.md`](docs/correction_2026-08-20_alphabet.md) | **the alphabet defect — read before quoting any ProteinMPNN number** |
 | [`docs/second_model_esm_if.md`](docs/second_model_esm_if.md) | ESM-IF: what its conditional is, the index mapping, how to run it |
+| [`docs/third_model_esmc.md`](docs/third_model_esmc.md) | ESMC: sequence-only baseline, the two masking schemes, the environment split |
 | `config/scoring_frozen.toml` | the frozen configuration and both amendments |
 
 ---
