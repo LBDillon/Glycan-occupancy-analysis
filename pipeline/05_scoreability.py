@@ -33,7 +33,7 @@ sites = pd.read_csv(MANIFEST, low_memory=False).drop_duplicates(KEY).reset_index
 paths = structure_paths(tuple(args.structure_dir))
 
 device = resolve_device(args.device)
-adapter = build_adapter(args.model, device)
+adapter = build_adapter(args.model, device, mask_mode=args.mask_mode)
 print(f"model {args.model} on {device}", flush=True)
 
 rows, cache, t0 = [], {}, time.time()

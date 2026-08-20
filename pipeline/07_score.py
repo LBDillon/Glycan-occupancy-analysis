@@ -41,7 +41,7 @@ if OUT.exists():                       # resumable
     print(f"resuming: {len(done)} sites already scored", flush=True)
 
 device = resolve_device(args.device)
-adapter = build_adapter(args.model, device)
+adapter = build_adapter(args.model, device, mask_mode=args.mask_mode)
 provenance = adapter.describe()
 print(f"model {args.model} ({provenance['model']}, {provenance['conditioning']}) "
       f"on {device}", flush=True)

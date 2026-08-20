@@ -49,6 +49,8 @@ def parse_args(argv, default_manifest: str, default_out: str, *,
                         help="torch device, e.g. cpu, cuda, mps (default: cpu)")
     parser.add_argument("--structure-dir", action="append", default=[],
                         help="extra directory of cached structures; repeatable")
+    parser.add_argument("--mask-mode", default=None,
+                        help="ESMC only: 'single' (default) or 'joint'")
     return parser.parse_args(argv)
 
 
@@ -88,14 +90,21 @@ def proteinmpnn_dir() -> Path:
           "PROTEINMPNN_DIR to its checkout.")
 
 
-def build_adapter(name: str, device: str = "cpu"):
-    """Construct a registered adapter, passing the device it understands."""
+def build_adapter(name: str, device: str = "cpu", **options):
+    """Construct a registered adapter, passing what it understands.
+
+    Model-specific options travel as keywords rather than as attributes the
+    runners know about, so a new model's knobs never require editing a stage.
+    Options that are None are dropped, so an unset flag means "the adapter's
+    default" rather than an explicit None the adapter has to interpret.
+    """
     from . import adapters
 
+    options = {k: v for k, v in options.items() if v is not None}
     if name == "proteinmpnn":
         return adapters.load(name, device=device,
-                             proteinmpnn_dir=proteinmpnn_dir())
-    return adapters.load(name, device=device)
+                             proteinmpnn_dir=proteinmpnn_dir(), **options)
+    return adapters.load(name, device=device, **options)
 
 
 def resolve_device(requested: str) -> str:
