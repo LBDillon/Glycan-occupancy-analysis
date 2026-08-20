@@ -45,12 +45,29 @@ for which in ("dataset", "controls", "secretory"):
     if path.exists():
         manifests[which] = pd.read_csv(path, low_memory=False)
 
+# The retention stage runs on its own manifests, not the candidate pools, so a
+# bundle built from the candidate pools alone silently lacks ~800 chains.
+EXTRA_MANIFESTS = ("scoring_manifest", "manifest_matched_controls",
+                   "manifest_matched_secretory")
+extra = {}
+for stem in EXTRA_MANIFESTS:
+    path = Path(f"results/manifests/{stem}.csv")
+    if path.exists():
+        extra[stem] = pd.read_csv(path, low_memory=False)
+
 # --- decide which sites the bundle has to cover ---------------------------
 wanted_sites = set()
 dataset = manifests.get("dataset")
 if dataset is not None:
     # the reference-SD population, in full
     for a, p in zip(dataset.accession, dataset.position):
+        wanted_sites.add((str(a), int(p)))
+
+# Every site in every manifest we ship, so no stage can open a structure the
+# bundle lacks. Cheap insurance: the union adds ~800 chains over the matched
+# sets, and a missing structure is a silently skipped chain rather than an error.
+for frame in extra.values():
+    for a, p in zip(frame.accession, frame.position):
         wanted_sites.add((str(a), int(p)))
 
 covered = []
@@ -65,7 +82,8 @@ for name in comparisons:
             wanted_sites.add((str(a), int(p)))
     covered.append(name)
 
-all_manifest = pd.concat(manifests.values(), ignore_index=True).drop_duplicates(KEY)
+all_manifest = pd.concat(list(manifests.values()) + list(extra.values()),
+                         ignore_index=True).drop_duplicates(KEY)
 needed = all_manifest[[(str(a), int(p)) in wanted_sites
                        for a, p in zip(all_manifest.accession, all_manifest.position)]]
 pdb_ids = sorted({str(x).upper() for x in needed.structure_pdb_id})
@@ -108,11 +126,16 @@ for which in manifests:
         if src.exists():
             shutil.copyfile(src, out / "manifests" / src.name)
             tables.append(src.name)
-for extra in ("manifest_matched_controls.csv", "manifest_matched_secretory.csv"):
-    src = Path(f"results/manifests/{extra}")
+for stem in EXTRA_MANIFESTS:
+    src = Path(f"results/manifests/{stem}.csv")
     if src.exists():
         shutil.copyfile(src, out / "manifests" / src.name)
-        tables.append(extra)
+        tables.append(src.name)
+for stem in ("scoreability", "scoreability_secretory"):
+    src = Path(f"results/manifests/{stem}.csv")
+    if src.exists():
+        shutil.copyfile(src, out / "manifests" / src.name)
+        tables.append(src.name)
 for name in covered:
     src = Path(f"results/matching/matched_pairs_{name}.csv")
     shutil.copyfile(src, out / "matching" / src.name)
