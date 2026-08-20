@@ -86,6 +86,15 @@ Biopython, so which sites it can address is a different question:
 python pipeline/05_scoreability.py <manifest.csv> <out.csv> --model esm_if
 ```
 
+**On ARC.** The right home for retention: no session limit, and job arrays run
+the chains in parallel. See [`docs/running_on_arc.md`](docs/running_on_arc.md).
+
+```bash
+bash scripts/arc/glyco_setup.sh                     # once, on the login node
+sbatch scripts/arc/glyco_retention.slurm esm_if     # --array=0-15
+python pipeline/31_merge_shards.py '...shard*.csv' <out> --shards 16
+```
+
 **On a GPU.** Bundle the ~900 structures these stages actually open (~1.2 GB, a
 fifth of that gzipped, versus 13 GB for the whole cache) and run the notebook:
 

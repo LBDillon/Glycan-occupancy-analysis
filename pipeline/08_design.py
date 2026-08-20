@@ -17,7 +17,7 @@ sys.path.insert(0, "src")
 from experimental_glycosylation_sites.retention import (
     PREPRINT_CONDITION, STANDARD_CONDITION, classify_retention)
 from experimental_glycosylation_sites.runner_support import (
-    build_adapter, parse_args, resolve_device, structure_paths)
+    apply_shard, build_adapter, parse_args, resolve_device, structure_paths)
 
 args = parse_args(sys.argv[1:],
                   "results/manifests/scoring_manifest.csv",
@@ -47,6 +47,7 @@ provenance = adapter.describe()
 print(f"model {args.model} ({provenance['model']}) on {device}", flush=True)
 
 groups = list(sites.groupby(["structure_pdb_id", "structure_chain_id"]))
+groups = apply_shard(groups, args.shard)
 print(f"{len(sites)} sites in {len(groups)} chains; {N_STD} designs each at T={TEMP}", flush=True)
 
 rows, t0, failures = [], time.time(), []

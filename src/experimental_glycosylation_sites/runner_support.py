@@ -51,7 +51,33 @@ def parse_args(argv, default_manifest: str, default_out: str, *,
                         help="extra directory of cached structures; repeatable")
     parser.add_argument("--mask-mode", default=None,
                         help="ESMC only: 'single' (default) or 'joint'")
+    parser.add_argument("--shard", default=None, metavar="K/N",
+                        help="process only chain group K of N (0-based), for "
+                             "SLURM job arrays. Each shard must write its own "
+                             "output file; merge them afterwards.")
     return parser.parse_args(argv)
+
+
+def apply_shard(groups: list, shard: "str | None") -> list:
+    """Keep chain groups belonging to this shard.
+
+    Sharding is by chain group rather than by site so that a chain's expensive
+    per-chain work happens exactly once, in exactly one task. Interleaving
+    (`index % n == k`) rather than contiguous blocks, because chains are ordered
+    by PDB id and length correlates with neither -- contiguous blocks would give
+    one task all the long chains.
+    """
+    if not shard:
+        return groups
+    try:
+        k, n = (int(part) for part in str(shard).split("/"))
+    except ValueError as exc:
+        raise SystemExit(f"--shard must look like K/N, got {shard!r}") from exc
+    if not 0 <= k < n:
+        raise SystemExit(f"--shard K must satisfy 0 <= K < N, got {shard!r}")
+    selected = [g for i, g in enumerate(groups) if i % n == k]
+    print(f"shard {k}/{n}: {len(selected)} of {len(groups)} chain groups", flush=True)
+    return selected
 
 
 # Where ProteinMPNN's checkout might be. `../../ProteinMPNN` is correct inside

@@ -13,7 +13,7 @@ import numpy as np, pandas as pd
 from pathlib import Path
 sys.path.insert(0, "src")
 from experimental_glycosylation_sites.runner_support import (
-    build_adapter, parse_args, resolve_device, structure_paths)
+    apply_shard, build_adapter, parse_args, resolve_device, structure_paths)
 
 args = parse_args(sys.argv[1:],
                   "results/manifests/scoring_manifest.csv",
@@ -47,6 +47,7 @@ print(f"model {args.model} ({provenance['model']}, {provenance['conditioning']})
       f"on {device}", flush=True)
 
 groups = list(sites.groupby(["structure_pdb_id", "structure_chain_id"]))
+groups = apply_shard(groups, args.shard)
 print(f"{len(sites)} unique sites in {len(groups)} structure-chain groups", flush=True)
 
 rows, failures, t0 = [], [], time.time()
