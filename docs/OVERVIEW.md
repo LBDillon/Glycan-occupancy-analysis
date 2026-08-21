@@ -160,9 +160,14 @@ trip the model's representation back to something you already know. All three
 checks now run in code. The fourth is a reporting failure, and the shard merge
 now refuses to stay quiet about coverage.
 
-## Running now
+## Status of the retention run
 
-ESM-IF and ProteinMPNN retention, as 64-task SLURM arrays on ARC `medium`.
+**Not yet produced.** The first ARC submission lost 63 of 64 array tasks to
+OUT_OF_MEMORY: design batches were a fixed 32 regardless of chain length, and
+these chains run to 1,287 residues. Batches are now bounded by length, memory
+raised to 64 GB, and the job is ready to resubmit — but no retention numbers
+exist for any model yet.
+
 → [`running_on_arc.md`](running_on_arc.md)
 
 ## Next, in priority order

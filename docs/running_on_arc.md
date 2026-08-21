@@ -1,9 +1,19 @@
 # Running the model stages on ARC
 
 Colab was the wrong tool for retention. Sessions die at 12 hours, ProteinMPNN
-projected to ~32 hours before batching, and a dropped runtime loses the GPU as
-well as the work. ARC removes all three problems, and adds the one that actually
-matters: **job arrays**, so 1,725 chains run in parallel rather than in series.
+projected to ~32 hours before batching, and a dropped runtime loses the work.
+ARC removes all three problems and adds the one that matters: **job arrays**, so
+1,725 chains run in parallel rather than in series.
+
+**These jobs run CPU-only.** ARC's `short`/`medium` partitions have no GPUs and
+reject `--gres` outright with `Invalid feature specification`. Throughput comes
+from array width instead. `--device auto` picks CUDA if it is ever present, so
+pointing this at a GPU partition needs no edit:
+
+```bash
+sbatch --partition=<gpu-partition> --gres=gpu:1 --array=0-15 \
+       scripts/arc/glyco_retention.slurm esm_if
+```
 
 Scripts live in `scripts/arc/`, inside this module, so they travel with the standalone repository.
 
@@ -47,8 +57,10 @@ sbatch scripts/arc/glyco_retention.slurm esm_if
 sbatch scripts/arc/glyco_retention.slurm proteinmpnn
 ```
 
-Scoring uses `--array=0-3` on `short`; retention `--array=0-15` on `medium` with
-a GPU. Adjust the array width to trade queue time against wall time.
+Scoring uses `--array=0-7` on `short` (4 h); retention `--array=0-63` on
+`medium` (12 h, 64 GB, 8 cores). Widen the array to trade queue time against wall
+time — everything resumes, so a task that runs out of time costs only the chain
+in flight.
 
 ## How sharding works, and why it is safe
 
@@ -115,10 +127,32 @@ score file is missing stops with an error rather than falling back — see
 | retention | ESM-IF | hours | ~1 h |
 | retention | ProteinMPNN | ~32 h before batching | ~2 h |
 
-Retention now decodes all 32 designs as one batch for both models. Measured
-speedup is only ~1.4x on CPU, which is compute-bound; the gain is on GPU, where
-each decode step is latency-bound. **Read the first ETA a task prints rather than
-trusting that table** — it is an extrapolation, not a measurement.
+**Read the first ETA a task prints rather than trusting that table** — it is an
+extrapolation, not a measurement.
 
-Batches halve and retry on OOM rather than dropping the chain, so
-`OOM; retrying with batch N` in a log is the guard working, not a failure.
+## Memory, and the mistake worth not repeating
+
+The first ARC submission lost **63 of 64 tasks to OUT_OF_MEMORY**. Retention
+decodes several designs at once, and activation memory scales with
+*batch x chain length*. These chains vary six-fold — 299 residues at the median,
+1,287 at the longest — so a fixed batch of 32 is 4,800 residue-slots for a short
+chain and 41,000 for a long one.
+
+The adaptive halve-and-retry guard did not help, and could not: a **host** OOM is
+delivered by the kernel's OOM killer or the SLURM cgroup, so the process dies
+without Python seeing an exception. Only CUDA OOM is catchable. The batch has to
+be bounded *before* allocating.
+
+So the batch is now chosen from the chain length against a budget of 6,000
+residue-slots — 32 designs at 150 residues, 20 at 299, 8 at 729, 4 at 1,287.
+`--max-batch N` overrides it. If tasks still OOM, lower the budget or raise
+`--mem` rather than narrowing the array.
+
+Check exit states before believing a run finished:
+
+```bash
+sacct -X --name=glyco-ret --format=State -Pn | sort | uniq -c
+```
+
+Expect `64 COMPLETED`. `OUT_OF_MEMORY` there is why the merge coverage check
+exists.
