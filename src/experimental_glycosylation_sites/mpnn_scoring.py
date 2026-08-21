@@ -143,6 +143,7 @@ def conditional_probabilities(
     n_decoding_orders: int = DEFAULT_DECODING_ORDERS,
     seed: int = 0,
     positions: "list[int] | None" = None,
+    hide_positions: "list[int] | None" = None,
 ) -> np.ndarray:
     """Per-order conditional probabilities for one chain, shape [orders, L, 21].
 
@@ -153,6 +154,24 @@ def conditional_probabilities(
     on which other positions were requested, so restricting the set returns
     identical values for them — verified against the unrestricted computation.
     Rows outside `positions` are left at zero and must not be read.
+
+    `hide_positions` withholds the native identity of specific residues from the
+    scored position — the ProteinMPNN analogue of masking a whole sequon rather
+    than one residue of it.
+
+    It works through the decoding order rather than by corrupting the input.
+    `conditional_probs` builds its order as
+    `argsort((order_mask + 0.0001) * |randn|)` and decodes the scored position
+    last, so it is conditioned on every other residue. Inflating `|randn|` at the
+    hidden positions pushes them past the scored one in that order, and a
+    position only ever attends to residues decoded before it. The result is a
+    genuine conditional that omits them.
+
+    Doing it this way matters. The obvious alternative — overwriting those
+    residues with the unknown token X — is off-distribution: ProteinMPNN is not
+    trained with masked sequence input, so the model's response to X says as much
+    about X as about the site. Reordering is not off-distribution at all, because
+    the model is trained on random decoding orders.
 
     Returns `(probabilities, computed)`. `computed` is a boolean array of length
     L that is true only where ProteinMPNN actually ran a decoder pass, which is
@@ -195,11 +214,26 @@ def conditional_probabilities(
     # here is what lets a caller distinguish an unfilled row from a real one.
     computed = (design_mask * mask)[0].cpu().numpy() > 0
 
+    # Positions to decode after the scored one, so it cannot condition on them.
+    # 1e6 dwarfs the 0.0001 weighting non-target positions receive, which is what
+    # puts them last in the sort regardless of the sampled order.
+    hidden = torch.zeros(chain_M.shape[1], dtype=torch.bool)
+    if hide_positions:
+        for index in hide_positions:
+            index = int(index)
+            if not 0 <= index < chain_M.shape[1]:
+                raise IndexError(
+                    f"hidden position {index} outside chain {chain_id}")
+            hidden[index] = True
+
     per_order = []
     generator = torch.Generator(device="cpu").manual_seed(seed)
     with torch.no_grad():
         for _ in range(n_decoding_orders):
-            randn = torch.randn(chain_M.shape, generator=generator).to(device)
+            randn = torch.randn(chain_M.shape, generator=generator)
+            if hidden.any():
+                randn[0, hidden] = 1e6
+            randn = randn.to(device)
             log_probs = model.conditional_probs(
                 X, S, mask, design_mask, residue_idx, chain_encoding_all, randn, False
             )
