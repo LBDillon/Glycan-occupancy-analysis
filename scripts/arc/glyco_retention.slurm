@@ -21,7 +21,7 @@
 #SBATCH --job-name=glyco-ret
 #SBATCH --partition=medium
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --time=12:00:00
 #SBATCH --array=0-63
 #SBATCH --output=/data/chem-proteindesign/sjoh5764/glyco_occupancy/logs/%x-%A_%a.out

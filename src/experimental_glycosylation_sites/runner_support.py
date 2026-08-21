@@ -51,6 +51,9 @@ def parse_args(argv, default_manifest: str, default_out: str, *,
                         help="extra directory of cached structures; repeatable")
     parser.add_argument("--mask-mode", default=None,
                         help="ESMC only: 'single' (default) or 'joint'")
+    parser.add_argument("--max-batch", type=int, default=None,
+                        help="cap designs decoded at once. Default: chosen from "
+                             "chain length so memory stays bounded.")
     parser.add_argument("--shard", default=None, metavar="K/N",
                         help="process only chain group K of N (0-based), for "
                              "SLURM job arrays. Each shard must write its own "

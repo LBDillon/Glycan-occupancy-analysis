@@ -42,7 +42,7 @@ if OUT.exists():
     print(f"resuming: {len(done)} sites already done", flush=True)
 
 device = resolve_device(args.device)
-adapter = build_adapter(args.model, device)
+adapter = build_adapter(args.model, device, max_batch=args.max_batch)
 provenance = adapter.describe()
 print(f"model {args.model} ({provenance['model']}) on {device}", flush=True)
 

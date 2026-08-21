@@ -37,6 +37,30 @@ PREPRINT_CONDITION = SCOPING_CONDITION  # backwards-compatible alias
 # rather than generated separately.
 STANDARD_CONDITION = {"name": "standard", "temperature": 0.1, "n_designs": 32}
 
+# Activation memory during generation scales with batch x chain length, and these
+# chains vary six-fold: 299 residues at the median, 1287 at the longest. A fixed
+# batch of 32 is fine for a short chain and 41,000 residue-slots for a long one,
+# which is what killed 63 of 64 ARC array tasks with OUT_OF_MEMORY.
+#
+# That failure cannot be caught and retried, either: a host OOM is delivered by
+# the kernel's OOM killer or the SLURM cgroup, so the process dies without
+# Python seeing an exception. The batch has to be bounded BEFORE allocating,
+# not reduced after failing.
+#
+# So the batch is chosen from a budget on the product. 6000 slots keeps a
+# 1287-residue chain at batch 4 and still lets a 200-residue chain run 30 at
+# once, which is where the batching pays off anyway.
+DESIGN_SLOT_BUDGET = 6000
+
+
+def batch_for_length(length: int, n_designs: int,
+                     max_batch: "int | None" = None) -> int:
+    """How many designs to decode at once for a chain of this length."""
+    if max_batch:
+        return max(1, min(int(max_batch), n_designs))
+    return max(1, min(n_designs, DESIGN_SLOT_BUDGET // max(int(length), 1)))
+
+
 RETENTION_CATEGORIES = (
     "full_sequon_retained",
     "asn_retained_motif_lost",
@@ -112,7 +136,7 @@ def design_sequences(
 
     sequences: list[str] = []
     remaining = n_designs
-    size = min(max_batch or n_designs, n_designs)
+    size = batch_for_length(X.shape[1], n_designs, max_batch)
     while remaining > 0:
         try:
             chunk = decode(min(size, remaining))

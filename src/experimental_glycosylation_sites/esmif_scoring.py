@@ -65,6 +65,7 @@ import numpy as np
 from .mpnn_scoring import (EPSILON, PROBABILITY_SUM_TOLERANCE,  # noqa: F401
                            IncompleteBackboneError, InvalidProbabilityVector,
                            _prepare_environment, logit)
+from .retention import batch_for_length
 
 DEFAULT_MODEL = "esm_if1_gvp4_t16_142M_UR50"
 
@@ -418,7 +419,7 @@ def design_sequences(mapping: ChainMapping, model, alphabet, n_designs: int,
     # costs minutes, a dropped one silently shrinks the retention table.
     esm_designs: "list[str]" = []
     remaining = n_designs
-    size = min(max_batch or n_designs, n_designs)
+    size = batch_for_length(length, n_designs, max_batch)
     while remaining > 0:
         try:
             chunk = decode(min(size, remaining))
