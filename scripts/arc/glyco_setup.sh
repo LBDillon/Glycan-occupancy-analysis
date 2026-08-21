@@ -44,8 +44,13 @@ if [[ ! -d venv-if ]]; then
   # torch-scatter must match the torch build; torch-sparse is NOT needed.
   TV=$(./venv-if/bin/python -c "import torch;print(torch.__version__.split('+')[0])")
   CU=$(./venv-if/bin/python -c "import torch;print('cu'+torch.version.cuda.replace('.','') if torch.cuda.is_available() or torch.version.cuda else 'cpu')")
+  echo "torch-scatter: looking for a wheel matching torch-${TV}+${CU}"
   ./venv-if/bin/pip install -q torch-scatter -f "https://data.pyg.org/whl/torch-${TV}+${CU}.html" || \
-    echo "WARNING: torch-scatter wheel unavailable for torch-${TV}+${CU}; ESM-IF will not run"
+    ./venv-if/bin/pip install -q torch-scatter -f "https://data.pyg.org/whl/torch-${TV}+cpu.html" || \
+    echo "WARNING: no torch-scatter wheel for torch-${TV}+${CU} or +cpu. ESM-IF cannot run
+         without it (its GVP encoder imports torch_scatter). ProteinMPNN and ESMC
+         are unaffected. Retry on a node with network:
+           \${PROJECT_ROOT}/venv-if/bin/pip install torch-scatter -f https://data.pyg.org/whl/torch-${TV}+${CU}.html"
 fi
 
 if [[ ! -d venv-esmc ]]; then
@@ -56,7 +61,8 @@ if [[ ! -d venv-esmc ]]; then
   # and is never imported by ESMC.
   ./venv-esmc/bin/pip install -q --no-deps esm==3.2.2 "huggingface_hub<1.0" \
       "tokenizers>=0.21,<0.22" "transformers<4.48.2" tenacity httpx zstd \
-      msgpack-numpy cloudpathlib brotli attrs einops regex safetensors
+      msgpack-numpy cloudpathlib brotli attrs einops regex safetensors \
+      tqdm filelock pyyaml requests packaging
 fi
 
 # --- structures -----------------------------------------------------------
@@ -78,18 +84,27 @@ export TORCH_HOME="${PROJECT_ROOT}/cache/torch"
 export HF_HOME="${PROJECT_ROOT}/cache/hf"
 mkdir -p "${TORCH_HOME}" "${HF_HOME}"
 
-./venv-if/bin/python - <<'PY' || echo "WARNING: ESM-IF weights not cached"
-import esm.pretrained
-esm.pretrained.esm_if1_gvp4_t16_142M_UR50()
-print("ESM-IF weights cached")
-PY
+# Fetch weights as FILES rather than by importing torch. `import torch` needs
+# ~2 GB of address space, which login nodes cap at 2 GB, so a torch-based
+# prefetch can only run on a compute node -- and compute nodes may have no
+# outbound network. wget needs neither, so this works in both places.
+IF_CKPT="${TORCH_HOME}/hub/checkpoints/esm_if1_gvp4_t16_142M_UR50.pt"
+mkdir -p "$(dirname "${IF_CKPT}")"
+if [[ ! -s "${IF_CKPT}" ]]; then
+  echo "fetching ESM-IF weights (1.7 GB)..."
+  wget -q --show-progress -O "${IF_CKPT}.part" \
+    https://dl.fbaipublicfiles.com/fair-esm/models/esm_if1_gvp4_t16_142M_UR50.pt \
+    && mv "${IF_CKPT}.part" "${IF_CKPT}" \
+    || { rm -f "${IF_CKPT}.part"; echo "WARNING: could not fetch ESM-IF weights"; }
+fi
+[[ -s "${IF_CKPT}" ]] && echo "ESM-IF weights: $(du -h "${IF_CKPT}" | cut -f1)"
 
-./venv-esmc/bin/python - <<'PY' || echo "WARNING: ESMC weights not cached"
-import torch
-from esm.models.esmc import ESMC
-ESMC.from_pretrained("esmc_300m", device=torch.device("cpu"))
-print("ESMC weights cached")
-PY
+if [[ ! -d "${HF_HOME}/hub/models--EvolutionaryScale--esmc-300m-2024-12" ]]; then
+  echo "fetching ESMC weights..."
+  ./venv-esmc/bin/huggingface-cli download EvolutionaryScale/esmc-300m-2024-12 \
+      >/dev/null 2>&1 || echo "WARNING: could not fetch ESMC weights"
+fi
+[[ -d "${HF_HOME}/hub/models--EvolutionaryScale--esmc-300m-2024-12" ]] && echo "ESMC weights cached"
 
 cat > "${PROJECT_ROOT}/env.sh" <<ENVEOF
 export PROJECT_ROOT="${PROJECT_ROOT}"
