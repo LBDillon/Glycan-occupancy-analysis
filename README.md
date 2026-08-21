@@ -1,5 +1,8 @@
 # experimental_glycosylation_sites
 
+> **Start at [`docs/OVERVIEW.md`](docs/OVERVIEW.md)** — current results across all
+> three models, what they mean, and what is running.
+>
 > **⚠ Correction, 2026-08-20 — ProteinMPNN results are being regenerated.**
 > `mpnn_scoring.ALPHABET` held a three-letter lookup table from inside
 > `parse_PDB_biounits` instead of ProteinMPNN's token alphabet. Consequence:
@@ -246,7 +249,8 @@ isinstance(a, SequonScorer), isinstance(a, SequenceDesigner)   # (True, True)
 
 | Document | For |
 |---|---|
-| [`docs/primary_result.md`](docs/primary_result.md) | the result and its limits |
+| [`docs/OVERVIEW.md`](docs/OVERVIEW.md) | **start here — current results, what they mean, what is running, what is next** |
+| [`docs/primary_result.md`](docs/primary_result.md) | the result and its limits (pre-correction numbers) |
 | [`docs/figures.md`](docs/figures.md) | all nine figures explained in prose |
 | [`docs/concepts.md`](docs/concepts.md) | what the terms mean, in plain language |
 | [`docs/significance.md`](docs/significance.md) | the eight tests and why none survives correction |

@@ -1,5 +1,12 @@
 # What changed on 18 August 2026, and why
 
+
+> **Note (2026-08-20).** This documents the *August 18th* correction. Its
+> numbers are the historical record of that moment and are deliberately left as
+> they were. A later, larger correction — the ProteinMPNN token alphabet —
+> supersedes them for any current purpose. See
+> [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md).
+
 A short account of two rounds of correction on the same day. The first
 (Amendment 1) fixed a defect in the scorer; the second (Amendment 2, at the end
 of this document) removed an arbitrary dependence in the matching. The detailed

@@ -1,5 +1,15 @@
 # The primary comparison
 
+
+> **⚠ Numbers below predate the 2026-08-20 alphabet correction.**
+> `mpnn_scoring.ALPHABET` held the wrong string, so `p_asn_at_n` was reading
+> P(aspartate). Every ProteinMPNN score and every retention figure produced
+> before that date is superseded. Scores have since been regenerated; retention
+> has not. **The argument and the method here still stand — the specific
+> quantities do not.** See
+> [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) for
+> what changed and [`OVERVIEW.md`](OVERVIEW.md) for current numbers.
+
 > Given the native protein backbone and the surrounding native sequence, does
 > ProteinMPNN assign a higher conditional sequon score to experimentally
 > occupied sites than to structurally matched sites with no modelled glycan?
