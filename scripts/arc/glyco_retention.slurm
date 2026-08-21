@@ -10,13 +10,20 @@
 # with glyco_merge.py. Every task is resumable -- resubmitting skips work
 # already on disk, so a timed-out task costs only the chain in flight.
 #
+#
+# Runs CPU-only by default: ARC's short/medium partitions have no GPUs and
+# reject --gres with "Invalid feature specification". Retention is the expensive stage, so the array is wide.
+# --device auto picks CUDA when it is actually present, so adding a GPU is just:
+#
+#   sbatch --partition=<gpu-partition> --gres=gpu:1 --array=0-15 <this script> <model>
+#
+# Command-line options override the directives below.
 #SBATCH --job-name=glyco-ret
 #SBATCH --partition=medium
-#SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=12:00:00
-#SBATCH --array=0-15
+#SBATCH --array=0-63
 #SBATCH --output=/data/chem-proteindesign/sjoh5764/glyco_occupancy/logs/%x-%A_%a.out
 #SBATCH --error=/data/chem-proteindesign/sjoh5764/glyco_occupancy/logs/%x-%A_%a.err
 
@@ -24,6 +31,9 @@ set -euo pipefail
 
 PROJECT_ROOT="${PROJECT_ROOT:-/data/chem-proteindesign/sjoh5764/glyco_occupancy}"
 source "${PROJECT_ROOT}/env.sh"
+# env.sh pins OMP_NUM_THREADS=1 for reproducibility on a laptop; here the
+# allocation is the unit, so let torch use the cores it was given.
+export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 
 MODEL="${1:?usage: sbatch glyco_retention.slurm <esm_if|proteinmpnn>}"
 VENV="${PROJECT_ROOT}/venv-if"     # both live here; ESMC does not do retention
@@ -44,7 +54,7 @@ for pair in "scoring_manifest:scoring_manifest" "secretory:manifest_matched_secr
   "${VENV}/bin/python" pipeline/08_design.py \
       "results/manifests/${manifest}.csv" \
       "${OUT}/retention_${tag}_${MODEL}.shard${SLURM_ARRAY_TASK_ID}.csv" \
-      --model "${MODEL}" --device cuda --shard "${SHARD}"
+      --model "${MODEL}" --device auto --shard "${SHARD}"
 done
 
 echo "shard ${SHARD} done"
