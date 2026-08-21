@@ -44,13 +44,14 @@ if [[ ! -d venv-if ]]; then
   # torch-scatter must match the torch build; torch-sparse is NOT needed.
   TV=$(./venv-if/bin/python -c "import torch;print(torch.__version__.split('+')[0])")
   CU=$(./venv-if/bin/python -c "import torch;print('cu'+torch.version.cuda.replace('.','') if torch.cuda.is_available() or torch.version.cuda else 'cpu')")
-  echo "torch-scatter: looking for a wheel matching torch-${TV}+${CU}"
-  ./venv-if/bin/pip install -q torch-scatter -f "https://data.pyg.org/whl/torch-${TV}+${CU}.html" || \
-    ./venv-if/bin/pip install -q torch-scatter -f "https://data.pyg.org/whl/torch-${TV}+cpu.html" || \
-    echo "WARNING: no torch-scatter wheel for torch-${TV}+${CU} or +cpu. ESM-IF cannot run
-         without it (its GVP encoder imports torch_scatter). ProteinMPNN and ESMC
-         are unaffected. Retry on a node with network:
-           \${PROJECT_ROOT}/venv-if/bin/pip install torch-scatter -f https://data.pyg.org/whl/torch-${TV}+${CU}.html"
+  # torch-scatter is a compiled extension with no wheel for current torch and no
+  # source build without nvcc. It is optional here: the package ships a
+  # native-torch shim for the two names ESM-IF imports, verified bit-identical
+  # to the real thing. Try the wheel anyway -- if it is there, use it.
+  echo "torch-scatter: trying a wheel for torch-${TV}+${CU} (optional)"
+  ./venv-if/bin/pip install -q torch-scatter -f "https://data.pyg.org/whl/torch-${TV}+${CU}.html" 2>/dev/null \
+    || ./venv-if/bin/pip install -q torch-scatter -f "https://data.pyg.org/whl/torch-${TV}+cpu.html" 2>/dev/null \
+    || echo "  no wheel for torch-${TV}; ESM-IF will use the built-in shim instead"
 fi
 
 if [[ ! -d venv-esmc ]]; then

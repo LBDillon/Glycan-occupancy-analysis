@@ -116,6 +116,16 @@ def patch_biotite() -> None:
     if not hasattr(pdbx, "PDBxFile") and hasattr(pdbx, "CIFFile"):
         pdbx.PDBxFile = pdbx.CIFFile  # type: ignore[attr-defined]
 
+    # torch_scatter is a compiled extension with no wheel for current torch and
+    # no source build without nvcc. ESM-IF imports two names from it and calls
+    # one, so stand them in rather than pinning the whole stack to whatever
+    # torch PyG last shipped wheels for. No-op where the real package exists.
+    from ._torch_scatter_shim import install as _install_scatter_shim
+
+    if _install_scatter_shim():
+        print("torch_scatter not installed; using the native-torch shim",
+              flush=True)
+
     from biotite.sequence import ProteinSequence
 
     original = ProteinSequence.convert_letter_3to1

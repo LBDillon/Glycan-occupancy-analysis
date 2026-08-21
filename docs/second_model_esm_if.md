@@ -114,9 +114,23 @@ are applied by `esmif_scoring.patch_biotite()` and are idempotent.
 - `ProteinSequence.convert_letter_3to1` raises on unknown residue names; it is
   wrapped to return `X`.
 
-Requires `torch-geometric` **and** `torch-scatter` (the GVP encoder imports both)
-but **not** `torch-sparse`, which is absent here and unused — worth knowing,
-because it is the one that reliably fails to build.
+Requires `torch-geometric`. It does **not** require `torch-sparse` (absent here
+and unused), and `torch-scatter` is optional.
+
+`torch-scatter` is a compiled extension needing a wheel matched to the exact
+torch build. PyG stops publishing them for older torch, and building from source
+needs `nvcc` — so on a current torch it is simply unavailable, which is what
+blocked the first ARC setup. ESM-IF imports two names from it, calls one
+(`scatter_add`, to count edges into each node) and never uses the other, so
+`_torch_scatter_shim.py` supplies both in native torch and registers itself as
+`torch_scatter` when the real package is missing. Verified `torch.equal` against
+the real package, and ESM-IF scores through the shim are bit-identical on the
+same device.
+
+**Cross-device reproducibility, separately:** the same sites scored on CPU and on
+a GPU differ by up to ~2e-3 in the sequon score. That is ordinary float32
+arithmetic, not a defect, but it means a score table should record which device
+produced it if runs are ever to be compared at that precision.
 
 Carried over from `decoding-design-bias/design/score_esmif_cohort.py`: **GVP and
 torch_scatter are most reliable on CPU on macOS**, which is why `--device`
