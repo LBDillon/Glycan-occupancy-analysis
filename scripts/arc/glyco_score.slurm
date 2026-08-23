@@ -34,7 +34,12 @@ export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 
 MODEL="${1:?usage: sbatch glyco_score.slurm <proteinmpnn|esm_if|esmc> [mask_mode]}"
 MASK_MODE="${2:-}"
-SHARD="${SLURM_ARRAY_TASK_ID}/${SLURM_ARRAY_TASK_COUNT}"
+# The denominator is FIXED, not SLURM_ARRAY_TASK_COUNT. Resubmitting a few
+# failed indices (--array=36,41) would otherwise set the count to 2 and compute
+# "shard 36/2", which is invalid -- and silently a different partition of the
+# chains even where it is not. It must match the width of the original array.
+SHARDS="${SHARDS:-8}"
+SHARD="${SLURM_ARRAY_TASK_ID}/${SHARDS}"
 
 # ESMC needs the other environment: fair-esm and EvolutionaryScale's esm both
 # claim the import name `esm` and cannot be installed together.
