@@ -15,6 +15,15 @@ for the other 287 there was nothing to choose between, so no selection bias is
 possible. `n_structures_examined` and `structure_choice` mark the 45 that need a
 sensitivity check, instead of re-running selection for everyone.
 
+**Every population, not just the occupied one.** A percentile within occupied
+sites alone cannot say whether a feature is *discriminative* — a site at the
+median of occupied contexts might be equally typical of unoccupied ones. So the
+manifest carries the comparison arms too, tagged by `population`, and an analysis
+selects what it needs. The internal controls are the strongest label and the
+thinnest (32 sites); the secretory set trades label strength for 72x the sample,
+and whether those two describe the same thing is a question to test rather than
+assume.
+
 **Tier membership, not a single reference set.** Evidence strength trades off
 against sample size, and which trade is right depends on the question. Every site
 carries its tier flags so an analysis can pick, and so "consistent across tiers"
@@ -59,10 +68,41 @@ def load(name):
     return frame
 
 
-sites = load("experimental_sites_all.csv")
 features = load("site_structural_features.csv")
 evidence = load("structure_site_evidence.csv")
 assoc = load("site_pair_associations.csv")
+
+# --- the populations the atlas compares ------------------------------------
+# Occupied carries evidence columns; the control sets carry none, so they are
+# concatenated with those fields empty rather than merged into a shape that
+# implies evidence they do not have.
+occupied = load("experimental_sites_all.csv")
+occupied["population"] = "occupied"
+
+internal = features[features.occupancy_status == "observed_unmodified"][
+    ["accession", "position"]].copy()
+internal["population"] = "internal_control"
+
+controls = [occupied, internal]
+for name, population in (("secretory_unannotated_features.csv", "secretory_unannotated"),
+                         ("negative_control_features.csv", None)):
+    path = D / name
+    if not path.exists():
+        continue
+    frame = load(name)
+    if population is None:
+        for control_set, label in (("bacterial_extracytoplasmic", "bacterial"),
+                                   ("cytosolic_eukaryotic", "cytosolic")):
+            sub = frame[frame.get("control_set", "") == control_set][["accession", "position"]].copy()
+            sub["population"] = label
+            controls.append(sub)
+    else:
+        sub = frame[["accession", "position"]].copy()
+        sub["population"] = population
+        controls.append(sub)
+
+sites = pd.concat(controls, ignore_index=True).drop_duplicates(
+    subset=["accession", "position", "population"])
 
 # --- UniProt sequences, for the window and the +1 residue -------------------
 sequences = {}
@@ -70,6 +110,22 @@ with gzip.open("../../data/raw/uniprot/uniprot_reviewed_glycoproteins_2026-04-27
                "rt", encoding="utf-8", newline="") as fh:
     for row in csv.DictReader(fh, delimiter="\t"):
         sequences[row["Entry"]] = row.get("Sequence", "")
+# The control proteins are not in the glycoprotein snapshot; their sequences
+# were cached when those sets were built.
+for cache in ("data/cache/negative_control_proteins.csv.gz",
+              "data/cache/secretory_unannotated_proteins.csv.gz"):
+    if Path(cache).exists():
+        extra = pd.read_csv(cache, low_memory=False)
+        sequences.update(dict(zip(extra.Entry.astype(str), extra.Sequence.fillna(""))))
+
+def text(value) -> str:
+    """Evidence fields are absent for the control populations, not empty."""
+    return "" if value is None or (isinstance(value, float) and pd.isna(value)) else str(value)
+
+
+def count(value) -> int:
+    return 0 if value is None or (isinstance(value, float) and pd.isna(value)) else int(value)
+
 
 rows = []
 for r in sites.itertuples(index=False):
@@ -84,12 +140,13 @@ for r in sites.itertuples(index=False):
         "accession": r.accession,
         "position": pos,
         # --- evidence -----------------------------------------------------
-        "occupancy_status": getattr(r, "occupancy_status", ""),
-        "support_sources": getattr(r, "support_sources", ""),
-        "support_count": int(getattr(r, "support_count", 0) or 0),
-        "uniprot_tier": getattr(r, "uniprot_tier", ""),
-        "glygen_tier": getattr(r, "glygen_tier", ""),
-        "structure_tier_evidence": getattr(r, "structure_tier", ""),
+        "population": r.population,
+        "occupancy_status": text(getattr(r, "occupancy_status", "")),
+        "support_sources": text(getattr(r, "support_sources", "")),
+        "support_count": count(getattr(r, "support_count", 0)),
+        "uniprot_tier": text(getattr(r, "uniprot_tier", "")),
+        "glygen_tier": text(getattr(r, "glygen_tier", "")),
+        "structure_tier_evidence": text(getattr(r, "structure_tier", "")),
         # --- sequence context ---------------------------------------------
         "sequon_triplet": triplet,
         "subtype": f"NX{plus2}" if plus2 else "",
@@ -126,16 +183,36 @@ manifest["structure_choice"] = manifest.n_structures_examined.map(
     lambda n: "no_alternative" if n <= 1 else "selected_from_alternatives")
 
 # --- structural features, and whether they are usable ----------------------
+# Each population's features live in its own table -- the occupied and internal
+# sites in one, the secretory and negative controls in others -- so they are
+# stacked before merging. Merging only the first would silently leave every
+# control row without features and make the atlas look occupied-only.
+feature_tables = [features]
+for name in ("secretory_unannotated_features.csv", "negative_control_features.csv"):
+    if (D / name).exists():
+        feature_tables.append(load(name))
+all_features = pd.concat(feature_tables, ignore_index=True)
+
 feat_cols = [c for c in ("features_available", "rsa", "rsa_bin", "sasa",
                          "n_neighbours_8a", "hydrophobic_fraction_8a",
                          "charged_fraction_8a", "chain_length_resolved",
-                         "distance_to_chain_terminus", "observed_residue")
-             if c in features.columns]
-manifest = manifest.merge(features.drop_duplicates(KEY)[KEY + feat_cols], on=KEY, how="left")
-manifest["features_available"] = manifest.get("features_available", False).fillna(False).astype(bool)
+                         "distance_to_chain_terminus", "observed_residue",
+                         "structure_pdb_id", "structure_chain_id", "structure_resseq")
+             if c in all_features.columns]
+all_features = all_features.drop_duplicates(KEY)
+manifest = manifest.merge(all_features[KEY + feat_cols], on=KEY, how="left",
+                          suffixes=("", "_feat"))
+# the structure a site's features came from, which for controls is the only
+# structure record they have
+for col in ("structure_pdb_id", "structure_chain_id", "structure_resseq"):
+    if f"{col}_feat" in manifest.columns:
+        manifest[col] = manifest[col].fillna(manifest[f"{col}_feat"])
+        manifest = manifest.drop(columns=[f"{col}_feat"])
+manifest["features_available"] = (
+    manifest.get("features_available", False).fillna(False).infer_objects(copy=False).astype(bool))
 
 # --- reference tiers, nested ------------------------------------------------
-occupied = manifest.occupancy_status.eq("occupied_supported")
+occupied = manifest.population.eq("occupied")
 manifest["tier_all_occupied"] = occupied
 manifest["tier_features"] = occupied & manifest.features_available
 manifest["tier_two_layer"] = manifest.tier_features & manifest.support_count.ge(2)
@@ -148,7 +225,12 @@ write_table(manifest, out)
 
 tiers = ["tier_all_occupied", "tier_features", "tier_two_layer",
          "tier_linked_glycan", "tier_three_layer"]
-print(f"wrote {out}  ({len(manifest)} sites, {manifest.accession.nunique()} proteins)\n")
+print(f"wrote {out}  ({len(manifest)} rows, {manifest.accession.nunique()} proteins)\n")
+print("populations:")
+for name, group in manifest.groupby("population"):
+    print(f"  {name:24}{len(group):6d} sites  {group.accession.nunique():5d} proteins  "
+          f"{int(group.features_available.sum()):5d} with features")
+print()
 print(f"{'tier':22}{'sites':>7}{'proteins':>10}{'clusters':>10}")
 for t in tiers:
     sub = manifest[manifest[t]]
