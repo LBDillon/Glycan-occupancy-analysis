@@ -241,6 +241,7 @@ teach a model curation patterns.
 
 | Document | For |
 |---|---|
+| [`why_context_atlas.md`](why_context_atlas.md) | **why this work exists, and what the benchmark could not answer** |
 | [`adding_models_explainer.md`](adding_models_explainer.md) | how one model became three, and what broke |
 | [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) | the alphabet defect in full |
 | [`second_model_esm_if.md`](second_model_esm_if.md) | ESM-IF's conditional, index mapping, batched generation |
