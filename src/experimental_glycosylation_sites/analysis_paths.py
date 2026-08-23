@@ -74,6 +74,18 @@ def retention_all_classes(variant: "str | None" = None) -> Path:
     return Path(f"results/designs/retention_all_classes{suffix(variant)}.csv")
 
 
+def retention_by_class_json(variant: "str | None" = None) -> Path:
+    """Class-average retention summary.
+
+    This one leaked: it was written to a fixed path while everything around it
+    was variant-scoped, so running stage 10 for a second model silently
+    overwrote the first model's summary. Exactly the failure the variant
+    convention exists to prevent, missed because the filename does not contain
+    a comparison label and so did not look like a per-run output.
+    """
+    return Path(f"results/analysis/retention_by_class{suffix(variant)}.json")
+
+
 def analysis_json(label: str, variant: "str | None" = None) -> Path:
     return Path(f"results/analysis/analysis_{label}{suffix(variant)}.json")
 

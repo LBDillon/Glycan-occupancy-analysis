@@ -1,6 +1,6 @@
 # Overview — where this stands
 
-*Current as of 2026-08-21. This is the one document kept in step with the
+*Current as of 2026-08-23. This is the one document kept in step with the
 results. Where it disagrees with another doc, this one is right and the other is
 flagged with a staleness banner.*
 
@@ -126,15 +126,43 @@ annotation, not annotated absence) and is contaminated by construction.
 
 ## Current results — retention
 
-**None.** Every pre-2026-08-20 retention number is invalid: designs were decoded
-with the wrong alphabet, so `classify_retention`'s asparagine test could not fire
-correctly. Regeneration is **running now on ARC** for ESM-IF and ProteinMPNN.
+Now complete for both models, and it agrees with the scores.
 
-This matters more than the missing numbers suggest — the one live lead in the
-pre-correction work (occupied sequons retained more in eukaryotic-secretory
-comparisons and not at all in the confounded sets) lives entirely in retention.
+| Comparison | ESM-IF1 | ProteinMPNN |
+|---|---|---|
+| eukaryotic secretory | **+0.0925** (BH 0.015) | +0.0423 (BH 0.30) |
+| internal control | −0.023 (BH 1.00) | −0.045 (BH 0.87) |
+| bacterial *(diagnostic)* | −0.054 (BH 0.003) | −0.070 (BH 0.002) |
+| cytosolic *(diagnostic)* | +0.022 (BH 0.75) | −0.003 (BH 0.89) |
 
----
+**ESM-IF clears correction on both outcomes**; ProteinMPNN on neither. Retention
+15.1% vs 5.9% on the secretory comparison, 93 informative pairs of 245.
+
+The two outcomes are methodologically independent — scoring reads probabilities
+off the native backbone without generating anything, retention samples 32
+unconstrained designs and counts survivals — so they cannot share an artefact
+through the scoring path.
+
+This is also the first test of the earlier lead (occupied sequons retained more
+in eukaryotic-secretory context, not at all in the confounded sets). That lead
+was generated on ProteinMPNN with the broken alphabet; it now **holds for ESM-IF
+and not for ProteinMPNN**.
+
+## The masking result
+
+Both arms carry the motif, so motif recognition alone cannot separate them.
+Hiding the whole sequon asks what the surroundings alone say.
+
+| | gap, motif visible | gap, motif hidden | change |
+|---|---|---|---|
+| ESMC (sequence only) | +0.121 | +0.007 | **+0.113** [+0.071, +0.147] |
+| ProteinMPNN (structure) | +0.022 | +0.029 | −0.007 [−0.016, −0.002] |
+
+The sequence-only model's discrimination depends entirely on seeing the motif in
+context; the structure-conditioned model's does not. ESM-IF has no joint variant
+— `<mask>` is off-distribution in its decoder prefix (it sends 93% of the
+probability mass onto aromatics), so the honest version needs marginalisation
+rather than substitution. Not built.
 
 ## What went wrong, and what it cost
 
@@ -160,13 +188,15 @@ trip the model's representation back to something you already know. All three
 checks now run in code. The fourth is a reporting failure, and the shard merge
 now refuses to stay quiet about coverage.
 
-## Status of the retention run
+## Benchmark state is frozen
 
-**Not yet produced.** The first ARC submission lost 63 of 64 array tasks to
-OUT_OF_MEMORY: design batches were a fixed 32 regardless of chain length, and
-these chains run to 1,287 residues. Batches are now bounded by length, memory
-raised to 64 GB, and the job is ready to resubmit — but no retention numbers
-exist for any model yet.
+`benchmark_frozen/2026-08-23/` holds the analysis outputs and matched pairs
+verbatim, plus SHA-256 for every score, design and manifest table.
+`pipeline/40_freeze_benchmark.py --check` reports any drift. This exists because
+`results/` is gitignored, so roughly twenty hours of ARC and laptop compute lived
+only in untracked files — and because stage 10 was found writing
+`retention_by_class.json` to a fixed path, so running it for a second model
+silently overwrote the first.
 
 → [`running_on_arc.md`](running_on_arc.md)
 

@@ -1,0 +1,230 @@
+{
+  "label": "2026-08-23",
+  "created": "2026-08-23T11:55:18.505611+00:00",
+  "git_commit": "00e362c77494d53d39bb165062b450aeb8f75e61",
+  "git_dirty": true,
+  "copied_files": 60,
+  "hashed": {
+    "scores/mpnn_conditional_scores.csv": "78cef541db56a614dc2b7401a333c26185c5260df4c1977c19d4efc9e36b2145",
+    "scores/mpnn_conditional_scores_unmatched.csv": "2397c42bd6615388e72eae33d6e0efc141005ed8bd62c9e1550a58403b353d34",
+    "scores/mpnn_scoring_failures.csv": "35f1aa3c6432936f2849c0c69007b551aaa1e6137df75003a49895de8864f795",
+    "scores/scores_controls.csv": "d8a6c04dc4ad6495cd518fe529ffcd3d95b42db1e1a88f0e3830309f993c7124",
+    "scores/scores_controls_alphabet_corrected.csv": "3d18dd53d951719085ffbc4b17892faf422b002bd259b5dcb58d0836b8404613",
+    "scores/scores_controls_alphabet_corrected_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esm_if.csv": "f7e5f720cdbef1d0d3d6be5ff61055cbfe35a331ff22458b80dc8f08fe9daf6f",
+    "scores/scores_controls_esmc_joint.csv": "94e1b5161d0869890f565e0552e7e74c20332b0d66f28623ced7117acda016a6",
+    "scores/scores_controls_esmc_joint_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esmc_single.csv": "567c5f0f95e55a87787f8fb5997e4f5122c1169658ec8134fcaaaa69b4861231",
+    "scores/scores_controls_esmc_single_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_proteinmpnn_joint.csv": "d2695c44f295997fd9d46e0b3395d7674a9c09c34aa1541341462f9ca3e1b363",
+    "scores/scores_controls_proteinmpnn_joint_failures.csv": "ae1bf4a6f3a3463f6e71d92f05b2f0aef1b14c8097f79e34e74444d94aa18f90",
+    "scores/scores_controls_topup.csv": "56d1851899944de01f530d7e5a56f61f531cc6cae7a07ae6faca5307e0f15b06",
+    "scores/scores_controls_topup_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset.csv": "e94d8e8070a222a1abcd0c528bb8a4d46ea929feb7ce34a92aa9f9695cc9907d",
+    "scores/scores_dataset_alphabet_corrected.csv": "019f56d637cc957a1e65e49a85f54246787058bc1bebc8e14bf43130322f299a",
+    "scores/scores_dataset_alphabet_corrected_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esm_if.csv": "90059a1c82b3599e0ef4f9cd3f3b0dde9d299393dd1e0eee2382b156ac557af9",
+    "scores/scores_dataset_esmc_joint.csv": "fb3a3ee34e30c576f7245b36d509153b8638cd397d01d5626bc8a1fccb461f26",
+    "scores/scores_dataset_esmc_joint_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esmc_single.csv": "baab30a507f710dbc839479bed7b21533d00e91db8bd4cda2a2df7c881de6d84",
+    "scores/scores_dataset_esmc_single_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_proteinmpnn_joint.csv": "252b4c3d42b0b9697e2b9f957335577c7db4bc6d179a76b70beb7b20dcfad4a6",
+    "scores/scores_dataset_proteinmpnn_joint_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory.csv": "9bb59f7480290be144bcf5df4a8693ff5c653e7567ff433d25d788de9b077792",
+    "scores/scores_secretory_alphabet_corrected.csv": "9083af34c5ef4c3a8c10b344d29def201c75204aa55d240414dcd46a26f31da9",
+    "scores/scores_secretory_alphabet_corrected_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esm_if.csv": "d9bd75871f62cfff93c55f5d0ad0778d2ceb4f965d1ec21c2ebbf2418755a678",
+    "scores/scores_secretory_esmc_joint.csv": "c3104557a212fda6e67cd66b0c3b4b8c9ebec1e0e413fbb0ba10dbfc55611578",
+    "scores/scores_secretory_esmc_joint_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esmc_single.csv": "a6e6f70ffe1edcc1675ee63f193234cf71615890769d226c109b6b61f6bfa5d7",
+    "scores/scores_secretory_esmc_single_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_proteinmpnn_joint.csv": "dd918da539e01f75bf45213bfab211f8010421bf4e2f86d8657b3a99b4b6d5d6",
+    "scores/scores_secretory_proteinmpnn_joint_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "designs/mpnn_retention_frozen_2026-08-18.csv": "d2d18c456fa7491ca5bb2049a2173b060105c074db624afa3a59106a81c95b63",
+    "designs/mpnn_retention_secretory.csv": "0108ad065261a5edd2125cf8ef4e7f103e10f8cdc92261ac54d6750fbea27561",
+    "designs/retention_all_classes.csv": "09537efba9ec7c8b0af3a25f80394078e022e660a6ecc2d24ababdb64467f0d1",
+    "designs/retention_all_classes_alphabet_corrected.csv": "9e0a13d1d3f48411b7d4d60592b4e1a3221eab22871149a58e033354bab0e850",
+    "designs/retention_all_classes_esm_if.csv": "a32273bc1f91ff34910e794ebf87fd417b32a5167ff97b31dd1581dafd512ce3",
+    "designs/retention_scoring_manifest_alphabet_corrected.csv": "ca50db2952158673b1de9df55d72f82321eef6904dd4bdd04ef3124e55bed29b",
+    "designs/retention_scoring_manifest_esm_if.csv": "c4351a78fd8e5ce51661ed2c23c2443647481904647bb114f9d5dc24e5e1dad2",
+    "designs/retention_scoring_manifest_proteinmpnn.csv": "ca50db2952158673b1de9df55d72f82321eef6904dd4bdd04ef3124e55bed29b",
+    "designs/retention_scoring_manifest_proteinmpnn_corrected.shard0.csv": "d67ba70080698cebd46e89b6e55916895e5e98524709c702905e140dc4ebbd7e",
+    "designs/retention_scoring_manifest_proteinmpnn_corrected.shard1.csv": "5ffdc0ebe19427368fdab4ce1684147afff1179883874c30a547f8014419fbc4",
+    "designs/retention_scoring_manifest_proteinmpnn_corrected.shard2.csv": "09178fdaed566319030d81365ea6bea920be907abc44ab60f888ca1cab73f590",
+    "designs/retention_scoring_manifest_proteinmpnn_corrected.shard3.csv": "f701b53cd7eb996ad5d0734dcfcaba2877c8050d455f5ec03082b0a98a599a69",
+    "designs/retention_secretory_alphabet_corrected.csv": "ce369d4a016d8254d0d44a063111b649e973dc95b80099e7c1901ed832741682",
+    "designs/retention_secretory_esm_if.csv": "32f459c03bc49d5e774cfa9f68c473406837565cb5610a0706625becd2b712fb",
+    "designs/retention_secretory_proteinmpnn.csv": "ce369d4a016d8254d0d44a063111b649e973dc95b80099e7c1901ed832741682",
+    "manifests/candidate_manifest_controls.csv": "5bf7b117f23a74a222f72d95a94c58d29750478b07b179666717b60b20e80f47",
+    "manifests/candidate_manifest_controls_exclusions.csv": "5df3516e85230d92c6ffc58ae524a0179e829e8346cf80ea4b2891a0f42330c4",
+    "manifests/candidate_manifest_dataset.csv": "d36e4312417d0a3267eef8a62275215aa599cabb49d39546d39f702c4cca37b3",
+    "manifests/candidate_manifest_dataset_exclusions.csv": "083cf28cbec80ca099f97a2e6b4c3e22d665e6428083247c53fcbb8ce1356320",
+    "manifests/candidate_manifest_secretory.csv": "61831fc8123626a71cde8735a7df26baf064b9c20940a5b36a935f5890f3fc65",
+    "manifests/candidate_manifest_secretory_exclusions.csv": "7ca5f44140b4a8424935dd37de203d189978af8c7938aa144797fe0feaa6e7d2",
+    "manifests/manifest_controls_topup.csv": "d81b7350e85cc2079b7c3166f0e5ea48dea3d9f9aa83a80ee8c280ace1578805",
+    "manifests/manifest_matched_controls.csv": "8ff8335ac15077e3a261702b3d8429f4e4da86e599b61a329a6ea53a8f10166c",
+    "manifests/manifest_matched_secretory.csv": "8d5c9b6439df62bc6dcfe7e20731e6395e9a7aa4603d548baf30cf8491787f41",
+    "manifests/scoreability.csv": "d93ef10b2841918734db6f87a77899de8ed9d9555227c6b04ef768e9b8972643",
+    "manifests/scoreability_controls.csv": "2477d71f08c1291e5f7898058d2a2357903a0dcd026ea674367e7f3114c27b38",
+    "manifests/scoreability_dataset.csv": "b115127241b1a928a5c4b2292f52479820f88b606ddcd770c12bae381922b58b",
+    "manifests/scoreability_secretory.csv": "dcd21444058f9768eed37fde10d8c1f96181e2aedbaa0a5a2a786ebb467a6cfd",
+    "manifests/scoring_manifest.csv": "7db091957be9fa375d890c92d2bd6fc7d1c5964bf1e1eee8465c641418ca84e7",
+    "manifests/scoring_manifest_exclusions.csv": "10e86c48e467c089993e5112fce332851e433bfb19e09c22010449f16a20a5c1"
+  },
+  "claims": {
+    "(legacy)": [
+      {
+        "outcome": "conditional score",
+        "comparison": "internal control",
+        "effect": 0.610367,
+        "p_bh": 0.435778
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.097513,
+        "p_bh": 0.435778
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "bacterial",
+        "effect": -0.208799,
+        "p_bh": 0.120394
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "cytosolic",
+        "effect": 0.089642,
+        "p_bh": 0.435778
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "internal control",
+        "effect": 0.152344,
+        "p_bh": 0.332117
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.043241,
+        "p_bh": 0.120394
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "bacterial",
+        "effect": 0.002339,
+        "p_bh": 0.821259
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "cytosolic",
+        "effect": 0.003237,
+        "p_bh": 0.821259
+      }
+    ],
+    "alphabet_corrected": [
+      {
+        "outcome": "conditional score",
+        "comparison": "internal control",
+        "effect": 0.868279,
+        "p_bh": 0.369902
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.122568,
+        "p_bh": 0.300485
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "bacterial",
+        "effect": -0.536765,
+        "p_bh": 0.0004
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "cytosolic",
+        "effect": -0.037475,
+        "p_bh": 0.866185
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "internal control",
+        "effect": -0.044925,
+        "p_bh": 0.866185
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.042345,
+        "p_bh": 0.300485
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "bacterial",
+        "effect": -0.070006,
+        "p_bh": 0.0018
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "cytosolic",
+        "effect": -0.003115,
+        "p_bh": 0.893005
+      }
+    ],
+    "esm_if": [
+      {
+        "outcome": "conditional score",
+        "comparison": "internal control",
+        "effect": -0.509507,
+        "p_bh": 0.553439
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.652812,
+        "p_bh": 0.0008
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "bacterial",
+        "effect": -0.400589,
+        "p_bh": 0.0008
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "cytosolic",
+        "effect": 0.183334,
+        "p_bh": 0.456217
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "internal control",
+        "effect": -0.023438,
+        "p_bh": 1.0
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.092473,
+        "p_bh": 0.015299
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "bacterial",
+        "effect": -0.053519,
+        "p_bh": 0.002667
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "cytosolic",
+        "effect": 0.021785,
+        "p_bh": 0.751677
+      }
+    ]
+  },
+  "note": "analysis/ and matching/ are copied verbatim; scores, designs and manifests are hashed only. Re-run with --check to detect drift."
+}

@@ -1,0 +1,29 @@
+{
+  "purpose": "how much the primary result depends on the matching algorithm",
+  "n_seeds": 200,
+  "n_boot_per_seed": 2000,
+  "reference_sd": 1.331555,
+  "margin_raw": 0.266311,
+  "greedy": {
+    "pairs_min": 16,
+    "pairs_max": 16,
+    "mean_min": 0.380482,
+    "mean_max": 0.930485,
+    "mean_median": 0.673806,
+    "all_point_estimates_positive": true,
+    "fraction_ci_excludes_zero": 0.375,
+    "verdicts": {
+      "inconclusive": 125,
+      "directional, magnitude undetermined": 75
+    }
+  },
+  "optimal": {
+    "n_pairs": 16,
+    "mean": 0.6103668282105019,
+    "ci_low": -0.2876802969869351,
+    "ci_high": 1.4965937596244183,
+    "excludes_zero": false,
+    "verdict": "inconclusive"
+  },
+  "interpretation": "every point estimate is positive; whether the interval excludes zero depends on which matching is selected"
+}

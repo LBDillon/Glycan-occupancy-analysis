@@ -1,0 +1,76 @@
+{
+  "comparison": "vs_internal_control",
+  "label": "optimal",
+  "role": "primary",
+  "matching": {
+    "algorithm": "maximum-cardinality, minimum-total-distance assignment",
+    "deterministic": true,
+    "features": [
+      "rsa",
+      "n_neighbours_8a",
+      "hydrophobic_fraction_8a"
+    ],
+    "exact": [
+      "subtype"
+    ],
+    "caliper": 0.25,
+    "replacement": false,
+    "k": 1,
+    "seed": null,
+    "pool": "structurally scoreable sites only, determined before matching"
+  },
+  "unweighted": {
+    "cases_total": 314,
+    "cases_matched": 16,
+    "cases_unmatched": 298,
+    "case_proteins_matched": 16,
+    "controls_used": 16,
+    "controls_available": 28,
+    "mean_pairs_per_case": 1.0,
+    "features": {
+      "rsa": {
+        "smd_before": 0.1107,
+        "smd_after": 0.0306,
+        "case_median": 0.4291,
+        "control_median_before": 0.4456,
+        "control_median_after": 0.4611
+      },
+      "n_neighbours_8a": {
+        "smd_before": -0.1149,
+        "smd_after": 0.0,
+        "case_median": 8.0,
+        "control_median_before": 9.0,
+        "control_median_after": 9.0
+      },
+      "hydrophobic_fraction_8a": {
+        "smd_before": 0.153,
+        "smd_after": 0.0,
+        "case_median": 0.375,
+        "control_median_before": 0.4,
+        "control_median_after": 0.4
+      }
+    }
+  },
+  "weighted": {
+    "cases_matched": 16,
+    "controls_used": 16,
+    "control_weight_total": 16.0,
+    "features": {
+      "rsa": {
+        "smd_weighted": 0.0316,
+        "case_mean": 0.4637,
+        "control_weighted_mean": 0.4588
+      },
+      "n_neighbours_8a": {
+        "smd_weighted": 0.0,
+        "case_mean": 8.5625,
+        "control_weighted_mean": 8.5625
+      },
+      "hydrophobic_fraction_8a": {
+        "smd_weighted": 0.0,
+        "case_mean": 0.385,
+        "control_weighted_mean": 0.385
+      }
+    }
+  }
+}

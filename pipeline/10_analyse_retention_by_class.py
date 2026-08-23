@@ -105,11 +105,12 @@ if occ:
             continue
         print(f"  {entry['label']:32s} {occ['mean_retention'] - entry['mean_retention']:+.4f}")
 
-Path("results/analysis/retention_by_class.json").write_text(json.dumps({
+paths.retention_by_class_json(VARIANT).write_text(json.dumps({
     "unit": "one site; 32 unconstrained designs per chain at temperature 0.1",
     "bootstrap": "over proteins, not sites",
     "excluded": "sites ProteinMPNN cannot decode",
     "classes": summary,
 }, indent=2))
 data.to_csv(str(paths.retention_all_classes(VARIANT)), index=False)
-print("\nwrote results/analysis/retention_by_class.json and results/designs/retention_all_classes.csv")
+print(f"\nwrote {paths.retention_by_class_json(VARIANT)} and "
+      f"{paths.retention_all_classes(VARIANT)}")

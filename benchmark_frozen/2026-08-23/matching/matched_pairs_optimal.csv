@@ -1,0 +1,17 @@
+case_accession,case_position,control_accession,control_position,distance,match_rank,comparison
+O88998,307,Q9UNQ0,338,0.0908,1,vs_internal_control
+P00709,64,P11672,81,0.2259,1,vs_internal_control
+P02789,492,J9VS02,159,0.084,1,vs_internal_control
+P08571,282,Q9FII5,590,0.1169,1,vs_internal_control
+P12337,79,Q9ZVR7,187,0.0011,1,vs_internal_control
+P28845,162,B3VBK9,89,0.0437,1,vs_internal_control
+P32906,224,Q6ZMG9,285,0.1407,1,vs_internal_control
+Q4WP32,159,Q9T0N8,52,0.0454,1,vs_internal_control
+Q62192,402,Q9EQU3,340,0.0596,1,vs_internal_control
+Q8IAS0,334,Q2EEY0,64,0.139,1,vs_internal_control
+Q94AG2,104,Q9XIC7,118,0.0443,1,vs_internal_control
+Q99538,167,Q9NR97,160,0.0516,1,vs_internal_control
+Q99784,307,Q62192,201,0.0482,1,vs_internal_control
+Q9NZC2,79,B3VBK9,95,0.2446,1,vs_internal_control
+Q9Y4K0,644,G4NAP4,229,0.2463,1,vs_internal_control
+Q9ZVR7,391,Q99467,53,0.0011,1,vs_internal_control
