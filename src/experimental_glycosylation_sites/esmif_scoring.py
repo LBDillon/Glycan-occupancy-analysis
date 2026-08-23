@@ -444,3 +444,108 @@ def design_sequences(mapping: ChainMapping, model, alphabet, n_designs: int,
                 chars[manifest_index] = residue
         rebuilt.append("".join(chars))
     return rebuilt
+
+
+# --------------------------------------------------------------------------
+# Joint sequon masking, by marginalisation rather than substitution.
+# --------------------------------------------------------------------------
+
+MASK_MODES = ("single", "joint")
+DEFAULT_MASK_MODE = "single"
+DEFAULT_MARGINAL_SAMPLES = 16
+
+CONDITIONING_JOINT = "autoregressive_prefix_marginalised"
+
+
+def _standard_indices(alphabet):
+    import torch
+
+    return torch.tensor([alphabet.get_idx(aa) for aa in STANDARD_AA], dtype=torch.long)
+
+
+def marginalised_probabilities(mapping: ChainMapping, model, alphabet,
+                               n_index: int, plus1_index: int, plus2_index: int,
+                               device: str = "cpu",
+                               n_samples: int = DEFAULT_MARGINAL_SAMPLES,
+                               seed: int = 0):
+    """P at the three sequon positions with the upstream sequon residues hidden.
+
+    ESM-IF is causal, so hiding is not symmetric and only one term needs work:
+
+      * position n is conditioned on residues before it, so +1 and +2 are
+        already absent from its prefix. Nothing to do.
+      * +1 is conditioned on n.
+      * +2 is conditioned on n and +1.
+
+    The obvious way to hide them is to write `<mask>` into the decoder prefix.
+    That is invalid: `<mask>` marks positions not yet decoded during sampling and
+    never appears as context, so the model is off-distribution and answers with
+    an artefact — on a test chain it moved 93% of the probability at +2 onto
+    aromatics, against 0.3% natively, while substituting any real amino acid left
+    the distribution intact.
+
+    So the residues are **marginalised** instead of replaced. Every prefix the
+    model sees is a real sequence; the hidden positions are integrated out
+    against the model's own belief about them:
+
+        P(x₊₂ | coords, prefix<n)
+            = Σ_{a,b} P(x₊₂ | coords, prefix<n, xₙ=a, x₊₁=b) · P(xₙ=a, x₊₁=b | …)
+
+    Exactly summing that is 400 forward passes per site. It is estimated instead
+    by sampling `n_samples` draws of (a, b) from the model's own joint, which
+    needs two BATCHED passes regardless of the sample count — the draws differ
+    only in their prefix, so they go through together.
+
+    Returns `(probabilities, n_samples)` where `probabilities` is [L, vocab] with
+    rows n, +1 and +2 filled; other rows are the native-prefix values and must
+    not be read.
+    """
+    _prepare_environment()
+    import torch
+    import torch.nn.functional as F
+
+    from esm.inverse_folding.util import CoordBatchConverter
+
+    converter = CoordBatchConverter(alphabet)
+    allowed = _standard_indices(alphabet).to(device)
+    generator = torch.Generator(device="cpu").manual_seed(seed)
+
+    def forward(token_batch):
+        size = token_batch.shape[0]
+        coords, confidence, _, _, padding = converter(
+            [(mapping.coords, None, mapping.esm_seq)] * size, device=device)
+        with torch.no_grad():
+            logits, _ = model.forward(coords, padding, confidence, token_batch[:, :-1])
+        return F.softmax(logits.transpose(1, 2).float(), dim=-1)   # [B, L, vocab]
+
+    # Native tokens, as the baseline prefix. The BOS shift means sequence index
+    # i sits at token index i + 1.
+    _, _, _, native_tokens, _ = converter(
+        [(mapping.coords, None, mapping.esm_seq)], device=device)
+    base = forward(native_tokens)[0]                                # [L, vocab]
+
+    def draw(distribution_rows):
+        """Sample one standard residue per row, from the model's own belief."""
+        restricted = distribution_rows[:, allowed]
+        restricted = restricted / restricted.sum(dim=-1, keepdim=True)
+        choice = torch.multinomial(restricted.cpu(), 1, generator=generator)
+        return allowed[choice.squeeze(-1).to(device)]
+
+    # --- draw a ~ P(xₙ | prefix<n), which the base pass already gives --------
+    a_tokens = draw(base[n_index].unsqueeze(0).expand(n_samples, -1))
+
+    # --- one batched pass with xₙ = a, to get P(x₊₁ | a) --------------------
+    batch = native_tokens.repeat(n_samples, 1).clone()
+    batch[:, n_index + 1] = a_tokens
+    with_a = forward(batch)
+    b_tokens = draw(with_a[:, plus1_index, :])
+
+    # --- one batched pass with xₙ = a and x₊₁ = b, to read +2 ---------------
+    batch[:, plus1_index + 1] = b_tokens
+    with_ab = forward(batch)
+
+    probabilities = base.clone()
+    # n keeps its native-prefix value: nothing downstream can reach it.
+    probabilities[plus1_index] = with_a[:, plus1_index, :].mean(dim=0)
+    probabilities[plus2_index] = with_ab[:, plus2_index, :].mean(dim=0)
+    return probabilities.cpu().numpy(), n_samples

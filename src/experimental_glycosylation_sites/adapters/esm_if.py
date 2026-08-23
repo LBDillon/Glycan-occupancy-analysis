@@ -17,10 +17,13 @@ from pathlib import Path
 
 import numpy as np
 
-from ..esmif_scoring import (CONDITIONING, DEFAULT_MODEL, N_ORDERS,
+from ..esmif_scoring import (CONDITIONING, CONDITIONING_JOINT,
+                             DEFAULT_MARGINAL_SAMPLES, DEFAULT_MASK_MODE,
+                             DEFAULT_MODEL, MASK_MODES, N_ORDERS,
                              ChainUnreadableError, chain_mapping,
                              conditional_probabilities, decodable_positions,
-                             design_sequences, load_model, sequon_score)
+                             design_sequences, load_model,
+                             marginalised_probabilities, sequon_score)
 
 
 class ESMIFAdapter:
@@ -29,9 +32,15 @@ class ESMIFAdapter:
     name = "esm_if"
 
     def __init__(self, device: str = "cpu", model_name: str = DEFAULT_MODEL,
-                 seed: int = 0, max_batch: "int | None" = None):
+                 seed: int = 0, max_batch: "int | None" = None,
+                 mask_mode: str = DEFAULT_MASK_MODE,
+                 marginal_samples: int = DEFAULT_MARGINAL_SAMPLES):
+        if mask_mode not in MASK_MODES:
+            raise ValueError(f"mask_mode must be one of {MASK_MODES}, got {mask_mode!r}")
         self.device = device
         self.max_batch = max_batch
+        self.mask_mode = mask_mode
+        self.marginal_samples = marginal_samples
         self.model_name = model_name
         self.seed = seed
         self._model = None
@@ -62,8 +71,13 @@ class ESMIFAdapter:
         orders. The column exists so both models share a schema, and its value
         here says plainly that no averaging happened.
         """
-        return {"model": self.model_name, "conditioning": CONDITIONING,
-                "n_orders": N_ORDERS, "seed": self.seed}
+        conditioning = (CONDITIONING if self.mask_mode == "single"
+                        else CONDITIONING_JOINT)
+        out = {"model": self.model_name, "conditioning": conditioning,
+               "n_orders": N_ORDERS, "seed": self.seed}
+        if self.mask_mode == "joint":
+            out["marginal_samples"] = self.marginal_samples
+        return out
 
     def _mapping(self, structure_path: Path, chain_id: str):
         key = (str(structure_path), str(chain_id))
@@ -85,6 +99,10 @@ class ESMIFAdapter:
         on a chain cost as much as the first.
         """
         mapping = self._mapping(structure_path, chain_id)
+        if self.mask_mode == "joint":
+            # Marginalising is per sequon -- each needs its own hidden set -- so
+            # there is no chain-level work to share. Carry the mapping only.
+            return mapping, None
         probabilities = conditional_probabilities(
             mapping, self.model, self.alphabet, device=self.device)
         return mapping, probabilities
@@ -102,6 +120,10 @@ class ESMIFAdapter:
         mapped = mapping.map_indices(indices)
         if expected_triplet:
             mapping.check_triplet(mapped, expected_triplet)
+        if probabilities is None:
+            probabilities, _ = marginalised_probabilities(
+                mapping, self.model, self.alphabet, *mapped, device=self.device,
+                n_samples=self.marginal_samples, seed=self.seed)
         return sequon_score(probabilities, self.alphabet, *mapped)
 
     def score_site(self, structure_path: Path, chain_id: str, indices,
