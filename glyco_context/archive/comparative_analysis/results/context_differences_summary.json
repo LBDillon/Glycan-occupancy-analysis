@@ -1,0 +1,172 @@
+{
+  "prespecification": "docs/prespecification_2026-08-24_context_differences.md",
+  "n_boot": 2000,
+  "direction_agreement": [
+    {
+      "feature": "aromatic_within_8a==True",
+      "internal": -0.011,
+      "secretory": -0.057,
+      "reading": "neither"
+    },
+    {
+      "feature": "distance_to_c_terminus_resolved",
+      "internal": -0.386,
+      "secretory": -0.165,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "distance_to_n_terminus_resolved",
+      "internal": -0.262,
+      "secretory": -0.454,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "loop_run_length",
+      "internal": -0.684,
+      "secretory": -0.096,
+      "reading": "neither"
+    },
+    {
+      "feature": "n_neighbours_8a",
+      "internal": -0.044,
+      "secretory": -0.115,
+      "reading": "neither"
+    },
+    {
+      "feature": "n_rsa",
+      "internal": 0.05,
+      "secretory": 0.572,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "n_ss_coarse==helix",
+      "internal": -0.041,
+      "secretory": -0.157,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "n_ss_coarse==loop",
+      "internal": -0.002,
+      "secretory": 0.025,
+      "reading": "opposite directions"
+    },
+    {
+      "feature": "n_ss_coarse==sheet",
+      "internal": 0.04,
+      "secretory": 0.133,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "nd2_atoms_8a_other_chain",
+      "internal": -0.416,
+      "secretory": -0.399,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "nd2_atoms_8a_same_chain",
+      "internal": 0.108,
+      "secretory": -0.587,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "nd2_residues_8a_same_chain",
+      "internal": -0.099,
+      "secretory": -0.534,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "nearest_aromatic_sidechain_nd2",
+      "internal": 0.069,
+      "secretory": 0.393,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "neighbour_aromatic_fraction_8a",
+      "internal": -0.065,
+      "secretory": -0.147,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "neighbour_hydrophobic_fraction_8a",
+      "internal": 0.317,
+      "secretory": 0.017,
+      "reading": "neither"
+    },
+    {
+      "feature": "neighbour_net_charge_8a",
+      "internal": -0.024,
+      "secretory": -0.011,
+      "reading": "neither"
+    },
+    {
+      "feature": "plus1_rsa",
+      "internal": 0.184,
+      "secretory": -0.221,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "plus1_ss_coarse==helix",
+      "internal": 0.083,
+      "secretory": -0.141,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "plus1_ss_coarse==loop",
+      "internal": -0.21,
+      "secretory": 0.03,
+      "reading": "opposite directions"
+    },
+    {
+      "feature": "plus1_ss_coarse==sheet",
+      "internal": 0.127,
+      "secretory": 0.12,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "plus2_rsa",
+      "internal": -0.025,
+      "secretory": 0.123,
+      "reading": "opposite directions"
+    },
+    {
+      "feature": "plus2_ss_coarse==helix",
+      "internal": 0.077,
+      "secretory": -0.163,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "plus2_ss_coarse==loop",
+      "internal": -0.296,
+      "secretory": 0.019,
+      "reading": "internal only"
+    },
+    {
+      "feature": "plus2_ss_coarse==sheet",
+      "internal": 0.213,
+      "secretory": 0.154,
+      "reading": "both significant, same direction"
+    },
+    {
+      "feature": "sidechain_neighbour_residues_5a",
+      "internal": -0.158,
+      "secretory": -0.358,
+      "reading": "secretory only"
+    },
+    {
+      "feature": "uniprot_residues_after_asn",
+      "internal": -0.505,
+      "secretory": -0.115,
+      "reading": "neither"
+    },
+    {
+      "feature": "uniprot_residues_after_sequon",
+      "internal": -0.505,
+      "secretory": -0.115,
+      "reading": "neither"
+    }
+  ],
+  "git": {
+    "commit": "3c5b3e9959838d9bbe491204180acdd88be10c23",
+    "dirty": true
+  }
+}

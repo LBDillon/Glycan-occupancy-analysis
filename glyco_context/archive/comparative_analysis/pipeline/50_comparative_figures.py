@@ -1,4 +1,4 @@
-"""Figures for the glyco-site context analysis.
+"""ARCHIVED figures for the comparative context analysis.
 
 Three figures, each carrying one claim.
 
@@ -10,7 +10,7 @@ Three figures, each carrying one claim.
 Deliberately not a gallery. The result is largely negative, and a figure that
 made it look otherwise would be the most misleading thing in the repository.
 
-Usage:  50_context_figures.py
+Usage:  run from the repository root. See ../README.md for why this is archived.
 """
 import json, sys
 from pathlib import Path
@@ -30,8 +30,8 @@ plt.rcParams.update({"font.size": 10, "axes.titlesize": 11.5,
 
 INK, OCC, CTL, DIM = "#22252b", "#1f6f8b", "#b05c3b", "#9aa0a6"
 DATA = Path("glyco_context/results/datasets")
-ANALYSIS = Path("glyco_context/results/analysis")
-OUT = Path("glyco_context/results/figures")
+ANALYSIS = Path("glyco_context/archive/comparative_analysis/results")
+OUT = Path("glyco_context/archive/comparative_analysis/results")
 OUT.mkdir(parents=True, exist_ok=True)
 
 core = pd.read_csv(DATA / "context_triplet_core.csv", low_memory=False)
@@ -137,55 +137,6 @@ bx.text(0, -0.30,
 fig.subplots_adjust(wspace=0.42)
 fig.savefig(OUT / "fig1_effects_collapse.png", dpi=200, bbox_inches="tight")
 print("wrote", OUT / "fig1_effects_collapse.png")
-
-# =============================================================================
-# fig2 — what an occupied site looks like
-# =============================================================================
-fig, axes = plt.subplots(1, 3, figsize=(13.0, 4.3))
-ax = axes[0]
-for name, column, colour in (("Asn", "n_rsa", OCC), ("+1", "plus1_rsa", "#5b8c5a"),
-                             ("+2", "plus2_rsa", CTL)):
-    ax.hist(occ[column].dropna(), bins=np.linspace(0, 1.2, 31), histtype="step",
-            lw=1.9, color=colour, label=name)
-ax.set_xlabel("relative solvent accessibility")
-ax.set_ylabel("occupied sites")
-ax.set_title(f"Exposure across the sequon (n={len(occ)})")
-ax.legend(frameon=False, fontsize=9)
-
-bx = axes[1]
-ss = pd.DataFrame({p: occ[f"{p}_ss_coarse"].value_counts(normalize=True)
-                   for p in ("n", "plus1", "plus2")}).fillna(0).T
-order = [c for c in ("loop", "sheet", "helix", "unknown") if c in ss.columns]
-bottom = np.zeros(len(ss))
-for column, colour in zip(order, [OCC, CTL, "#5b8c5a", DIM]):
-    bx.bar(range(len(ss)), ss[column] * 100, bottom=bottom, color=colour,
-           label=column, width=0.62)
-    bottom += ss[column].to_numpy() * 100
-bx.set_xticks(range(len(ss)))
-bx.set_xticklabels(["Asn", "+1", "+2"])
-bx.set_ylabel("% of sites")
-bx.set_title("Secondary structure")
-bx.legend(frameon=False, fontsize=9, ncol=2)
-
-cx = axes[2]
-region = occ.assign(r=[None if pd.isna(a) or pd.isna(b) else
-                       ("alpha_L" if a > 0 and -60 <= b <= 90 else
-                        "other" if a > 0 else
-                        "alpha_R" if -120 <= b <= 50 else "beta")
-                       for a, b in zip(occ.n_phi, occ.n_psi)])
-counts = region.r.value_counts()
-cx.bar(range(len(counts)), counts.to_numpy(), color=[OCC, CTL, "#5b8c5a", DIM][:len(counts)],
-       width=0.62)
-cx.set_xticks(range(len(counts)))
-cx.set_xticklabels([{"alpha_R": "α-right", "beta": "β", "alpha_L": "α-left",
-                     "other": "other"}.get(i, i) for i in counts.index])
-cx.set_ylabel("occupied sites")
-cx.set_title("Backbone region at the Asn")
-cx.text(0.98, 0.94, "α-left is common for Asn\nspecifically — not an artefact",
-        transform=cx.transAxes, ha="right", va="top", fontsize=8.4, color=INK)
-fig.tight_layout()
-fig.savefig(OUT / "fig2_occupied_context.png", dpi=200, bbox_inches="tight")
-print("wrote", OUT / "fig2_occupied_context.png")
 
 # =============================================================================
 # fig3 — the same feature under four framings

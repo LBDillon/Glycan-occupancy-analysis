@@ -1,0 +1,28 @@
+feature,internal,secretory,reading
+plus2_ss_coarse==sheet,0.213,0.154,"both significant, same direction"
+plus2_ss_coarse==loop,-0.296,0.019,internal only
+aromatic_within_8a==True,-0.011,-0.057,neither
+neighbour_net_charge_8a,-0.024,-0.011,neither
+neighbour_hydrophobic_fraction_8a,0.317,0.017,neither
+uniprot_residues_after_asn,-0.505,-0.115,neither
+uniprot_residues_after_sequon,-0.505,-0.115,neither
+n_neighbours_8a,-0.044,-0.115,neither
+loop_run_length,-0.684,-0.096,neither
+n_ss_coarse==loop,-0.002,0.025,opposite directions
+plus2_rsa,-0.025,0.123,opposite directions
+plus1_ss_coarse==loop,-0.21,0.03,opposite directions
+sidechain_neighbour_residues_5a,-0.158,-0.358,secretory only
+distance_to_c_terminus_resolved,-0.386,-0.165,secretory only
+distance_to_n_terminus_resolved,-0.262,-0.454,secretory only
+plus2_ss_coarse==helix,0.077,-0.163,secretory only
+plus1_ss_coarse==sheet,0.127,0.12,secretory only
+plus1_rsa,0.184,-0.221,secretory only
+n_ss_coarse==helix,-0.041,-0.157,secretory only
+n_rsa,0.05,0.572,secretory only
+nearest_aromatic_sidechain_nd2,0.069,0.393,secretory only
+nd2_residues_8a_same_chain,-0.099,-0.534,secretory only
+nd2_atoms_8a_same_chain,0.108,-0.587,secretory only
+nd2_atoms_8a_other_chain,-0.416,-0.399,secretory only
+n_ss_coarse==sheet,0.04,0.133,secretory only
+plus1_ss_coarse==helix,0.083,-0.141,secretory only
+neighbour_aromatic_fraction_8a,-0.065,-0.147,secretory only

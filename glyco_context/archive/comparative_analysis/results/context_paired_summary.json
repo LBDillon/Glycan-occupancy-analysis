@@ -1,0 +1,8 @@
+{
+  "amendment": "docs/prespecification_amendment_1_matched_pairs.md",
+  "n_boot": 2000,
+  "git": {
+    "commit": "3c5b3e9959838d9bbe491204180acdd88be10c23",
+    "dirty": true
+  }
+}
