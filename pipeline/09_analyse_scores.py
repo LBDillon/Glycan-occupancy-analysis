@@ -56,9 +56,25 @@ ROLE = {"optimal": "PRIMARY (internal controls, annotated absence)",
 
 
 def load(manifest_path, score_path):
-    if not Path(manifest_path).exists() or not Path(score_path).exists():
-        return pd.DataFrame()
+    """Scoreable manifest rows joined to their scores. Missing inputs are fatal.
+
+    This used to return an empty frame when either file was absent, which meant
+    a missing manifest surfaced as an AttributeError several steps later --
+    against a column of a frame that was empty for reasons long since out of
+    view. Both callers need the data whenever they ask for it, so say what is
+    missing, here, where the name is still known.
+    """
+    for role, path in (("manifest", manifest_path), ("scores", score_path)):
+        if not Path(path).exists():
+            raise SystemExit(
+                f"{role} not found: {path}\n"
+                "This stage cannot proceed without it. Check the --variant and "
+                "that the shards for this run have been merged.")
     manifest = pd.read_csv(manifest_path, low_memory=False)
+    if "scoreable" not in manifest.columns:
+        raise SystemExit(
+            f"{manifest_path} has no 'scoreable' column, so the scoreable rows "
+            "cannot be selected. Run 05_scoreability.py for this set first.")
     manifest = manifest[manifest.scoreable.astype(bool)].copy()
     scores = pd.read_csv(score_path, low_memory=False)
     for frame in (manifest, scores):
