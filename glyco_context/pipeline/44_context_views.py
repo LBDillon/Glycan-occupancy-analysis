@@ -22,9 +22,10 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, "src")
-from experimental_glycosylation_sites.context_views import (exclusion_reason,
+sys.path.insert(0, "glyco_context/src")
+from glyco_context.context_views import (exclusion_reason,
                                                             split_views)
-from experimental_glycosylation_sites.sequence_qc import (add_sequence_distances,
+from glyco_context.sequence_qc import (add_sequence_distances,
                                                           sequence_context_failures)
 from experimental_glycosylation_sites.provenance import hash_file, _git_state
 
@@ -37,9 +38,9 @@ MANIFEST_COLUMNS = ["uniprot_length", "sequon_triplet", "plus1_class",
                     "glycan_modelled_at_site"]
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--features", default="results/datasets/context_features.csv")
-parser.add_argument("--manifest", default="results/datasets/context_manifest.csv")
-parser.add_argument("--outdir", default="results/datasets")
+parser.add_argument("--features", default="glyco_context/results/datasets/context_features.csv")
+parser.add_argument("--manifest", default="glyco_context/results/datasets/context_manifest.csv")
+parser.add_argument("--outdir", default="glyco_context/results/datasets")
 args = parser.parse_args()
 
 source = Path(args.features)

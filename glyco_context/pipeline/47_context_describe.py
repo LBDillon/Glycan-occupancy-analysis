@@ -18,7 +18,8 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, "src")
-from experimental_glycosylation_sites.context_stats import ramachandran_region_series
+sys.path.insert(0, "glyco_context/src")
+from glyco_context.context_stats import ramachandran_region_series
 from experimental_glycosylation_sites.provenance import hash_file, _git_state
 
 CONTINUOUS = ["n_rsa", "plus1_rsa", "plus2_rsa", "loop_run_length",
@@ -33,8 +34,8 @@ CATEGORICAL = ["n_ss_coarse", "plus1_ss_coarse", "plus2_ss_coarse",
                "n_rama_region", "aromatic_within_8a", "subtype"]
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--views", default="results/datasets")
-parser.add_argument("--out", default="results/analysis")
+parser.add_argument("--views", default="glyco_context/results/datasets")
+parser.add_argument("--out", default="glyco_context/results/analysis")
 args = parser.parse_args()
 
 core = pd.read_csv(Path(args.views) / "context_triplet_core.csv", low_memory=False)

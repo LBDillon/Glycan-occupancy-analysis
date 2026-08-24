@@ -6,7 +6,7 @@ without the field an analysis cannot tell which it is looking at.
 """
 from __future__ import annotations
 
-from experimental_glycosylation_sites.context_features import structure_metadata
+from glyco_context.context_features import structure_metadata
 
 PDB_HEADER = """HEADER    HYDROLASE                               01-JAN-00   1ABC
 EXPDTA    X-RAY DIFFRACTION

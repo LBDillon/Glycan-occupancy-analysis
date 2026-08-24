@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from experimental_glycosylation_sites.context_stats import (benjamini_hochberg,
+from glyco_context.context_stats import (benjamini_hochberg,
                                                             cluster_bootstrap_smd,
                                                             smd)
 
@@ -106,7 +106,7 @@ def test_benjamini_hochberg_handles_missing_values():
 
 def test_ramachandran_regions():
     """Coarse regions only -- enough to say 'helical' from 'extended'."""
-    from experimental_glycosylation_sites.context_stats import ramachandran_region
+    from glyco_context.context_stats import ramachandran_region
     assert ramachandran_region(-63, -43) == "alpha_R"      # right-handed helix
     assert ramachandran_region(-120, 130) == "beta"        # extended
     assert ramachandran_region(57, 40) == "alpha_L"        # left-handed, often Gly/Asn
@@ -115,7 +115,7 @@ def test_ramachandran_regions():
 
 
 def test_ramachandran_region_series_handles_a_column():
-    from experimental_glycosylation_sites.context_stats import ramachandran_region_series
+    from glyco_context.context_stats import ramachandran_region_series
     out = ramachandran_region_series(pd.Series([-63.0, -120.0, np.nan]),
                                      pd.Series([-43.0, 130.0, 20.0]))
     assert list(out[:2]) == ["alpha_R", "beta"]
@@ -124,7 +124,7 @@ def test_ramachandran_region_series_handles_a_column():
 
 def test_proportion_difference_on_a_binary_indicator():
     """For a 0/1 column the mean difference IS the difference in proportion."""
-    from experimental_glycosylation_sites.context_stats import cluster_bootstrap_difference
+    from glyco_context.context_stats import cluster_bootstrap_difference
     rows = ([{"accession": f"o{i}", "group": "occupied", "x": 1.0} for i in range(20)]
             + [{"accession": f"o{i}", "group": "occupied", "x": 0.0} for i in range(20, 30)]
             + [{"accession": f"c{i}", "group": "control", "x": 1.0} for i in range(10)]

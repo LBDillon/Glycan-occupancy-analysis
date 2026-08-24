@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from experimental_glycosylation_sites.change_audit import attribute_changes
+from glyco_context.change_audit import attribute_changes
 
 OLD = {"accession": "P1", "position": 1, "population": "occupied",
        "triplet_observed": "NAS", "triplet_matches": True, "dssp_ok": True,

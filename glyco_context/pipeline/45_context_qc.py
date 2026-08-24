@@ -16,13 +16,14 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, "src")
-from experimental_glycosylation_sites.context_features import FEATURE_COLUMNS
-from experimental_glycosylation_sites.context_merge import KEY
-from experimental_glycosylation_sites.context_qc import check_invariants
-from experimental_glycosylation_sites.context_views import (asn_matches,
+sys.path.insert(0, "glyco_context/src")
+from glyco_context.context_features import FEATURE_COLUMNS
+from glyco_context.context_merge import KEY
+from glyco_context.context_qc import check_invariants
+from glyco_context.context_views import (asn_matches,
                                                             exclusion_reason,
                                                             is_core)
-from experimental_glycosylation_sites.sequence_qc import sequence_context_failures
+from glyco_context.sequence_qc import sequence_context_failures
 from experimental_glycosylation_sites.provenance import hash_file, _git_state
 
 POSITIONS = ("n", "plus1", "plus2")
@@ -34,12 +35,12 @@ def _json_keys(series) -> dict:
             for key, value in series.items()}
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--features", default="results/datasets/context_features.csv")
-parser.add_argument("--manifest", default="results/datasets/context_manifest.csv")
-parser.add_argument("--views", default="results/datasets")
+parser.add_argument("--features", default="glyco_context/results/datasets/context_features.csv")
+parser.add_argument("--manifest", default="glyco_context/results/datasets/context_manifest.csv")
+parser.add_argument("--views", default="glyco_context/results/datasets")
 parser.add_argument("--shard-pattern",
-                    default="results/datasets/context_features.shard*.csv")
-parser.add_argument("--out", default="results/datasets/context_qc.json")
+                    default="glyco_context/results/datasets/context_features.shard*.csv")
+parser.add_argument("--out", default="glyco_context/results/datasets/context_qc.json")
 args = parser.parse_args()
 
 source = Path(args.features)

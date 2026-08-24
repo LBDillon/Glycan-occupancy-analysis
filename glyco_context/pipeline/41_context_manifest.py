@@ -37,6 +37,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, "src")
+sys.path.insert(0, "glyco_context/src")
 from experimental_glycosylation_sites.input_paths import (datasets_dir, resolve_input,
                                                           resolve_optional_input)
 from experimental_glycosylation_sites.table_io import write_table
@@ -44,7 +45,7 @@ from experimental_glycosylation_sites.table_io import write_table
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--window", type=int, default=11,
                     help="residues of UniProt sequence either side of the Asn")
-parser.add_argument("--out", default="results/datasets/context_manifest.csv")
+parser.add_argument("--out", default="glyco_context/results/datasets/context_manifest.csv")
 parser.add_argument("--datasets", default=None,
                     help="directory holding the upstream dataset tables "
                          "(default: $GCA_DATASETS_DIR, else results/datasets)")

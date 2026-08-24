@@ -12,7 +12,7 @@ import pytest
 from Bio.PDB.Atom import Atom
 from Bio.PDB.Residue import Residue
 
-from experimental_glycosylation_sites.context_features import (_loop_run,
+from glyco_context.context_features import (_loop_run,
                                                                _ss_key,
                                                                sequon_context)
 

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from experimental_glycosylation_sites.context_views import split_views
+from glyco_context.context_views import split_views
 
 
 def _frame(rows):
@@ -69,18 +69,18 @@ def test_every_site_lands_in_exactly_one_of_core_or_review():
 
 
 def test_exclusion_reason_is_empty_for_a_core_site():
-    from experimental_glycosylation_sites.context_views import exclusion_reason
+    from glyco_context.context_views import exclusion_reason
     assert exclusion_reason(_frame([BASE])).iloc[0] == ""
 
 
 def test_exclusion_reason_names_a_substituted_asn():
-    from experimental_glycosylation_sites.context_views import exclusion_reason
+    from glyco_context.context_views import exclusion_reason
     row = {**BASE, "triplet_observed": "QAS", "triplet_matches": False}
     assert exclusion_reason(_frame([row])).iloc[0] == "asn_substituted"
 
 
 def test_exclusion_reason_names_an_unresolved_position():
-    from experimental_glycosylation_sites.context_views import exclusion_reason
+    from glyco_context.context_views import exclusion_reason
     row = {**BASE, "triplet_observed": "NA?", "triplet_matches": False,
            "triplet_resolved": False, "mapping_continuous": False}
     assert exclusion_reason(_frame([row])).iloc[0] == "unresolved_position"
@@ -88,12 +88,12 @@ def test_exclusion_reason_names_an_unresolved_position():
 
 def test_exclusion_reason_names_a_gap_jump_that_matched():
     """The nine invisible rows get their own reason, not 'substitution'."""
-    from experimental_glycosylation_sites.context_views import exclusion_reason
+    from glyco_context.context_views import exclusion_reason
     row = {**BASE, "mapping_continuous": False, "triplet_resolved": True}
     assert exclusion_reason(_frame([row])).iloc[0] == "discontinuous_mapping"
 
 
 def test_exclusion_reason_names_a_sequence_substitution():
-    from experimental_glycosylation_sites.context_views import exclusion_reason
+    from glyco_context.context_views import exclusion_reason
     row = {**BASE, "triplet_observed": "NKS", "triplet_matches": False}
     assert exclusion_reason(_frame([row])).iloc[0] == "sequence_substitution"

@@ -51,7 +51,8 @@ from Bio.PDB.Structure import Structure as _Structure
 from Bio.PDB.Polypeptide import is_aa
 from Bio.SeqUtils import seq1
 
-from .features import MAX_ASA, _clean_icode, _model_with_sasa, _rsa_bin
+from experimental_glycosylation_sites.features import (MAX_ASA, _clean_icode,
+                                                       _model_with_sasa, _rsa_bin)
 
 MMCIF_SUFFIXES = {".cif", ".mmcif"}
 

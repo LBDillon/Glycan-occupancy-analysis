@@ -35,8 +35,7 @@ That programme is too large to attack directly, so it decomposes into four stage
    wet-lab.
 
 This repository is stages 1 and 2. Stage 1 finished on 23/08. Stage 2 is the
-glyco-site context analysis, and this correction is about the machinery that
-produces it.
+context atlas, and this correction is about the machinery that produces it.
 
 ## What came before: the occupancy benchmark
 
@@ -78,24 +77,26 @@ That is three silent wrong answers in seven days, none of which crashed. It is
 the recurring failure mode of this codebase and the reason this note is as long
 as it is.
 
-## Why the context analysis, and why it has to be exact
+## Why the atlas, and why it has to be exact
 
 The benchmark measures *whether* models discriminate. It cannot say *what they
 discriminate on*. ESM-IF separates occupied from unoccupied sequons sharing an
 identical motif, so it is responding to the surrounding sequence and structure —
 but "the surroundings" is not a measurement. Until we can say which properties of
 a site's environment differ between occupied and unoccupied sequons, three things
-stay out of reach: explaining the difference between the two models, evaluating
-whether a *designed* site sits in a plausible environment (plausible compared to
-what?), and distinguishing a real signal from a compositional confound.
+stay out of reach: 
+1. explaining the difference between the two models
+2. evaluating whether a *designed* site sits in a plausible environment (plausible compared to
+what?)
+3. distinguishing a real signal from a compositional confound.
 
-The context analysis is that description. For each of 2,660 sites — 332 occupied, 32
+The atlas is that description. For each of 2,660 sites — 332 occupied, 32
 internal controls, 2,296 secretory-unannotated — it records what the sequon's
 neighbourhood actually looks like: solvent exposure, secondary structure,
 backbone geometry, what sits within 8 Å of the attachment point.
 
 Which is why the defect mattered. **A feature attributed to a site must belong to
-that site.** It is going to be the reference against which model behaviour
+that site.** The atlas is going to be the reference against which model behaviour
 and designed sites are judged, so a description that is subtly about the wrong
 residue is worse than no description at all — it looks like evidence.
 
@@ -251,7 +252,7 @@ absence let something through:
 
 ## The three views
 
-One table cannot serve the analysis, because the reasons a site is imperfect are not
+One table cannot serve the atlas, because the reasons a site is imperfect are not
 interchangeable. A crystallographer's N→Q knockout, a +1 differing between isoform
 and construct, and a +2 that was never resolved are three different facts.
 
@@ -275,7 +276,7 @@ the new row, and lives correctly in the change audit.
 
 ## What this does not settle
 
-The extractor is now trustworthy; the analysis is not yet written. Nothing here says
+The extractor is now trustworthy; the atlas is not yet written. Nothing here says
 anything biological. The first real use of this table is stage 2's actual
 question: which contextual features distinguish occupied sites from controls, and
 are those the features ESM-IF responds to and ProteinMPNN misses.

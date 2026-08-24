@@ -21,7 +21,8 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, "src")
-from experimental_glycosylation_sites.context_features import (FEATURE_COLUMNS,
+sys.path.insert(0, "glyco_context/src")
+from glyco_context.context_features import (FEATURE_COLUMNS,
                                                                QC_COLUMNS,
                                                                sequon_context)
 from experimental_glycosylation_sites.runner_support import (apply_shard,
@@ -31,8 +32,8 @@ KEY = ["accession", "position", "population"]
 DEFAULT_POPULATIONS = "occupied,internal_control,secretory_unannotated"
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--manifest", default="results/datasets/context_manifest.csv")
-parser.add_argument("--out", default="results/datasets/context_features.csv")
+parser.add_argument("--manifest", default="glyco_context/results/datasets/context_manifest.csv")
+parser.add_argument("--out", default="glyco_context/results/datasets/context_features.csv")
 parser.add_argument("--populations", default=DEFAULT_POPULATIONS,
                     help="comma-separated; 'all' for every population")
 parser.add_argument("--shard", default=None, metavar="K/N")

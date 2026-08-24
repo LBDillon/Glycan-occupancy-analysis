@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from experimental_glycosylation_sites.context_features import sequon_context
+from glyco_context.context_features import sequon_context
 from pdb_lines import atom_line
 
 
@@ -152,7 +152,7 @@ def test_dssp_runs_on_multi_character_chain_ids(tmp_path):
     DSSP, so secondary structure was missing from exactly the large assemblies
     the control arms draw most heavily on.
     """
-    from experimental_glycosylation_sites.context_features import (_DSSP_CACHE,
+    from glyco_context.context_features import (_DSSP_CACHE,
                                                                    dssp_for_chain)
     _DSSP_CACHE.clear()
     spec = [("ALA", n, " ") for n in range(1, 9)]
@@ -170,7 +170,7 @@ def test_dssp_entries_keep_their_insertion_code(tmp_path):
     onto one entry, so whichever residue is parsed last supplies the secondary
     structure for all of them.
     """
-    from experimental_glycosylation_sites.context_features import (_DSSP_CACHE,
+    from glyco_context.context_features import (_DSSP_CACHE,
                                                                    dssp_for_chain)
     _DSSP_CACHE.clear()
     spec = [("ALA", 1, " "), ("ALA", 2, " "), ("ALA", 3, " "), ("ALA", 3, "A"),

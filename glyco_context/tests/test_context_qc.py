@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from experimental_glycosylation_sites.context_qc import check_invariants
+from glyco_context.context_qc import check_invariants
 
 CLEAN = {
     "accession": "P1", "position": 1,

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from experimental_glycosylation_sites.sequence_qc import sequence_context_failures
+from glyco_context.sequence_qc import sequence_context_failures
 
 CLEAN = {"accession": "P1", "position": 10, "population": "occupied",
          "sequon_triplet": "NAS", "uniprot_length": 100}
@@ -68,7 +68,7 @@ def test_failures_carry_the_population_for_reporting():
 
 
 def test_sequence_distances_are_derived_from_the_manifest():
-    from experimental_glycosylation_sites.sequence_qc import add_sequence_distances
+    from glyco_context.sequence_qc import add_sequence_distances
     frame = add_sequence_distances(pd.DataFrame([CLEAN]))
     assert frame.iloc[0].uniprot_residues_after_asn == 90     # 100 - 10
     assert frame.iloc[0].uniprot_residues_after_sequon == 88  # 100 - 12
@@ -78,13 +78,13 @@ def test_sequence_distances_reject_a_negative_result():
     """Negative means the sequon runs past the sequence end, which the
     row-level checks should already have excluded -- so it is a bug, not data."""
     import pytest
-    from experimental_glycosylation_sites.sequence_qc import add_sequence_distances
+    from glyco_context.sequence_qc import add_sequence_distances
     bad = pd.DataFrame([{**CLEAN, "position": 120, "uniprot_length": 100}])
     with pytest.raises(ValueError, match="negative"):
         add_sequence_distances(bad)
 
 
 def test_sequence_distances_are_absent_without_a_length():
-    from experimental_glycosylation_sites.sequence_qc import add_sequence_distances
+    from glyco_context.sequence_qc import add_sequence_distances
     frame = add_sequence_distances(pd.DataFrame([{**CLEAN, "uniprot_length": None}]))
     assert pd.isna(frame.iloc[0].uniprot_residues_after_asn)

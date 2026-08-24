@@ -10,7 +10,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from experimental_glycosylation_sites.context_merge import (ShardError,
+from glyco_context.context_merge import (ShardError,
                                                             merge_context_shards)
 
 MANIFEST = pd.DataFrame([

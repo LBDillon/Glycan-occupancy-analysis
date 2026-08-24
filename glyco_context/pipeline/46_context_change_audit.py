@@ -16,13 +16,14 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, "src")
-from experimental_glycosylation_sites.change_audit import KEY, attribute_changes
+sys.path.insert(0, "glyco_context/src")
+from glyco_context.change_audit import KEY, attribute_changes
 from experimental_glycosylation_sites.provenance import hash_file, _git_state
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--old", required=True)
-parser.add_argument("--new", default="results/datasets/context_features.csv")
-parser.add_argument("--out", default="results/datasets/context_change_audit.csv")
+parser.add_argument("--new", default="glyco_context/results/datasets/context_features.csv")
+parser.add_argument("--out", default="glyco_context/results/datasets/context_change_audit.csv")
 args = parser.parse_args()
 
 old_path, new_path = Path(args.old), Path(args.new)

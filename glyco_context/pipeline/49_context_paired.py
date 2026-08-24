@@ -23,7 +23,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, "src")
-from experimental_glycosylation_sites.context_stats import (benjamini_hochberg,
+sys.path.insert(0, "glyco_context/src")
+from glyco_context.context_stats import (benjamini_hochberg,
                                                             ramachandran_region_series)
 from experimental_glycosylation_sites.provenance import hash_file, _git_state
 
@@ -43,9 +44,9 @@ COMPARISONS = {"secretory": "matched_pairs_secretory.csv",
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--frozen", default="benchmark_frozen/2026-08-23")
-parser.add_argument("--views", default="results/datasets")
+parser.add_argument("--views", default="glyco_context/results/datasets")
 parser.add_argument("--boot", type=int, default=2000)
-parser.add_argument("--out", default="results/analysis")
+parser.add_argument("--out", default="glyco_context/results/analysis")
 args = parser.parse_args()
 
 core = pd.read_csv(Path(args.views) / "context_triplet_core.csv", low_memory=False)

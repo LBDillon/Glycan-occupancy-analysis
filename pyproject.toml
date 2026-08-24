@@ -13,6 +13,6 @@ dependencies = ["pandas>=2.0", "biopython>=1.80", "numpy>=1.24"]
 where = ["src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "glyco_context/tests"]
 # "tests" is on the path so test helpers (tests/pdb_lines.py) import directly.
-pythonpath = ["src", "tests"]
+pythonpath = ["src", "tests", "glyco_context/src", "glyco_context/tests"]
