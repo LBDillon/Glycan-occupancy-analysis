@@ -27,6 +27,12 @@ from experimental_glycosylation_sites.provenance import hash_file, _git_state
 
 POSITIONS = ("n", "plus1", "plus2")
 
+
+def _json_keys(series) -> dict:
+    """groupby(...).size() gives tuple keys; JSON object keys must be strings."""
+    return {" | ".join(str(part) for part in key) if isinstance(key, tuple) else str(key): int(value)
+            for key, value in series.items()}
+
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--features", default="results/datasets/context_features.csv")
 parser.add_argument("--manifest", default="results/datasets/context_manifest.csv")
@@ -91,7 +97,7 @@ if "sequon_triplet" not in joined.columns and "triplet_expected" in joined.colum
     joined["sequon_triplet"] = joined.triplet_expected
 sequence_failures = sequence_context_failures(joined)
 report["sequence_failures"] = (
-    sequence_failures.groupby(["population", "reason"]).size().to_dict()
+    _json_keys(sequence_failures.groupby(["population", "reason"]).size())
     if len(sequence_failures) else {})
 if len(sequence_failures):
     print(sequence_failures.groupby(["population", "reason"]).size().to_string())
@@ -172,7 +178,7 @@ reasons = exclusion_reason(frame)
 table = frame.assign(exclusion_reason=reasons)
 excluded = table[table.exclusion_reason.ne("")]
 report["exclusion_reasons"] = (
-    excluded.groupby(["exclusion_reason", "population"]).size().to_dict()
+    _json_keys(excluded.groupby(["exclusion_reason", "population"]).size())
     if len(excluded) else {})
 print(excluded.groupby(["exclusion_reason", "population"]).size().to_string()
       if len(excluded) else "none")
