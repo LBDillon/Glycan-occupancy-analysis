@@ -9,16 +9,19 @@ whole candidate pool instead and knows nothing about matching.
 Usage:  build_candidate_manifest.py [dataset|controls|secretory]
 """
 import csv, gzip, sys
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+
 sys.path.insert(0, "src")
+from experimental_glycosylation_sites.input_paths import resolve_input
 from experimental_glycosylation_sites.manifest import build_manifest
 
 WHICH = sys.argv[1] if len(sys.argv) > 1 else "dataset"
 OUT = Path(f"results/manifests/candidate_manifest_{WHICH}.csv")
 
 seqs = {}
-with gzip.open("../../data/raw/uniprot/uniprot_reviewed_glycoproteins_2026-04-27.tsv.gz",
+with gzip.open(resolve_input("raw/uniprot/uniprot_reviewed_glycoproteins_2026-04-27.tsv.gz"),
                "rt", encoding="utf-8", newline="") as fh:
     for row in csv.DictReader(fh, delimiter="\t"):
         seqs[row["Entry"]] = row.get("Sequence", "")

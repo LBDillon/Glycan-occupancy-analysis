@@ -14,6 +14,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from .input_paths import structure_dirs
+
 # Searched in order; the first directory holding a given PDB id wins.
 STRUCTURE_DIRS = (
     "data/cache/pdb",
@@ -24,8 +26,7 @@ STRUCTURE_DIRS = (
 def structure_paths(extra_dirs: "tuple[str, ...] | None" = None) -> "dict[str, Path]":
     """PDB id (upper case) -> cached structure file."""
     paths: "dict[str, Path]" = {}
-    for directory in tuple(extra_dirs or ()) + STRUCTURE_DIRS:
-        base = Path(directory)
+    for base in structure_dirs(tuple(extra_dirs or ())):
         if not base.is_dir():
             continue
         for path in list(base.glob("*.pdb")) + list(base.glob("*.cif")):

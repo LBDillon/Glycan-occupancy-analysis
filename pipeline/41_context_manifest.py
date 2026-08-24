@@ -37,16 +37,20 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, "src")
+from experimental_glycosylation_sites.input_paths import datasets_dir, resolve_input
 from experimental_glycosylation_sites.table_io import write_table
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--window", type=int, default=11,
                     help="residues of UniProt sequence either side of the Asn")
 parser.add_argument("--out", default="results/datasets/context_manifest.csv")
+parser.add_argument("--datasets", default=None,
+                    help="directory holding the upstream dataset tables "
+                         "(default: $GCA_DATASETS_DIR, else results/datasets)")
 args = parser.parse_args()
 
 KEY = ["accession", "position"]
-D = Path("results/datasets")
+D = Path(args.datasets) if args.datasets else datasets_dir()
 
 AA_CLASS = {**{a: "acidic" for a in "DE"}, **{a: "basic" for a in "KRH"},
             **{a: "polar" for a in "STNQ"}, **{a: "hydrophobic" for a in "AVLIM"},
@@ -106,7 +110,7 @@ sites = pd.concat(controls, ignore_index=True).drop_duplicates(
 
 # --- UniProt sequences, for the window and the +1 residue -------------------
 sequences = {}
-with gzip.open("../../data/raw/uniprot/uniprot_reviewed_glycoproteins_2026-04-27.tsv.gz",
+with gzip.open(resolve_input("raw/uniprot/uniprot_reviewed_glycoproteins_2026-04-27.tsv.gz"),
                "rt", encoding="utf-8", newline="") as fh:
     for row in csv.DictReader(fh, delimiter="\t"):
         sequences[row["Entry"]] = row.get("Sequence", "")
