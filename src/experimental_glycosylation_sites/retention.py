@@ -79,8 +79,14 @@ def design_sequences(
     device: str = "cpu",
     seed: int = 0,
     max_batch: "int | None" = None,
+    fixed_positions: "list[int] | None" = None,
 ) -> list[str]:
-    """Unconstrained designs for one chain, as one-letter sequences.
+    """Designs for one chain, as one-letter sequences.
+
+    `fixed_positions` holds chain indices at their native residue, via
+    ProteinMPNN's own `chain_M_pos` mask. Passing None keeps the historical
+    behaviour exactly: nothing is fixed and the sequon is free to disappear,
+    which is what the retention measurement requires.
 
     All `n_designs` are decoded as one batch: `sample()` already carries a batch
     dimension, and the featurised tensors describe a single backbone, so tiling
@@ -107,6 +113,15 @@ def design_sequences(
     )
     X, S, mask = out[0], out[1], out[2]
     chain_M, chain_encoding_all, chain_M_pos, residue_idx = out[4], out[5], out[10], out[12]
+
+    if fixed_positions:
+        # chain_M_pos is ProteinMPNN's own design mask: 1 designs the position,
+        # 0 keeps the native residue. Masking before sampling is not the same as
+        # repairing the output afterwards -- repairing would let the model
+        # condition on residues it was about to overwrite.
+        from glyco_context.fixed_design import design_mask
+        keep = design_mask(chain_M_pos.shape[1], fixed_positions)
+        chain_M_pos = chain_M_pos * torch.from_numpy(keep).to(chain_M_pos.device)
     # sample() dereferences these regardless of their defaults, so they must be
     # the real featurised tensors: omit_AA_mask at 11, bias_by_res at 18.
     omit_AA_mask, bias_by_res = out[11], out[18]

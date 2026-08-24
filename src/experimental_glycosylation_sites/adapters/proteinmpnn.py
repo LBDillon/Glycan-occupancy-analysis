@@ -10,7 +10,8 @@ from pathlib import Path
 
 import numpy as np
 
-from ..mpnn_scoring import (DEFAULT_DECODING_ORDERS, DEFAULT_MODEL,
+from ..mpnn_scoring import (ALPHABET, DEFAULT_DECODING_ORDERS, DEFAULT_MODEL,
+                            chain_mapping,
                             conditional_probabilities, decodable_positions,
                             load_model, sequon_score)
 from ..retention import design_sequences
@@ -62,15 +63,45 @@ class ProteinMPNNAdapter:
         Passing `positions` restricts it to those, and the per-position result is
         unchanged by which others were requested.
         """
+        # The manifest's indices count observed residues; ProteinMPNN's parse
+        # walks the author numbering and inserts a placeholder per absent
+        # number, so the two coincide only for gapless chains. Translate here,
+        # once, rather than trusting them to agree.
+        mapping, model_sequence = chain_mapping(structure_path, chain_id)
+        if positions is not None:
+            positions = [mapping[int(i)] for i in positions if int(i) in mapping]
         if self.mask_mode == "joint":
             # Nothing can be shared across sites: each residue is scored with a
             # different set hidden. Carry the identifiers so score_from can work.
-            return (None, None, structure_path, chain_id)
+            return (None, None, structure_path, chain_id, mapping, model_sequence)
         probabilities, computed = conditional_probabilities(
             structure_path, chain_id, self.model, device=self.device,
             n_decoding_orders=self.n_decoding_orders, seed=self.seed,
             positions=None if positions is None else list(positions))
-        return (probabilities, computed, structure_path, chain_id)
+        return (probabilities, computed, structure_path, chain_id, mapping, model_sequence)
+
+    @staticmethod
+    def _mapped(mapping, model_sequence, indices, expected_triplet):
+        """Manifest indices translated into ProteinMPNN's, and checked.
+
+        The same guard ESM-IF applies: refuse anything whose residue identities
+        do not reproduce the manifest's, so a parser disagreement cannot be
+        scored as a biological observation.
+        """
+        mapped = []
+        for index in indices:
+            target = mapping.get(int(index))
+            if target is None:
+                raise KeyError(f"model_index {int(index)} has no ProteinMPNN counterpart")
+            mapped.append(int(target))
+        if expected_triplet:
+            observed = "".join(model_sequence[i] if i < len(model_sequence) else "?"
+                               for i in mapped)
+            if observed != expected_triplet:
+                raise ValueError(
+                    f"residues at the mapped indices are {observed!r}, "
+                    f"not the manifest's {expected_triplet!r}")
+        return tuple(mapped)
 
     def score_from(self, context, indices, expected_triplet=None):
         """Score one sequon from a prepared chain. Raises if any row is unfilled.
@@ -80,12 +111,14 @@ class ProteinMPNNAdapter:
         cannot condition on them. That is three passes per site rather than one
         shared sweep, which is the price of the sensitivity.
         """
+        mapping, model_sequence = context[4], context[5]
+        indices = self._mapped(mapping, model_sequence, indices, expected_triplet)
+
         if self.mask_mode == "single":
-            probabilities, computed = context
+            probabilities, computed = context[0], context[1]
             return sequon_score(probabilities, *indices, computed=computed)
 
         structure_path, chain_id = context[2], context[3]
-        indices = tuple(int(i) for i in indices)
         rows, computed = None, None
         for position in indices:
             hide = [i for i in indices if i != position]

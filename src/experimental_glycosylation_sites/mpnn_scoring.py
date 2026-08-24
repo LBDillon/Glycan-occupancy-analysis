@@ -57,6 +57,8 @@ import numpy as np
 #
 # The 0.5% shortfall is residues parse_PDB maps to X, not disagreement.
 ALPHABET = "ACDEFGHIKLMNPQRSTVWYX"
+
+from .runner_support import proteinmpnn_dir  # noqa: E402  (late: avoids a cycle)
 AA_INDEX = {aa: i for i, aa in enumerate(ALPHABET)}
 
 # The checkpoint used by the earlier scoping analysis, so the conditional scores
@@ -280,6 +282,73 @@ def check_scoreable(
                 raise InvalidProbabilityVector(
                     f"row at model index {index}, decoding order {order} has values "
                     f"outside [0, 1]: min {float(row.min()):.6g}, max {float(row.max()):.6g}")
+
+
+def build_index_map(residue_ids, native_sequence: str,
+                    model_sequence: str) -> "dict[int, int]":
+    """Manifest index -> ProteinMPNN index, or {} if the two cannot be reconciled.
+
+    `model_index` counts observed residues, as `structures._parse_chains` lists
+    them. ProteinMPNN's `parse_PDB` instead walks the author numbering from
+    min_resn to max_resn, emitting one slot per number present (one per
+    insertion code) and a placeholder for every number absent. The two therefore
+    coincide only for chains numbered without gaps, which most are not.
+
+    Reconstructing that enumeration is exact arithmetic rather than an
+    alignment, but it is still a hypothesis about what the other parser did, so
+    it is checked against ProteinMPNN's own sequence. Any disagreement returns
+    an empty mapping and the caller drops the chain -- reading a residue we
+    cannot place is the failure this exists to prevent.
+    """
+    if not residue_ids or not native_sequence or not model_sequence:
+        return {}
+
+    by_number: "dict[int, list[str]]" = {}
+    for resseq, icode in residue_ids:
+        by_number.setdefault(int(resseq), []).append(str(icode or "").strip())
+
+    mapping, model_index, native_index = {}, 0, 0
+    for number in range(min(by_number), max(by_number) + 1):
+        if number in by_number:
+            for _ in sorted(by_number[number]):
+                mapping[native_index] = model_index
+                native_index += 1
+                model_index += 1
+        else:
+            model_index += 1                     # ProteinMPNN's placeholder slot
+
+    if native_index != len(native_sequence):
+        return {}
+    for source, target in mapping.items():
+        if target >= len(model_sequence) or model_sequence[target] != native_sequence[source]:
+            return {}
+    return mapping
+
+
+def chain_mapping(structure_path, chain_id: str, pdb_id: "str | None" = None):
+    """(manifest index -> ProteinMPNN index, ProteinMPNN's sequence) for a chain."""
+    from .structures import _parse_chains
+
+    _prepare_environment()
+    _ensure_importable(proteinmpnn_dir())
+    from protein_mpnn_utils import StructureDatasetPDB, parse_PDB
+
+    parsed = parse_PDB(str(structure_path), input_chain_list=[str(chain_id)])
+    protein = StructureDatasetPDB(parsed, truncate=None, max_length=20000)[0]
+    model_sequence = protein.get(f"seq_chain_{chain_id}", "")
+
+    identifier = pdb_id or Path(structure_path).stem
+    chains = _parse_chains(Path(structure_path), str(identifier))
+    native = next((c for c in chains if c.chain_id == str(chain_id)), None)
+    if native is None:
+        return {}, model_sequence
+    return build_index_map(native.residue_ids, native.sequence, model_sequence), model_sequence
+
+
+def chain_index_map(structure_path, chain_id: str,
+                    pdb_id: "str | None" = None) -> "dict[int, int]":
+    """`build_index_map` for a real chain, reading both parses."""
+    return chain_mapping(structure_path, chain_id, pdb_id)[0]
 
 
 def sequon_score(
