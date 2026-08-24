@@ -37,7 +37,8 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, "src")
-from experimental_glycosylation_sites.input_paths import datasets_dir, resolve_input
+from experimental_glycosylation_sites.input_paths import (datasets_dir, resolve_input,
+                                                          resolve_optional_input)
 from experimental_glycosylation_sites.table_io import write_table
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -116,10 +117,12 @@ with gzip.open(resolve_input("raw/uniprot/uniprot_reviewed_glycoproteins_2026-04
         sequences[row["Entry"]] = row.get("Sequence", "")
 # The control proteins are not in the glycoprotein snapshot; their sequences
 # were cached when those sets were built.
-for cache in ("data/cache/negative_control_proteins.csv.gz",
-              "data/cache/secretory_unannotated_proteins.csv.gz"):
-    if Path(cache).exists():
-        extra = pd.read_csv(cache, low_memory=False)
+for cache in ("cache/negative_control_proteins.csv.gz",
+              "cache/secretory_unannotated_proteins.csv.gz"):
+    found = resolve_optional_input(cache)
+    print(f"  sequence cache {cache}: {found or 'NOT FOUND'}")
+    if found is not None:
+        extra = pd.read_csv(found, low_memory=False)
         sequences.update(dict(zip(extra.Entry.astype(str), extra.Sequence.fillna(""))))
 
 def text(value) -> str:
@@ -229,6 +232,18 @@ manifest["tier_three_layer"] = manifest.tier_features & manifest.support_count.g
 
 out = Path(args.out)
 out.parent.mkdir(parents=True, exist_ok=True)
+# A population with no sequence context at all means a sequence cache was
+# missing. The previous behaviour was to write the manifest anyway, which gave
+# the largest population an empty sequon_triplet -- and so an inoperative
+# triplet check -- with nothing in the output to say so.
+blank = [name for name, group in manifest.groupby("population")
+         if not group.sequon_triplet.fillna("").astype(str).str.len().gt(0).any()]
+if blank:
+    raise SystemExit(
+        "no sequence context for population(s): " + ", ".join(sorted(blank))
+        + "\nA sequence cache above was NOT FOUND. Set GCA_DATA_ROOTS to include"
+          " the directory holding cache/*_proteins.csv.gz for these populations.")
+
 write_table(manifest, out)
 
 tiers = ["tier_all_occupied", "tier_features", "tier_two_layer",

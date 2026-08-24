@@ -54,3 +54,18 @@ def test_structure_dirs_puts_configured_directories_first(tmp_path, monkeypatch)
     configured.mkdir()
     monkeypatch.setenv("GCA_STRUCTURE_DIRS", str(configured))
     assert structure_dirs()[0] == configured
+
+
+def test_optional_input_returns_none_when_absent(tmp_path, monkeypatch):
+    from experimental_glycosylation_sites.input_paths import resolve_optional_input
+    monkeypatch.setenv("GCA_DATA_ROOTS", str(tmp_path))
+    assert resolve_optional_input("cache/absent.csv.gz") is None
+
+
+def test_optional_input_finds_a_file_that_exists(tmp_path, monkeypatch):
+    from experimental_glycosylation_sites.input_paths import resolve_optional_input
+    cache = tmp_path / "cache" / "present.csv.gz"
+    cache.parent.mkdir(parents=True)
+    cache.write_text("")
+    monkeypatch.setenv("GCA_DATA_ROOTS", str(tmp_path))
+    assert resolve_optional_input("cache/present.csv.gz") == cache

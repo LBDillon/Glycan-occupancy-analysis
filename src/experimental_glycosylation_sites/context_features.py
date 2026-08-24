@@ -74,6 +74,7 @@ SS_COARSE = {"H": "helix", "G": "helix", "I": "helix",
 NEIGHBOUR_RADIUS = 8.0        # CA-CA, matching features.py
 CONTACT_RADIUS = 5.0          # heavy atom, around the Asn side chain
 AROMATIC = set("FWY")
+BACKBONE_ATOMS = ("N", "CA", "C", "O", "OXT")
 
 _DSSP_CACHE: dict = {}
 _DSSP_LIMIT = 32
@@ -102,6 +103,63 @@ def _parse_model(path: Path):
         parser = (MMCIFParser(QUIET=True)
                   if Path(path).suffix.lower() in MMCIF_SUFFIXES else PDBParser(QUIET=True))
         return next(iter(parser.get_structure("s", str(path))), None)
+
+
+_METADATA_CACHE: dict = {}
+
+
+def structure_metadata(path: Path) -> dict:
+    """Resolution and experimental method, or None where not recorded.
+
+    Provenance, not biology: a 3.5 A structure and a 1.2 A structure do not
+    support the same claim about a side chain's environment. Absent values stay
+    None -- a missing resolution must never read as a perfect one.
+    """
+    key = str(path)
+    if key in _METADATA_CACHE:
+        return _METADATA_CACHE[key]
+
+    resolution, method = None, None
+    try:
+        if str(path).lower().endswith((".cif", ".mmcif")):
+            from Bio.PDB.MMCIF2Dict import MMCIF2Dict
+            data = MMCIF2Dict(str(path))
+            for field in ("_refine.ls_d_res_high", "_em_3d_reconstruction.resolution"):
+                values = data.get(field)
+                if values:
+                    try:
+                        resolution = float(str(values[0]))
+                        break
+                    except (TypeError, ValueError):
+                        pass
+            values = data.get("_exptl.method")
+            if values:
+                method = str(values[0]).strip()
+        else:
+            with open(path, "r", errors="ignore") as handle:
+                for line in handle:
+                    if line.startswith("ATOM") or line.startswith("HETATM"):
+                        break
+                    if line.startswith("EXPDTA") and method is None:
+                        method = line[10:].strip() or None
+                    elif "RESOLUTION." in line and resolution is None:
+                        # Parse after the keyword: "REMARK   2 RESOLUTION. 1.85"
+                        # otherwise the remark number 2 is read as the value.
+                        for token in line.split("RESOLUTION.", 1)[1].split():
+                            try:
+                                resolution = float(token)
+                                break
+                            except ValueError:
+                                continue
+    except Exception:
+        resolution, method = None, None
+
+    result = {"structure_resolution": resolution, "structure_method": method,
+              "structure_is_predicted": bool(method) and "PREDICT" in method.upper()}
+    _METADATA_CACHE[key] = result
+    while len(_METADATA_CACHE) > _DSSP_LIMIT:
+        _METADATA_CACHE.pop(next(iter(_METADATA_CACHE)))
+    return result
 
 
 def _ss_key(resseq, icode) -> tuple:
@@ -211,6 +269,39 @@ def _one_letter(residue) -> str:
         return "X"
 
 
+def _loop_run(resolved: list, index: int, dssp: dict) -> "tuple[int | None, bool]":
+    """Length of the DSSP loop run containing `index`, and whether it is censored.
+
+    A loop's length is only measured if both its boundaries were observed. Where
+    the run reaches the end of the model, or a residue the deposition never
+    resolved, the true loop may be longer -- so the length is reported with a
+    censoring flag rather than silently treated as complete. Without that flag
+    loop lengths are biased downward exactly where density is poor, which is not
+    independent of how heavily glycosylated a region is.
+
+    Returns (None, False) when the Asn is not in a loop or has no DSSP entry.
+    """
+    def coarse(residue):
+        entry = dssp.get(_ss_key(residue.id[1], residue.id[2]))
+        return SS_COARSE.get(entry[0], "unknown") if entry else None
+
+    if not (0 <= index < len(resolved)) or coarse(resolved[index]) != "loop":
+        return None, False
+
+    first = last = index
+    while first - 1 >= 0 and coarse(resolved[first - 1]) == "loop" \
+            and _sequence_adjacent(resolved[first - 1], resolved[first]):
+        first -= 1
+    while last + 1 < len(resolved) and coarse(resolved[last + 1]) == "loop" \
+            and _sequence_adjacent(resolved[last], resolved[last + 1]):
+        last += 1
+
+    censored = (first == 0 or last == len(resolved) - 1
+                or not _sequence_adjacent(resolved[first - 1], resolved[first])
+                or not _sequence_adjacent(resolved[last], resolved[last + 1]))
+    return last - first + 1, censored
+
+
 def _sequence_adjacent(first, second) -> bool:
     """Whether `second` is the residue immediately after `first` in sequence.
 
@@ -261,9 +352,13 @@ def _position_features(residue, dssp: dict, prefix: str) -> dict:
     """RSA, secondary structure and dihedrals at one sequon position."""
     out = {f"{prefix}_residue": None, f"{prefix}_rsa": None, f"{prefix}_rsa_bin": None,
            f"{prefix}_ss": None, f"{prefix}_ss_coarse": None,
-           f"{prefix}_phi": None, f"{prefix}_psi": None}
+           f"{prefix}_phi": None, f"{prefix}_psi": None,
+           f"{prefix}_resseq": None, f"{prefix}_icode": None,
+           f"{prefix}_dssp_ok": False}
     if residue is None:
         return out
+    out[f"{prefix}_resseq"] = int(residue.id[1])
+    out[f"{prefix}_icode"] = str(residue.id[2] or "").strip()
     code = _one_letter(residue)
     sasa = float(getattr(residue, "sasa", 0.0) or 0.0)
     max_asa = MAX_ASA.get(code)
@@ -272,6 +367,7 @@ def _position_features(residue, dssp: dict, prefix: str) -> dict:
     out[f"{prefix}_residue"] = code
     out[f"{prefix}_rsa"] = round(rsa, 4) if rsa is not None else None
     out[f"{prefix}_rsa_bin"] = _rsa_bin(rsa)
+    out[f"{prefix}_dssp_ok"] = bool(entry)
     if entry:
         out[f"{prefix}_ss"] = entry[0]
         out[f"{prefix}_ss_coarse"] = SS_COARSE.get(entry[0], "unknown")
@@ -328,6 +424,12 @@ def sequon_context(path: Path, chain_id: str, resseq: int, icode: str = "",
     out["triplet_observed"] = "".join(
         out.get(f"{p}_residue") or "?" for p in ("n", "plus1", "plus2"))
     out["triplet_resolved"] = all(out.get(f"{p}_residue") for p in ("n", "plus1", "plus2"))
+    # The triplet check only notices a gap when the landing residue's identity
+    # differs; continuity notices it either way.
+    out["mapping_continuous"] = plus1 is not None and plus2 is not None
+    length, censored = _loop_run(resolved, i, dssp)
+    out["loop_run_length"] = length
+    out["loop_run_censored"] = censored
 
     # --- neighbourhood, by CA within 8 A ------------------------------------
     origin = asn["CA"].coord
@@ -349,11 +451,22 @@ def sequon_context(path: Path, chain_id: str, resseq: int, icode: str = "",
         out[f"neighbour_{k}_fraction_8a"] = round(counts[k] / n, 4) if n else None
     out["neighbour_net_charge_8a"] = sum(CHARGE.get(c, 0) for c in codes)
 
-    # --- heavy-atom contacts around the Asn side chain ----------------------
-    # A CA within 8 A says little about whether a glycan fits; side-chain
-    # contacts say more.
+    def is_cystine(residue):
+        if _one_letter(residue) != "C" or "SG" not in residue:
+            return False
+        for other in model:
+            for partner in other:
+                if partner is residue or _one_letter(partner) != "C" or "SG" not in partner:
+                    continue
+                if float(np.linalg.norm(partner["SG"].coord - residue["SG"].coord)) <= 2.5:
+                    return True
+        return False
+
+    # --- crowding around the Asn side chain --------------------------------
+    # Counts *residues* with any heavy atom within 5 A of the Asn side chain.
+    # The name says so: the previous one read as a count of atom contacts.
     side_chain = [a for a in asn if a.element != "H"
-                  and a.get_id() not in ("N", "CA", "C", "O")]
+                  and a.get_id() not in BACKBONE_ATOMS]
     contacts = 0
     if side_chain:
         for _, residue in neighbours:
@@ -364,8 +477,60 @@ def sequon_context(path: Path, chain_id: str, resseq: int, icode: str = "",
                        for s in side_chain):
                     contacts += 1
                     break
-    out["sidechain_contacts_5a"] = contacts if side_chain else None
+    out["sidechain_neighbour_residues_5a"] = contacts if side_chain else None
     out["has_sidechain_atoms"] = bool(side_chain)
+
+    # --- the environment ND2 actually sees ---------------------------------
+    # The glycan is attached at ND2, so the neighbourhood that matters is
+    # centred there rather than on CA. Same-chain and other-chain contributions
+    # are kept apart: mixing them lets an oligomer interface or a crystal
+    # contact read as local sequence context.
+    nd2 = asn["ND2"] if "ND2" in asn else None
+    out["has_nd2"] = nd2 is not None
+    same_atoms = other_atoms = 0
+    same_residues, other_residues = set(), set()
+    nearest_aromatic = nearest_sg = None
+    if nd2 is not None:
+        origin_nd2 = nd2.coord
+        for other in model:
+            same_chain = other.id == str(chain_id)
+            for residue in other:
+                if not is_aa(residue, standard=False) or "CA" not in residue:
+                    continue
+                # Cheap rejection: no heavy atom sits more than ~8.5 A from its
+                # own CA, so anything beyond this cannot reach the 8 A shell.
+                if float(np.linalg.norm(residue["CA"].coord - origin_nd2)) > NEIGHBOUR_RADIUS + 12.0:
+                    continue
+                aromatic = _one_letter(residue) in AROMATIC
+                cystine = is_cystine(residue)
+                for atom in residue:
+                    if atom.element == "H" or (residue is asn and atom is nd2):
+                        continue
+                    distance = float(np.linalg.norm(atom.coord - origin_nd2))
+                    side = atom.get_id() not in BACKBONE_ATOMS
+                    if aromatic and side:
+                        nearest_aromatic = (distance if nearest_aromatic is None
+                                            else min(nearest_aromatic, distance))
+                    if cystine and atom.get_id() == "SG":
+                        nearest_sg = (distance if nearest_sg is None
+                                      else min(nearest_sg, distance))
+                    if residue is asn or distance > NEIGHBOUR_RADIUS:
+                        continue
+                    if same_chain:
+                        same_atoms += 1
+                        same_residues.add(residue.get_full_id())
+                    else:
+                        other_atoms += 1
+                        other_residues.add(residue.get_full_id())
+
+    out["nd2_atoms_8a_same_chain"] = same_atoms if nd2 is not None else None
+    out["nd2_atoms_8a_other_chain"] = other_atoms if nd2 is not None else None
+    out["nd2_residues_8a_same_chain"] = len(same_residues) if nd2 is not None else None
+    out["nd2_residues_8a_other_chain"] = len(other_residues) if nd2 is not None else None
+    out["nearest_aromatic_sidechain_nd2"] = (round(nearest_aromatic, 2)
+                                             if nearest_aromatic is not None else None)
+    out["nearest_disulfide_sg_nd2"] = (round(nearest_sg, 2)
+                                       if nearest_sg is not None else None)
 
     # --- nearest aromatic and nearest disulfide -----------------------------
     def nearest(predicate):
@@ -383,17 +548,6 @@ def sequon_context(path: Path, chain_id: str, resseq: int, icode: str = "",
     out["nearest_aromatic_ca"] = nearest(lambda r: _one_letter(r) in AROMATIC)
     out["aromatic_within_8a"] = counts["aromatic"] > 0
 
-    def is_cystine(residue):
-        if _one_letter(residue) != "C" or "SG" not in residue:
-            return False
-        for other in model:
-            for partner in other:
-                if partner is residue or _one_letter(partner) != "C" or "SG" not in partner:
-                    continue
-                if float(np.linalg.norm(partner["SG"].coord - residue["SG"].coord)) <= 2.5:
-                    return True
-        return False
-
     out["nearest_disulfide_ca"] = nearest(is_cystine)
 
     # --- position in the chain, and QC -------------------------------------
@@ -402,21 +556,38 @@ def sequon_context(path: Path, chain_id: str, resseq: int, icode: str = "",
     out["distance_to_c_terminus_resolved"] = len(resolved) - 1 - i
     bfactors = [float(a.get_bfactor()) for a in asn if a.get_bfactor() is not None]
     out["mean_bfactor_asn"] = round(float(np.mean(bfactors)), 2) if bfactors else None
+    out.update(structure_metadata(Path(path)))
     out["structure_pdb_id"] = str(pdb_id or Path(path).stem).upper()
     out["structure_chain_id"] = str(chain_id)
     out["structure_format"] = Path(path).suffix.lstrip(".")
     return out
 
 
+# The primary biological panel. QC and provenance columns follow it, kept
+# separate so technical quality cannot be mistaken for a biological predictor.
 FEATURE_COLUMNS = (
-    "dssp_ok", "dssp_reason", "triplet_observed", "triplet_resolved",
     *[f"{p}_{f}" for p in ("n", "plus1", "plus2")
       for f in ("residue", "rsa", "rsa_bin", "ss", "ss_coarse", "phi", "psi")],
+    "loop_run_length", "loop_run_censored",
     "n_neighbours_8a",
     *[f"neighbour_{k}_{s}_8a" for k in CLASS_ORDER for s in ("count", "fraction")],
-    "neighbour_net_charge_8a", "sidechain_contacts_5a", "has_sidechain_atoms",
-    "nearest_aromatic_ca", "aromatic_within_8a", "nearest_disulfide_ca",
+    "neighbour_net_charge_8a",
+    "nd2_atoms_8a_same_chain", "nd2_atoms_8a_other_chain",
+    "nd2_residues_8a_same_chain", "nd2_residues_8a_other_chain",
+    "sidechain_neighbour_residues_5a",
+    "aromatic_within_8a", "nearest_aromatic_sidechain_nd2",
+    "nearest_disulfide_sg_nd2",
+    "nearest_aromatic_ca", "nearest_disulfide_ca",
     "chain_length_resolved", "distance_to_n_terminus_resolved",
-    "distance_to_c_terminus_resolved", "mean_bfactor_asn",
+    "distance_to_c_terminus_resolved",
+)
+
+QC_COLUMNS = (
+    "dssp_ok", "dssp_reason", "triplet_observed", "triplet_resolved",
+    "mapping_continuous",
+    *[f"{p}_{f}" for p in ("n", "plus1", "plus2")
+      for f in ("resseq", "icode", "dssp_ok")],
+    "has_sidechain_atoms", "has_nd2", "mean_bfactor_asn",
     "structure_pdb_id", "structure_chain_id", "structure_format",
+    "structure_resolution", "structure_method", "structure_is_predicted",
 )

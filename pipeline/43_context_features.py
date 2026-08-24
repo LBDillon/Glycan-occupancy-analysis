@@ -22,6 +22,7 @@ import pandas as pd
 
 sys.path.insert(0, "src")
 from experimental_glycosylation_sites.context_features import (FEATURE_COLUMNS,
+                                                               QC_COLUMNS,
                                                                sequon_context)
 from experimental_glycosylation_sites.runner_support import (apply_shard,
                                                              structure_paths)
@@ -105,6 +106,14 @@ for index, ((pdb_id, chain_id), group) in enumerate(groups, 1):
 if rows:
     pd.DataFrame(rows).to_csv(out, mode="a", header=not out.exists(), index=False)
 frame = pd.read_csv(out, low_memory=False).drop_duplicates(KEY) if out.exists() else pd.DataFrame()
+if len(frame):
+    # Biological panel first, QC and provenance after it, so a reader cannot
+    # mistake a technical field for a predictor by column position.
+    lead = KEY + ["subtype"]
+    ordered = ([c for c in lead if c in frame.columns]
+               + [c for c in FEATURE_COLUMNS if c in frame.columns]
+               + [c for c in QC_COLUMNS if c in frame.columns])
+    frame = frame[ordered + [c for c in frame.columns if c not in ordered]]
 frame.to_csv(out, index=False)
 if failures:
     pd.DataFrame(failures).to_csv(out.with_name(out.stem + "_failures.csv"), index=False)
@@ -112,12 +121,21 @@ if failures:
 print(f"\nextracted {len(frame)} sites; {len(failures)} failures; "
       f"elapsed {(time.time()-t0)/60:.1f} min")
 if len(frame):
+    # Chain-level dssp_ok says DSSP ran; it does not say all three sequon
+    # positions carry a call. The second number is the one an analysis using
+    # secondary structure can actually use.
     print("\nDSSP coverage by population (report this, do not filter on it):")
+    print(f"  {'population':24}{'chain ran':>12}{'all 3 positions':>18}")
+    complete = frame[[f"{p}_dssp_ok" for p in ("n", "plus1", "plus2")]].all(axis=1)
     for name, group in frame.groupby("population"):
         ok = int(group.dssp_ok.sum())
-        print(f"  {name:24}{ok:6d}/{len(group):<6d} ({100*ok/len(group):5.1f}%)")
+        full = int(complete[group.index].sum())
+        print(f"  {name:24}{ok:6d}/{len(group):<5d}{full:11d}/{len(group):<6d}"
+              f" ({100*full/len(group):5.1f}%)")
+    broken = int((~frame.mapping_continuous.astype(bool)).sum())
+    print(f"\nsequon mapping discontinuous (a +1 or +2 was never resolved): {broken}")
     bad = frame[~frame.triplet_matches.astype(bool)]
-    print(f"\ntriplet mismatches (structure mapping wrong): {len(bad)}")
+    print(f"triplet mismatches (structure mapping wrong): {len(bad)}")
     if len(bad):
         print("  ", bad.head(3)[["accession", "position", "triplet_expected",
                                  "triplet_observed"]].to_dict("records"))

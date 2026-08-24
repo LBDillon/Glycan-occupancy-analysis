@@ -88,3 +88,16 @@ def datasets_dir() -> Path:
     """
     configured = os.environ.get(ENV_DATASETS_DIR, "").strip()
     return Path(configured).expanduser() if configured else Path("results/datasets")
+
+
+def resolve_optional_input(relative: str) -> "Path | None":
+    """`resolve_input` for a file that legitimately may not exist.
+
+    Callers must still decide what a missing file means. Skipping one silently
+    is how the context manifest came out with no sequence context for its
+    largest population and no error to say so.
+    """
+    try:
+        return resolve_input(relative)
+    except MissingInput:
+        return None
