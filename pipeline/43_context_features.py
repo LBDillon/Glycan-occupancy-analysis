@@ -74,6 +74,7 @@ for index, ((pdb_id, chain_id), group) in enumerate(groups, 1):
     for r in todo:
         try:
             features = sequon_context(path, str(chain_id), int(r.structure_resseq),
+                                      icode=getattr(r, "structure_icode", ""),
                                       pdb_id=str(pdb_id))
         except Exception as exc:
             features = None

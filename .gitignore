@@ -2,3 +2,5 @@
 !data/raw/
 !data/cache/
 src/*.egg-info/
+__pycache__/
+*.pyc

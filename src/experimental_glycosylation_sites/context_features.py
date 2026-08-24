@@ -46,6 +46,8 @@ from pathlib import Path
 
 import numpy as np
 from Bio.PDB import PDBIO, MMCIFParser, PDBParser, Select
+from Bio.PDB.Model import Model as _Model
+from Bio.PDB.Structure import Structure as _Structure
 from Bio.PDB.Polypeptide import is_aa
 from Bio.SeqUtils import seq1
 
@@ -77,6 +79,10 @@ _DSSP_CACHE: dict = {}
 _DSSP_LIMIT = 32
 
 
+# Any single character works; DSSP only needs a label it can round-trip.
+_DSSP_CHAIN = "A"
+
+
 class _OneChain(Select):
     """Protein residues of one chain: what DSSP is asked to look at."""
 
@@ -96,6 +102,16 @@ def _parse_model(path: Path):
         parser = (MMCIFParser(QUIET=True)
                   if Path(path).suffix.lower() in MMCIF_SUFFIXES else PDBParser(QUIET=True))
         return next(iter(parser.get_structure("s", str(path))), None)
+
+
+def _ss_key(resseq, icode) -> tuple:
+    """DSSP table key: residue number *and* insertion code.
+
+    Keying on the number alone collapses an insertion block (36, 36A, 36B, 36C)
+    onto one entry, so whichever residue DSSP emitted last supplies the
+    secondary structure for every residue in the block.
+    """
+    return int(resseq), str(icode or "").strip()
 
 
 def dssp_for_chain(path: Path, chain_id: str) -> tuple[dict, str]:
@@ -119,17 +135,30 @@ def dssp_for_chain(path: Path, chain_id: str) -> tuple[dict, str]:
         model = _parse_model(path)
         if model is None:
             raise ValueError("structure unreadable")
+        # DSSP is asked about a relabelled copy of the chain. Both the legacy
+        # PDB chain field and DSSP's own output format are one column wide, and
+        # Biopython always requests that output format, so a chain id like "AB"
+        # or "AAAA" cannot survive the round trip -- it failed outright for
+        # every such site in the first run. Secondary structure comes from
+        # geometry, not from the label, so the extract is renamed to a
+        # single-character id and the answers mapped back to the real chain.
+        source = model[str(chain_id)]
+        extract = source.copy()
+        extract.id = _DSSP_CHAIN
+        holder = _Structure("extract")
+        holder.add(_Model(0))
+        holder[0].add(extract)
         io = PDBIO()
-        io.set_structure(model)
+        io.set_structure(holder)
         with NamedTemporaryFile(suffix=".pdb", delete=True) as handle:
-            io.save(handle.name, _OneChain(str(chain_id)))
+            io.save(handle.name, _OneChain(_DSSP_CHAIN))
             extracted = _parse_model(Path(handle.name))
             if extracted is None:
                 raise ValueError("chain extract unreadable")
             dssp = DSSP(extracted, handle.name, dssp="mkdssp")
             for (chain, residue_id), entry in dssp.property_dict.items():
-                if chain == str(chain_id) and residue_id[0] == " ":
-                    result[int(residue_id[1])] = (entry[2], entry[3])
+                if chain == _DSSP_CHAIN and residue_id[0] == " ":
+                    result[_ss_key(residue_id[1], residue_id[2])] = (entry[2], entry[3])
     except Exception as exc:
         reason = f"{type(exc).__name__}: {str(exc)[:60]}"
 
@@ -182,6 +211,41 @@ def _one_letter(residue) -> str:
         return "X"
 
 
+def _sequence_adjacent(first, second) -> bool:
+    """Whether `second` is the residue immediately after `first` in sequence.
+
+    Two forms count as adjacent: the ordinary increment (36 -> 37), and a step
+    within an insertion block (36 -> 36A -> 36B). Anything else is a gap in the
+    deposition, and the intervening residue was never observed.
+    """
+    _, first_num, first_icode = first.id
+    _, second_num, second_icode = second.id
+    if int(second_num) == int(first_num) + 1:
+        return True
+    return int(second_num) == int(first_num) and second_icode != first_icode
+
+
+def _next_in_sequence(resolved: list, index: int):
+    """The next residue only if the model actually observed it, else None.
+
+    Returning `resolved[index + 1]` unconditionally attributes the environment
+    of whatever survived the gap -- sometimes ninety residues away -- to the
+    sequon's +1 or +2.
+    """
+    if index < 0 or index + 1 >= len(resolved):
+        return None
+    following = resolved[index + 1]
+    return following if _sequence_adjacent(resolved[index], following) else None
+
+
+def _previous_in_sequence(resolved: list, index: int):
+    """The preceding residue only if the model actually observed it, else None."""
+    if index <= 0 or index >= len(resolved):
+        return None
+    preceding = resolved[index - 1]
+    return preceding if _sequence_adjacent(preceding, resolved[index]) else None
+
+
 def _residue_at(chain, resseq: int, icode: str = ""):
     icode = _clean_icode(icode)
     for residue in chain:
@@ -204,7 +268,7 @@ def _position_features(residue, dssp: dict, prefix: str) -> dict:
     sasa = float(getattr(residue, "sasa", 0.0) or 0.0)
     max_asa = MAX_ASA.get(code)
     rsa = min(sasa / max_asa, 1.5) if max_asa else None
-    entry = dssp.get(int(residue.id[1]))
+    entry = dssp.get(_ss_key(residue.id[1], residue.id[2]))
     out[f"{prefix}_residue"] = code
     out[f"{prefix}_rsa"] = round(rsa, 4) if rsa is not None else None
     out[f"{prefix}_rsa_bin"] = _rsa_bin(rsa)
@@ -218,9 +282,15 @@ def sequon_context(path: Path, chain_id: str, resseq: int, icode: str = "",
                    pdb_id: "str | None" = None) -> dict | None:
     """Everything measurable about one sequon's environment, or None if absent.
 
-    `resseq` is the asparagine's author residue number; +1 and +2 are located by
-    walking the chain's resolved residues, not by adding 1 and 2, because
-    insertion codes and numbering gaps make arithmetic wrong.
+    `resseq` is the asparagine's author residue number and `icode` its insertion
+    code; both are needed, because a chymotrypsin-numbered protease can hold
+    36, 36A, 36B and 36C and only one of them is the sequon.
+
+    +1 and +2 are the next residues *in sequence*, which is neither `resseq + 1`
+    nor simply the next resolved residue: insertion codes break the arithmetic,
+    and unobserved residues break the walk. Where the deposition skips a
+    residue the position is reported unresolved rather than filled from the far
+    side of the gap.
     """
     model = _model_with_sasa(Path(path))
     if model is None:
@@ -239,8 +309,8 @@ def sequon_context(path: Path, chain_id: str, resseq: int, icode: str = "",
     if asn is None or id(asn) not in order:
         return None
     i = order[id(asn)]
-    plus1 = resolved[i + 1] if i + 1 < len(resolved) else None
-    plus2 = resolved[i + 2] if i + 2 < len(resolved) else None
+    plus1 = _next_in_sequence(resolved, i)
+    plus2 = _next_in_sequence(resolved, i + 1) if plus1 is not None else None
 
     dssp, dssp_reason = dssp_for_chain(Path(path), chain_id)
     out: dict = {"dssp_ok": bool(dssp), "dssp_reason": dssp_reason}
@@ -248,9 +318,11 @@ def sequon_context(path: Path, chain_id: str, resseq: int, icode: str = "",
     for prefix, residue in (("n", asn), ("plus1", plus1), ("plus2", plus2)):
         out.update(_position_features(residue, dssp, prefix))
         if residue is not None:
+            # Across a numbering gap the neighbouring atoms belong to a
+            # different stretch of chain, so the torsion is not defined.
             j = order[id(residue)]
-            phi, psi = _phi_psi(resolved[j - 1] if j > 0 else None, residue,
-                                resolved[j + 1] if j + 1 < len(resolved) else None)
+            phi, psi = _phi_psi(_previous_in_sequence(resolved, j), residue,
+                                _next_in_sequence(resolved, j))
             out[f"{prefix}_phi"], out[f"{prefix}_psi"] = phi, psi
 
     out["triplet_observed"] = "".join(
@@ -325,10 +397,9 @@ def sequon_context(path: Path, chain_id: str, resseq: int, icode: str = "",
     out["nearest_disulfide_ca"] = nearest(is_cystine)
 
     # --- position in the chain, and QC -------------------------------------
-    numbers = [int(r.id[1]) for r in resolved]
     out["chain_length_resolved"] = len(resolved)
-    out["distance_to_n_terminus_resolved"] = int(resseq) - min(numbers)
-    out["distance_to_c_terminus_resolved"] = max(numbers) - int(resseq)
+    out["distance_to_n_terminus_resolved"] = i
+    out["distance_to_c_terminus_resolved"] = len(resolved) - 1 - i
     bfactors = [float(a.get_bfactor()) for a in asn if a.get_bfactor() is not None]
     out["mean_bfactor_asn"] = round(float(np.mean(bfactors)), 2) if bfactors else None
     out["structure_pdb_id"] = str(pdb_id or Path(path).stem).upper()

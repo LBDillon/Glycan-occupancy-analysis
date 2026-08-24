@@ -174,6 +174,10 @@ manifest["n_ortholog_associations"] = manifest[KEY].merge(
 ev = evidence.drop_duplicates(KEY)
 manifest = manifest.merge(
     ev[KEY + ["structure_pdb_id", "structure_chain_id", "structure_resseq",
+              # the insertion code travels with the residue number or the site
+              # is ambiguous: a chymotrypsin-numbered chain can hold 36, 36A,
+              # 36B and 36C, and only one of them is the sequon
+              "structure_icode",
               "structure_tier", "structure_n_examined", "structure_glycans_elsewhere",
               "structure_expression_system"]], on=KEY, how="left")
 manifest["n_structures_examined"] = pd.to_numeric(
