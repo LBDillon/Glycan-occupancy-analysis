@@ -45,7 +45,11 @@ SHARD="${SLURM_ARRAY_TASK_ID}/${SHARDS}"
 # claim the import name `esm` and cannot be installed together.
 if [[ "${MODEL}" == "esmc" ]]; then VENV="${PROJECT_ROOT}/venv-esmc"; else VENV="${PROJECT_ROOT}/venv-if"; fi
 
-VARIANT="${MODEL}${MASK_MODE:+_${MASK_MODE}}"
+# VARIANT names the output files. Override it to write a re-run alongside an
+# existing set instead of over it -- a regenerated run must never land on top of
+# a frozen one, because the frozen numbers are what published claims rest on.
+#   VARIANT=proteinmpnn_index_corrected sbatch glyco_score.slurm proteinmpnn
+VARIANT="${VARIANT:-${MODEL}${MASK_MODE:+_${MASK_MODE}}}"
 EXTRA=(); [[ -n "${MASK_MODE}" ]] && EXTRA=(--mask-mode "${MASK_MODE}")
 
 module purge

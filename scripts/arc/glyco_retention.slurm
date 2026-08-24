@@ -42,6 +42,8 @@ VENV="${PROJECT_ROOT}/venv-if"     # both live here; ESMC does not do retention
 # "shard 36/2", which is invalid -- and silently a different partition of the
 # chains even where it is not. It must match the width of the original array.
 SHARDS="${SHARDS:-64}"
+# See glyco_score.slurm: override to write beside a frozen set, never over it.
+VARIANT="${VARIANT:-${MODEL}}"
 SHARD="${SLURM_ARRAY_TASK_ID}/${SHARDS}"
 
 module purge
@@ -58,7 +60,7 @@ for pair in "scoring_manifest:scoring_manifest" "secretory:manifest_matched_secr
   echo "=== ${MODEL} / ${tag} / shard ${SHARD} ==="
   "${VENV}/bin/python" pipeline/08_design.py \
       "results/manifests/${manifest}.csv" \
-      "${OUT}/retention_${tag}_${MODEL}.shard${SLURM_ARRAY_TASK_ID}.csv" \
+      "${OUT}/retention_${tag}_${VARIANT}.shard${SLURM_ARRAY_TASK_ID}.csv" \
       --model "${MODEL}" --device auto --shard "${SHARD}"
 done
 
