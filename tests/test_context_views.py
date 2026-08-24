@@ -19,7 +19,7 @@ def _frame(rows):
 
 BASE = {"accession": "P1", "position": 1, "triplet_expected": "NAS",
         "triplet_observed": "NAS", "triplet_matches": True,
-        "mapping_continuous": True}
+        "mapping_continuous": True, "triplet_resolved": True}
 
 
 def test_clean_site_is_in_the_strict_view():
@@ -41,14 +41,14 @@ def test_asn_only_view_keeps_sites_where_just_the_asn_matches():
     row = {**BASE, "triplet_observed": "NKS", "triplet_matches": False}
     views = split_views(_frame([row]))
     assert len(views["triplet_core"]) == 0
-    assert len(views["asn_centred"]) == 1
+    assert len(views["asn_core"]) == 1
     assert len(views["construct_review"]) == 1
 
 
 def test_substituted_asn_is_not_in_the_asn_centred_view():
     row = {**BASE, "triplet_observed": "QAS", "triplet_matches": False}
     views = split_views(_frame([row]))
-    assert len(views["asn_centred"]) == 0
+    assert len(views["asn_core"]) == 0
     assert len(views["construct_review"]) == 1
 
 
@@ -57,7 +57,7 @@ def test_unresolved_positions_do_not_count_as_a_matching_asn():
            "mapping_continuous": False}
     views = split_views(_frame([row]))
     assert len(views["triplet_core"]) == 0
-    assert len(views["asn_centred"]) == 1, "the Asn itself was still measured"
+    assert len(views["asn_core"]) == 1, "the Asn itself was still measured"
 
 
 def test_every_site_lands_in_exactly_one_of_core_or_review():
@@ -66,3 +66,34 @@ def test_every_site_lands_in_exactly_one_of_core_or_review():
             {**BASE, "triplet_observed": "QAS", "triplet_matches": False}]
     views = split_views(_frame(rows))
     assert len(views["triplet_core"]) + len(views["construct_review"]) == len(rows)
+
+
+def test_exclusion_reason_is_empty_for_a_core_site():
+    from experimental_glycosylation_sites.context_views import exclusion_reason
+    assert exclusion_reason(_frame([BASE])).iloc[0] == ""
+
+
+def test_exclusion_reason_names_a_substituted_asn():
+    from experimental_glycosylation_sites.context_views import exclusion_reason
+    row = {**BASE, "triplet_observed": "QAS", "triplet_matches": False}
+    assert exclusion_reason(_frame([row])).iloc[0] == "asn_substituted"
+
+
+def test_exclusion_reason_names_an_unresolved_position():
+    from experimental_glycosylation_sites.context_views import exclusion_reason
+    row = {**BASE, "triplet_observed": "NA?", "triplet_matches": False,
+           "triplet_resolved": False, "mapping_continuous": False}
+    assert exclusion_reason(_frame([row])).iloc[0] == "unresolved_position"
+
+
+def test_exclusion_reason_names_a_gap_jump_that_matched():
+    """The nine invisible rows get their own reason, not 'substitution'."""
+    from experimental_glycosylation_sites.context_views import exclusion_reason
+    row = {**BASE, "mapping_continuous": False, "triplet_resolved": True}
+    assert exclusion_reason(_frame([row])).iloc[0] == "discontinuous_mapping"
+
+
+def test_exclusion_reason_names_a_sequence_substitution():
+    from experimental_glycosylation_sites.context_views import exclusion_reason
+    row = {**BASE, "triplet_observed": "NKS", "triplet_matches": False}
+    assert exclusion_reason(_frame([row])).iloc[0] == "sequence_substitution"
