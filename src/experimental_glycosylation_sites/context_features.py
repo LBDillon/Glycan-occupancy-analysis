@@ -20,7 +20,7 @@ likely to carry signal.
 **Secondary structure from DSSP, RSA from Shrake-Rupley.** Deliberately mixed
 sources. DSSP's own RSA runs about 1.22x ours (different probe, radii and max-ASA
 reference; Spearman 0.988), and the frozen matching used the Shrake-Rupley scale
-— so taking RSA from DSSP would put this atlas on a different scale from the
+— so taking RSA from DSSP would put this analysis on a different scale from the
 benchmark it is meant to explain. SS has no such conflict.
 
 **DSSP on a single-chain extract.** Whole-assembly DSSP fails on large

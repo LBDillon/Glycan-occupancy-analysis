@@ -1,7 +1,7 @@
 """Three views of the context table, each answering a different question.
 
-A single "clean dataset" cannot serve the atlas, because the reasons a site is
-imperfect are not interchangeable. A crystallographer's N->Q knockout, a +1 that
+A single "clean dataset" cannot serve the context analysis, because the reasons
+a site is imperfect are not interchangeable. A crystallographer's N->Q knockout, a +1 that
 differs between isoform and construct, and a +2 that was never resolved are
 three different facts, and an analysis that lumps them either throws away good
 Asn measurements or quietly measures the wrong residue.

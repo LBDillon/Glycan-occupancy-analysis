@@ -1,8 +1,8 @@
 """Build the three analysis-ready views of the context table.
 
-One table cannot serve the atlas: a crystallographer's N->Q knockout, a +1
-differing between isoform and construct, and a +2 that was never resolved are
-three different facts. See context_views for what each view means and, for
+One table cannot serve the context analysis: a crystallographer's N->Q knockout,
+a +1 differing between isoform and construct, and a +2 that was never resolved
+are three different facts. See context_views for what each view means and, for
 `asn_core`, what it may not be used for.
 
 Sequence context is joined from the manifest rather than recomputed here,

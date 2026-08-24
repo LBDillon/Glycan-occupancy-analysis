@@ -1,7 +1,7 @@
 """Merging extraction shards, where the dangerous outcome is silence.
 
 A missing shard yields a short table rather than an error, and a short context
-atlas looks exactly like a complete one. Every condition here that could reduce
+analysis looks exactly like a complete one. Every condition here that could reduce
 coverage raises instead: missing shards, duplicate keys, recorded extraction
 failures, and manifest rows that never arrived.
 

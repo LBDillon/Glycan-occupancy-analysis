@@ -1,4 +1,4 @@
-# Why we are building a context atlas
+# Why we are building a glyco-site context analysis
 
 *Written 2026-08-23, at the point where the occupancy benchmark finished and the
 next piece began. It explains where this work sits in the wider project, what
@@ -113,7 +113,7 @@ hard in every model, which we interpret as composition rather than glycosylation
 That interpretation is currently an inference from the pattern of results. With a
 description of the contexts, it becomes something measurable.
 
-## What the atlas is
+## What the context analysis is
 
 A description of the sequence and structural environments in which glycosylation
 actually occurs, built from sites with experimental evidence, and expressed so
@@ -130,7 +130,7 @@ be ordered. Less interpretable, but necessary if this is ever to act as a filter
 
 And three populations rather than one, because a percentile within occupied sites
 alone cannot tell you whether a feature is *discriminative*. A site at the median
-of occupied contexts might be equally typical of unoccupied ones. So the atlas
+of occupied contexts might be equally typical of unoccupied ones. So the analysis
 describes occupied sites, unoccupied sequons, and the ambient background of all
 motifs — and the interesting quantity is where those distributions differ.
 
@@ -159,7 +159,7 @@ So the order is:
    sites, and describe it as exactly that rather than as occupancy prediction.
 
 Step 2 is the one that makes this more than dataset construction. It turns the
-atlas from a description into an instrument for interrogating the models.
+work from a description into an instrument for interrogating the models.
 
 ## What this cannot establish
 
@@ -168,7 +168,7 @@ per experiment, whether a glycopeptide was observed in modified or unmodified
 form, "unoccupied" means "not reported as occupied". That blocks any claim to
 predict occupancy.
 
-It does not block the atlas, and it does not block asking what models respond to
+It does not block this work, and it does not block asking what models respond to
 — both of those are questions about the contexts of sites that *are* known to be
 occupied, and about which features explain model behaviour. Those are answerable
 now. The occupancy predictor is not, and should not be claimed.

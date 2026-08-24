@@ -1,4 +1,4 @@
-"""One row per biological site, for the natural-context atlas.
+"""One row per biological site, for the glyco-site context analysis.
 
 The occupancy benchmark's manifests are keyed by (site, structure) and exist to
 be *scored*. This one is keyed by (accession, position) and exists to be
@@ -77,7 +77,7 @@ features = load("site_structural_features.csv")
 evidence = load("structure_site_evidence.csv")
 assoc = load("site_pair_associations.csv")
 
-# --- the populations the atlas compares ------------------------------------
+# --- the populations the context analysis compares ------------------------------------
 # Occupied carries evidence columns; the control sets carry none, so they are
 # concatenated with those fields empty rather than merged into a shape that
 # implies evidence they do not have.
@@ -197,7 +197,7 @@ manifest["structure_choice"] = manifest.n_structures_examined.map(
 # Each population's features live in its own table -- the occupied and internal
 # sites in one, the secretory and negative controls in others -- so they are
 # stacked before merging. Merging only the first would silently leave every
-# control row without features and make the atlas look occupied-only.
+# control row without features and make the context analysis look occupied-only.
 feature_tables = [features]
 for name in ("secretory_unannotated_features.csv", "negative_control_features.csv"):
     if (D / name).exists():
