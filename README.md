@@ -3,6 +3,18 @@
 > **Start at [`docs/OVERVIEW.md`](docs/OVERVIEW.md)** — current results across all
 > three models, what they mean, and what is running.
 >
+> **⚠ Correction, 2026-08-25 — ProteinMPNN's sequon indexing.** The manifest's
+> `model_index` counts observed residues; ProteinMPNN's parser walks the author
+> numbering and inserts a placeholder for every absent number, so ProteinMPNN was
+> read at the wrong residue for **25.3%** of sites. Corrected, its conditional
+> score on the secretory comparison moves from **+0.090 SD (BH 0.30)** to
+> **+0.282 SD (BH 0.021)**, and the claim that *ProteinMPNN does not distinguish
+> occupied sequons* does not survive. Retention moves the same way (+0.0423 ->
+> +0.0700) but does not clear correction. **ESM-IF and ESMC are unaffected** —
+> ESM-IF reproduces +0.431 SD exactly. Any ProteinMPNN number below this line
+> predates the fix. Full account:
+> [`correction_2026-08-25_sequon_indexing.md`](docs/correction_2026-08-25_sequon_indexing.md).
+
 > **⚠ Correction, 2026-08-20 — ProteinMPNN results are being regenerated.**
 > `mpnn_scoring.ALPHABET` held a three-letter lookup table from inside
 > `parse_PDB_biounits` instead of ProteinMPNN's token alphabet. Consequence:
