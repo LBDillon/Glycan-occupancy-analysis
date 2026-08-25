@@ -1,0 +1,388 @@
+{
+  "label": "2026-08-25",
+  "created": "2026-08-25T14:30:46.655118+00:00",
+  "git_commit": "f065d02c869bc82f3b0e609a38cdb7adfffdf156",
+  "git_dirty": true,
+  "copied_files": 74,
+  "hashed": {
+    "scores/mpnn_conditional_scores.csv": "78cef541db56a614dc2b7401a333c26185c5260df4c1977c19d4efc9e36b2145",
+    "scores/mpnn_conditional_scores_unmatched.csv": "2397c42bd6615388e72eae33d6e0efc141005ed8bd62c9e1550a58403b353d34",
+    "scores/mpnn_scoring_failures.csv": "35f1aa3c6432936f2849c0c69007b551aaa1e6137df75003a49895de8864f795",
+    "scores/scores_controls.csv": "d8a6c04dc4ad6495cd518fe529ffcd3d95b42db1e1a88f0e3830309f993c7124",
+    "scores/scores_controls_alphabet_corrected.csv": "3d18dd53d951719085ffbc4b17892faf422b002bd259b5dcb58d0836b8404613",
+    "scores/scores_controls_alphabet_corrected_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esm_if.csv": "f7e5f720cdbef1d0d3d6be5ff61055cbfe35a331ff22458b80dc8f08fe9daf6f",
+    "scores/scores_controls_esm_if_index_corrected.csv": "612d6e09cbd7da5135b4b4739e2a953fb71d5a0eb833f54a5b11dde8fb120383",
+    "scores/scores_controls_esm_if_index_corrected.shard0.csv": "19408c64e0ab63325237a8de3abf519686227a8cca5f5dab75f26c0cadc58453",
+    "scores/scores_controls_esm_if_index_corrected.shard0_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esm_if_index_corrected.shard1.csv": "14ce47a5e600c068d45618c6ca13055186ac09bbdf71202d1fbc05986105a6ed",
+    "scores/scores_controls_esm_if_index_corrected.shard1_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esm_if_index_corrected.shard2.csv": "a8b13f73e34042d2198f1529eaa3e343f87de0c479d57551f7ef6ad65111e563",
+    "scores/scores_controls_esm_if_index_corrected.shard2_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esm_if_index_corrected.shard3.csv": "4b2cb7df801e7295bcfd96d232d8fbe3235aef14f053f01c66bf37e03ea22c6a",
+    "scores/scores_controls_esm_if_index_corrected.shard3_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esm_if_index_corrected.shard4.csv": "4d064736f53f85b2e9be07945971fbaa29a67de3cd1d33a72a464de2ee7ec2ac",
+    "scores/scores_controls_esm_if_index_corrected.shard4_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esm_if_index_corrected.shard5.csv": "18ec75dde494deeffddf1cd95a4e3e406dcc95e260374a6d3a49cc90d26e7ec4",
+    "scores/scores_controls_esm_if_index_corrected.shard5_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esm_if_index_corrected.shard6.csv": "beb9337a123a0ed8499ef753ee430b371fde885c32cce1909d550587b2dd7f32",
+    "scores/scores_controls_esm_if_index_corrected.shard6_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esm_if_index_corrected.shard7.csv": "6814d46bee521e2816213a38c9b2b1e75638fdd9237b99eac7d453b08c0e2e93",
+    "scores/scores_controls_esm_if_index_corrected.shard7_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esmc_joint.csv": "94e1b5161d0869890f565e0552e7e74c20332b0d66f28623ced7117acda016a6",
+    "scores/scores_controls_esmc_joint_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_esmc_single.csv": "567c5f0f95e55a87787f8fb5997e4f5122c1169658ec8134fcaaaa69b4861231",
+    "scores/scores_controls_esmc_single_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_proteinmpnn_index_corrected.csv": "b953362872cbf757b78a74c0e4527c763aeba2f8bd61f657c9a842829c63015c",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard0.csv": "d3cc226121b14406c67df61b4ad31a2e55ff97d47554c122693182f1060f5021",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard0_failures.csv": "f821a3e77b13f8038e4fcf5ff568905e03c4a4453b8e7f2c178df5626fe1ed04",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard1.csv": "e0d73189548860634ec96ceea6883a7cc7923ceb71351dbbcf14803e36b9d874",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard1_failures.csv": "474cee0343b47df26c184208484b9ba7e01a72cf8dddd73154a4f8e83a9a8395",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard2.csv": "93597331e725f2fd0b6b12140ac6046faa556fe069da5c9d506de7cb81f440e8",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard2_failures.csv": "271c64eadf9d77fe1a0a64b664bfeafa51f893fcfbf528e336bbb63d3973b35e",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard3.csv": "d8a51a8167c68bf675624000658fcee5890738363c352095a00177143e882d9f",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard3_failures.csv": "c3ab14d057d5edc84afbc1552d3e08a53246142580fb52fcc7d20e790a053a3a",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard4.csv": "39fdfed06f497c3548a257af370ab6d859b2679d197bf1a76fcd76fdcb029cfc",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard4_failures.csv": "4d9ae742841f287362fc93be0e78926eab479cf7b2a91edb274e92c050779cc5",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard5.csv": "66369e946a959b833744e293c748be4f50eb10def7815446108a3db52779faae",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard5_failures.csv": "67a0f01ecfc6e34c54121f0d8bd67cdf60e7bf214f79b2188a95bbc9c9e68cb0",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard6.csv": "0d6f7e6fc048a766c31bae2901f16e2c3237148722b377109e4c4c755ea906ca",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard6_failures.csv": "11b4fec5f24f58b5e77e68257848dcd67b81cb2f03cbba3a3e54b936c8011bd8",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard7.csv": "dff75c67b105500d445e240a60675263dea2665597c43d8e0e0a3d6a8c9b4161",
+    "scores/scores_controls_proteinmpnn_index_corrected.shard7_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_controls_proteinmpnn_index_corrected_failures.csv": "a70b5a322187448a1dca18f18c18bdf72a5fc42f8507fd50e5ce00301f4548fb",
+    "scores/scores_controls_proteinmpnn_joint.csv": "d2695c44f295997fd9d46e0b3395d7674a9c09c34aa1541341462f9ca3e1b363",
+    "scores/scores_controls_proteinmpnn_joint_failures.csv": "ae1bf4a6f3a3463f6e71d92f05b2f0aef1b14c8097f79e34e74444d94aa18f90",
+    "scores/scores_controls_topup.csv": "56d1851899944de01f530d7e5a56f61f531cc6cae7a07ae6faca5307e0f15b06",
+    "scores/scores_controls_topup_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset.csv": "e94d8e8070a222a1abcd0c528bb8a4d46ea929feb7ce34a92aa9f9695cc9907d",
+    "scores/scores_dataset_alphabet_corrected.csv": "019f56d637cc957a1e65e49a85f54246787058bc1bebc8e14bf43130322f299a",
+    "scores/scores_dataset_alphabet_corrected_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esm_if.csv": "90059a1c82b3599e0ef4f9cd3f3b0dde9d299393dd1e0eee2382b156ac557af9",
+    "scores/scores_dataset_esm_if_index_corrected.csv": "494c9056938c18be828b5f710d4cc5edf4b49c6ea71fc5594cbc771fb9c44f0a",
+    "scores/scores_dataset_esm_if_index_corrected.shard0.csv": "0c11ccb73dce1c77a92f6cc7cbc7743c6379f47b3373e11f1435a4bb1be0e3c8",
+    "scores/scores_dataset_esm_if_index_corrected.shard0_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esm_if_index_corrected.shard1.csv": "5505b387fb830dda305d231a3b9d5fb6da1092757967f4d201174a861fbdd168",
+    "scores/scores_dataset_esm_if_index_corrected.shard1_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esm_if_index_corrected.shard2.csv": "241d2362af39d776fcadf92cff3bf51bff65316433a024da343b36bcaebce2c5",
+    "scores/scores_dataset_esm_if_index_corrected.shard2_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esm_if_index_corrected.shard3.csv": "e0743df84bed1c8063d061ca3f5a290dba713b83a1022e28e15dea5f5259742f",
+    "scores/scores_dataset_esm_if_index_corrected.shard3_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esm_if_index_corrected.shard4.csv": "e2448fae19c77f2e7311eff5371f39300dad6dea3ccae183b800be23affb464f",
+    "scores/scores_dataset_esm_if_index_corrected.shard4_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esm_if_index_corrected.shard5.csv": "b4183ea20b235bf604bd4e8fad719ad456dd100fe7dcd1517a4609f0e0ad93af",
+    "scores/scores_dataset_esm_if_index_corrected.shard5_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esm_if_index_corrected.shard6.csv": "bf0a52d299e6766ed72991bf33f25b035dc65552cf8aa1cd6f72caee05012f11",
+    "scores/scores_dataset_esm_if_index_corrected.shard6_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esm_if_index_corrected.shard7.csv": "719bc30c98c5f1fe86af50552c3679b1e1abeec9991c4dd0fcf1455e5b559b48",
+    "scores/scores_dataset_esm_if_index_corrected.shard7_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esmc_joint.csv": "fb3a3ee34e30c576f7245b36d509153b8638cd397d01d5626bc8a1fccb461f26",
+    "scores/scores_dataset_esmc_joint_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_esmc_single.csv": "baab30a507f710dbc839479bed7b21533d00e91db8bd4cda2a2df7c881de6d84",
+    "scores/scores_dataset_esmc_single_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_dataset_proteinmpnn_index_corrected.csv": "5f7e483b0012faa7e29551b7c1c5ea6c72525ebd9b756841965e73dfe2bf4706",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard0.csv": "3f9f9dcb134147615b974614e5da56cfa91f8ef2ea8395b5613cdcb2ffbc4fd4",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard0_failures.csv": "6052db788dbd09b10f69814445b70a625c218fa0478502d795beb06662892a96",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard1.csv": "147bfeab6a441129502309b12b1e81669127de40e06543d4e2cb4c5151244361",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard1_failures.csv": "543fd99ec13c23eb37aad918019bd5947c442c324dfab95b29f278cb2b8cb7fe",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard2.csv": "61c32b805c594922022478b8006cc359a8f5f1f5cce403c152669fd62877f386",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard2_failures.csv": "e4c50b82846d95bc9d531b8071fa5a83e5768e251d23b40ac4c2c142b2d694cb",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard3.csv": "c55e6fe2938b1af67b1e2502b3640685a57853eff5349ff3a13c649bd734ef78",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard3_failures.csv": "ac50b8433125ba812adb2a9021cc778a6bcb05868d586a36718d655fbc4d001d",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard4.csv": "027a22c5618e8d13d6e1c3907dbdcfeda097c77c70a50cf41b92e1bef9719e77",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard4_failures.csv": "b0880ebb51496b7a8be297875db014a0e443ac8d67a92c1b31eb328a7d1c3594",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard5.csv": "ffd06e940102dfffc041a2543ccc6b6e6b092ee7ad754be467868b80aefce5c1",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard5_failures.csv": "f8fe2b23f33fd6188c5f6568481dfc285cbc01f7fefd5467c6d489468d04cf07",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard6.csv": "eee98b9626a410ddc33d9090aab6d77ec1cc19367716953acf8cd4fe1f31dd82",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard6_failures.csv": "25d462bf8a41958336be34939af5f39f327f09660fa4e5b98625a4393c730989",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard7.csv": "ff8c18dcda32660b43c5f650537181f03141f54277ae6b5e6fe205a17663bf6a",
+    "scores/scores_dataset_proteinmpnn_index_corrected.shard7_failures.csv": "15ba10ebf68b05f3d10a90e47b9a9843dbf938abf875d2dc64ef7cc2302598bd",
+    "scores/scores_dataset_proteinmpnn_index_corrected_failures.csv": "028c24fb0630d215883b4f1d396f8768b8efcdad9f204bc0df4793ad3680cb56",
+    "scores/scores_dataset_proteinmpnn_joint.csv": "252b4c3d42b0b9697e2b9f957335577c7db4bc6d179a76b70beb7b20dcfad4a6",
+    "scores/scores_dataset_proteinmpnn_joint_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory.csv": "9bb59f7480290be144bcf5df4a8693ff5c653e7567ff433d25d788de9b077792",
+    "scores/scores_secretory_alphabet_corrected.csv": "9083af34c5ef4c3a8c10b344d29def201c75204aa55d240414dcd46a26f31da9",
+    "scores/scores_secretory_alphabet_corrected_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esm_if.csv": "d9bd75871f62cfff93c55f5d0ad0778d2ceb4f965d1ec21c2ebbf2418755a678",
+    "scores/scores_secretory_esm_if_index_corrected.csv": "1de3abcf6fddf4f01e012e327eeb757f9318e9e8fcf9973883e6c3ec00d2c9ea",
+    "scores/scores_secretory_esm_if_index_corrected.shard0.csv": "afcc1afc5e335173cd07e01c9b90ef850f6077ada669cd453186a3edfd381506",
+    "scores/scores_secretory_esm_if_index_corrected.shard0_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esm_if_index_corrected.shard1.csv": "7a731ca9ba0712fb3271515a0bd0f52cb757bc01877734feba74fa38793ff610",
+    "scores/scores_secretory_esm_if_index_corrected.shard1_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esm_if_index_corrected.shard2.csv": "9f41123d57e4e25a5d8ab013c86ed3bd41556252d5c9d90407a7deb1ba9a2947",
+    "scores/scores_secretory_esm_if_index_corrected.shard2_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esm_if_index_corrected.shard3.csv": "3813be69b03ac2485478f7eacebc1a528ea61ce9740d9232654a8ed2d274ab21",
+    "scores/scores_secretory_esm_if_index_corrected.shard3_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esm_if_index_corrected.shard4.csv": "b1fafe1d1dfe30b325faa7da243bc7e1a7409fc83aa27a93691961ff101f691f",
+    "scores/scores_secretory_esm_if_index_corrected.shard4_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esm_if_index_corrected.shard5.csv": "cff2500ded7171e34b3c4e20bb0c84f21d2bf5feb92ffddc913117af162392a8",
+    "scores/scores_secretory_esm_if_index_corrected.shard5_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esm_if_index_corrected.shard6.csv": "5a55737231d2b3be11b1c9ec8c5683c077f2fa459863f83316152f4ced9120be",
+    "scores/scores_secretory_esm_if_index_corrected.shard6_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esm_if_index_corrected.shard7.csv": "6fdca65b0d380ee1cec54872e88c1c3a0a4dc69887c14911190a38e34fbf8dd3",
+    "scores/scores_secretory_esm_if_index_corrected.shard7_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esmc_joint.csv": "c3104557a212fda6e67cd66b0c3b4b8c9ebec1e0e413fbb0ba10dbfc55611578",
+    "scores/scores_secretory_esmc_joint_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_esmc_single.csv": "a6e6f70ffe1edcc1675ee63f193234cf71615890769d226c109b6b61f6bfa5d7",
+    "scores/scores_secretory_esmc_single_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_proteinmpnn_index_corrected.csv": "1d0817051f4ca82655ccab8cd699f4c8eb5ba5c2d8d1faee023acd033b5194d8",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard0.csv": "3e6493d0337a8140f830b396198728094159db47a07ba33a15377d548de6aca9",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard0_failures.csv": "5a5af9615a7af5663a53b00ee247e45e5bb4db234c0ca9f71402de06d9c366a8",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard1.csv": "0adf71dfedb04992ce7ffb096de8cce29b758a8c6d25857b9ac47c5638b0ff49",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard1_failures.csv": "eb00d6910af135070741f662ba05c6df3d85ab8030b8ed313c50ea78052694f2",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard2.csv": "a49e4e005c0fcb4cbd65d56945aa1c30e34128f1939609c0ff7a8a4ac00376c1",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard2_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard3.csv": "ab8c34116e112ffd3f3cc0dedd3c5a4de6df65b04b88f12ce855f57cc3074056",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard3_failures.csv": "463cfd731ab2e1a9920059da58a3c07be01da88ecb98537ea356f24875e70ec8",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard4.csv": "d48d40ab7cd35465b261dc5934134936d12629db825fe01a79f4f1d825831c44",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard4_failures.csv": "cb5ef347f82148806df8a06b634e6de1f4d1f23229da52113ecc3b230f147203",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard5.csv": "560c66e07caf6d891866507ef8562bb4b7d7050c1e6cfa8d4dfa8e46628d4db2",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard5_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard6.csv": "164f81c8446a4960a801b5470361764aede76ff35ae0d4b8497471d0432d68dc",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard6_failures.csv": "bfdeffbf7608cbe229e642c4b77ad10e064f5b6ddbce9d01f282b636474fa3a2",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard7.csv": "d8c226592b7a6da10f267a1e14646b36416a92f3dc281b7f3be9fb8dda97dcfb",
+    "scores/scores_secretory_proteinmpnn_index_corrected.shard7_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "scores/scores_secretory_proteinmpnn_index_corrected_failures.csv": "3cb46e917725d62c5d6f7501cc347500e363508f3fb02d6f9bc46ed13dd58cfe",
+    "scores/scores_secretory_proteinmpnn_joint.csv": "dd918da539e01f75bf45213bfab211f8010421bf4e2f86d8657b3a99b4b6d5d6",
+    "scores/scores_secretory_proteinmpnn_joint_failures.csv": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "designs/mpnn_retention_frozen_2026-08-18.csv": "d2d18c456fa7491ca5bb2049a2173b060105c074db624afa3a59106a81c95b63",
+    "designs/mpnn_retention_secretory.csv": "0108ad065261a5edd2125cf8ef4e7f103e10f8cdc92261ac54d6750fbea27561",
+    "designs/retention_all_classes.csv": "09537efba9ec7c8b0af3a25f80394078e022e660a6ecc2d24ababdb64467f0d1",
+    "designs/retention_all_classes_alphabet_corrected.csv": "9e0a13d1d3f48411b7d4d60592b4e1a3221eab22871149a58e033354bab0e850",
+    "designs/retention_all_classes_esm_if.csv": "a32273bc1f91ff34910e794ebf87fd417b32a5167ff97b31dd1581dafd512ce3",
+    "designs/retention_all_classes_proteinmpnn_index_corrected.csv": "b55c009b7e82b9808cff909e52fd9242a3e43070e1b4e297e868f5b03361be56",
+    "designs/retention_scoring_manifest_alphabet_corrected.csv": "ca50db2952158673b1de9df55d72f82321eef6904dd4bdd04ef3124e55bed29b",
+    "designs/retention_scoring_manifest_esm_if.csv": "c4351a78fd8e5ce51661ed2c23c2443647481904647bb114f9d5dc24e5e1dad2",
+    "designs/retention_scoring_manifest_proteinmpnn.csv": "ca50db2952158673b1de9df55d72f82321eef6904dd4bdd04ef3124e55bed29b",
+    "designs/retention_scoring_manifest_proteinmpnn_corrected.shard0.csv": "d67ba70080698cebd46e89b6e55916895e5e98524709c702905e140dc4ebbd7e",
+    "designs/retention_scoring_manifest_proteinmpnn_corrected.shard1.csv": "5ffdc0ebe19427368fdab4ce1684147afff1179883874c30a547f8014419fbc4",
+    "designs/retention_scoring_manifest_proteinmpnn_corrected.shard2.csv": "09178fdaed566319030d81365ea6bea920be907abc44ab60f888ca1cab73f590",
+    "designs/retention_scoring_manifest_proteinmpnn_corrected.shard3.csv": "f701b53cd7eb996ad5d0734dcfcaba2877c8050d455f5ec03082b0a98a599a69",
+    "designs/retention_scoring_manifest_proteinmpnn_index_corrected.csv": "80b1bba9669ec66f4b7fbab1ffc84a52069feda686ee654147b17f2d9bce1ebf",
+    "designs/retention_secretory_alphabet_corrected.csv": "ce369d4a016d8254d0d44a063111b649e973dc95b80099e7c1901ed832741682",
+    "designs/retention_secretory_esm_if.csv": "32f459c03bc49d5e774cfa9f68c473406837565cb5610a0706625becd2b712fb",
+    "designs/retention_secretory_proteinmpnn.csv": "ce369d4a016d8254d0d44a063111b649e973dc95b80099e7c1901ed832741682",
+    "designs/retention_secretory_proteinmpnn_index_corrected.csv": "f1282415de3da2eff0d8a8dde4d9b54189c14f2fd57c2a40ec3289c6e0ee4468",
+    "manifests/candidate_manifest_controls.csv": "5bf7b117f23a74a222f72d95a94c58d29750478b07b179666717b60b20e80f47",
+    "manifests/candidate_manifest_controls_exclusions.csv": "5df3516e85230d92c6ffc58ae524a0179e829e8346cf80ea4b2891a0f42330c4",
+    "manifests/candidate_manifest_dataset.csv": "d36e4312417d0a3267eef8a62275215aa599cabb49d39546d39f702c4cca37b3",
+    "manifests/candidate_manifest_dataset_exclusions.csv": "083cf28cbec80ca099f97a2e6b4c3e22d665e6428083247c53fcbb8ce1356320",
+    "manifests/candidate_manifest_secretory.csv": "61831fc8123626a71cde8735a7df26baf064b9c20940a5b36a935f5890f3fc65",
+    "manifests/candidate_manifest_secretory_exclusions.csv": "7ca5f44140b4a8424935dd37de203d189978af8c7938aa144797fe0feaa6e7d2",
+    "manifests/manifest_controls_topup.csv": "d81b7350e85cc2079b7c3166f0e5ea48dea3d9f9aa83a80ee8c280ace1578805",
+    "manifests/manifest_matched_controls.csv": "8ff8335ac15077e3a261702b3d8429f4e4da86e599b61a329a6ea53a8f10166c",
+    "manifests/manifest_matched_secretory.csv": "8d5c9b6439df62bc6dcfe7e20731e6395e9a7aa4603d548baf30cf8491787f41",
+    "manifests/scoreability.csv": "d93ef10b2841918734db6f87a77899de8ed9d9555227c6b04ef768e9b8972643",
+    "manifests/scoreability_controls.csv": "2477d71f08c1291e5f7898058d2a2357903a0dcd026ea674367e7f3114c27b38",
+    "manifests/scoreability_dataset.csv": "b115127241b1a928a5c4b2292f52479820f88b606ddcd770c12bae381922b58b",
+    "manifests/scoreability_secretory.csv": "dcd21444058f9768eed37fde10d8c1f96181e2aedbaa0a5a2a786ebb467a6cfd",
+    "manifests/scoring_manifest.csv": "7db091957be9fa375d890c92d2bd6fc7d1c5964bf1e1eee8465c641418ca84e7",
+    "manifests/scoring_manifest_exclusions.csv": "10e86c48e467c089993e5112fce332851e433bfb19e09c22010449f16a20a5c1"
+  },
+  "claims": {
+    "(legacy)": [
+      {
+        "outcome": "conditional score",
+        "comparison": "internal control",
+        "effect": 0.610367,
+        "p_bh": 0.435778
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.097513,
+        "p_bh": 0.435778
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "bacterial",
+        "effect": -0.208799,
+        "p_bh": 0.120394
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "cytosolic",
+        "effect": 0.089642,
+        "p_bh": 0.435778
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "internal control",
+        "effect": 0.152344,
+        "p_bh": 0.332117
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.043241,
+        "p_bh": 0.120394
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "bacterial",
+        "effect": 0.002339,
+        "p_bh": 0.821259
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "cytosolic",
+        "effect": 0.003237,
+        "p_bh": 0.821259
+      }
+    ],
+    "alphabet_corrected": [
+      {
+        "outcome": "conditional score",
+        "comparison": "internal control",
+        "effect": 0.868279,
+        "p_bh": 0.369902
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.122568,
+        "p_bh": 0.300485
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "bacterial",
+        "effect": -0.536765,
+        "p_bh": 0.0004
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "cytosolic",
+        "effect": -0.037475,
+        "p_bh": 0.866185
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "internal control",
+        "effect": -0.044925,
+        "p_bh": 0.866185
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.042345,
+        "p_bh": 0.300485
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "bacterial",
+        "effect": -0.070006,
+        "p_bh": 0.0018
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "cytosolic",
+        "effect": -0.003115,
+        "p_bh": 0.893005
+      }
+    ],
+    "esm_if": [
+      {
+        "outcome": "conditional score",
+        "comparison": "internal control",
+        "effect": -0.509507,
+        "p_bh": 0.553439
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.652812,
+        "p_bh": 0.0008
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "bacterial",
+        "effect": -0.400589,
+        "p_bh": 0.0008
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "cytosolic",
+        "effect": 0.183334,
+        "p_bh": 0.456217
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "internal control",
+        "effect": -0.023438,
+        "p_bh": 1.0
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.092473,
+        "p_bh": 0.015299
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "bacterial",
+        "effect": -0.053519,
+        "p_bh": 0.002667
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "cytosolic",
+        "effect": 0.021785,
+        "p_bh": 0.751677
+      }
+    ],
+    "proteinmpnn_index_corrected": [
+      {
+        "outcome": "conditional score",
+        "comparison": "internal control",
+        "effect": -0.364851,
+        "p_bh": 0.652287
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.266349,
+        "p_bh": 0.020932
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "bacterial",
+        "effect": -0.499325,
+        "p_bh": 0.0004
+      },
+      {
+        "outcome": "conditional score",
+        "comparison": "cytosolic",
+        "effect": -0.00194,
+        "p_bh": 0.981901
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "internal control",
+        "effect": -0.081247,
+        "p_bh": 0.771333
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "eukaryotic secretory",
+        "effect": 0.070025,
+        "p_bh": 0.224789
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "bacterial",
+        "effect": -0.0837,
+        "p_bh": 0.0004
+      },
+      {
+        "outcome": "design retention",
+        "comparison": "cytosolic",
+        "effect": 0.018812,
+        "p_bh": 0.771333
+      }
+    ]
+  },
+  "note": "analysis/ and matching/ are copied verbatim; scores, designs and manifests are hashed only. Re-run with --check to detect drift."
+}

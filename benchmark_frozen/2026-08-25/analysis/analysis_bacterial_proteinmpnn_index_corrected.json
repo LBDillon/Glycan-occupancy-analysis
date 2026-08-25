@@ -1,0 +1,58 @@
+{
+  "comparison": "bacterial",
+  "role": "DIAGNOSTIC (bacterial extracytoplasmic)",
+  "question": "Does the model score occupied sequons higher than matched sequons with no modelled glycan?",
+  "variant": "proteinmpnn_index_corrected",
+  "model_provenance": "v_48_020 / conditional / 8",
+  "reference_sd": 0.945671,
+  "reference_sd_population": "318 scoreable dataset sites (290 occupied + 28 internal control); labels not consulted; control sites excluded by construction",
+  "margin_standardised": 0.2,
+  "margin_raw": 0.189134,
+  "n_contrasts": 251,
+  "n_occupied_proteins": 188,
+  "n_ortholog_clusters": 89,
+  "n_resampling_units": 56,
+  "max_control_protein_reuse": 3,
+  "mean_difference_raw": -0.499325,
+  "mean_difference_sd": -0.528012,
+  "ci95_raw": [
+    -0.875225,
+    -0.380113
+  ],
+  "ci95_sd": [
+    -0.925507,
+    -0.401951
+  ],
+  "ci95_site_level_not_used": [
+    -0.672428,
+    -0.328116
+  ],
+  "verdict": "difference beyond the margin",
+  "robustness": {
+    "median": -0.4702,
+    "trimmed_mean_10pct": -0.5095,
+    "n_positive": 84,
+    "n_contrasts": 251,
+    "sign_test_p": 0.0,
+    "wilcoxon_p": 0.0,
+    "leave_one_out_mean_min": -0.517,
+    "leave_one_out_mean_max": -0.4823
+  },
+  "by_subtype": {
+    "NXS": {
+      "n": 121,
+      "mean": -0.3541,
+      "mean_sd_units": -0.3744
+    },
+    "NXT": {
+      "n": 130,
+      "mean": -0.6345,
+      "mean_sd_units": -0.671
+    }
+  },
+  "bootstrap": {
+    "n": 10000,
+    "seed": 20260818,
+    "unit": "connected component of occupied ortholog clusters and shared control proteins"
+  }
+}

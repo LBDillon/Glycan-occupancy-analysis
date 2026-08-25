@@ -1,0 +1,58 @@
+{
+  "comparison": "cytosolic",
+  "role": "DIAGNOSTIC (cytosolic eukaryotic)",
+  "question": "Does the model score occupied sequons higher than matched sequons with no modelled glycan?",
+  "variant": "proteinmpnn_index_corrected",
+  "model_provenance": "v_48_020 / conditional / 8",
+  "reference_sd": 0.945671,
+  "reference_sd_population": "318 scoreable dataset sites (290 occupied + 28 internal control); labels not consulted; control sites excluded by construction",
+  "margin_standardised": 0.2,
+  "margin_raw": 0.189134,
+  "n_contrasts": 237,
+  "n_occupied_proteins": 179,
+  "n_ortholog_clusters": 91,
+  "n_resampling_units": 75,
+  "max_control_protein_reuse": 3,
+  "mean_difference_raw": -0.00194,
+  "mean_difference_sd": -0.002051,
+  "ci95_raw": [
+    -0.255986,
+    0.143322
+  ],
+  "ci95_sd": [
+    -0.270692,
+    0.151556
+  ],
+  "ci95_site_level_not_used": [
+    -0.161936,
+    0.161988
+  ],
+  "verdict": "inconclusive",
+  "robustness": {
+    "median": 0.0032,
+    "trimmed_mean_10pct": 0.0171,
+    "n_positive": 119,
+    "n_contrasts": 237,
+    "sign_test_p": 1.0,
+    "wilcoxon_p": 0.8748,
+    "leave_one_out_mean_min": -0.015,
+    "leave_one_out_mean_max": 0.0114
+  },
+  "by_subtype": {
+    "NXS": {
+      "n": 120,
+      "mean": -0.0248,
+      "mean_sd_units": -0.0262
+    },
+    "NXT": {
+      "n": 117,
+      "mean": 0.0215,
+      "mean_sd_units": 0.0227
+    }
+  },
+  "bootstrap": {
+    "n": 10000,
+    "seed": 20260818,
+    "unit": "connected component of occupied ortholog clusters and shared control proteins"
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "unit": "one site; 32 unconstrained designs per chain at temperature 0.1",
+  "bootstrap": "over proteins, not sites",
+  "excluded": "sites ProteinMPNN cannot decode",
+  "classes": {
+    "occupied_supported": {
+      "label": "occupied (experimental glycan)",
+      "n_sites": 285,
+      "n_proteins": 213,
+      "mean_retention": 0.1639,
+      "ci95": [
+        0.1205,
+        0.2112
+      ],
+      "frac_never_retained": 0.7263
+    },
+    "observed_unmodified": {
+      "label": "internal control",
+      "n_sites": 21,
+      "n_proteins": 18,
+      "mean_retention": 0.1756,
+      "ci95": [
+        0.0375,
+        0.3452
+      ],
+      "frac_never_retained": 0.7143
+    },
+    "control_secretory_eukaryotic_unannotated": {
+      "label": "eukaryotic secretory control",
+      "n_sites": 255,
+      "n_proteins": 228,
+      "mean_retention": 0.0646,
+      "ci95": [
+        0.0397,
+        0.0917
+      ],
+      "frac_never_retained": 0.8353
+    },
+    "control_bacterial_extracytoplasmic": {
+      "label": "bacterial control",
+      "n_sites": 1096,
+      "n_proteins": 619,
+      "mean_retention": 0.2068,
+      "ci95": [
+        0.1818,
+        0.2325
+      ],
+      "frac_never_retained": 0.6779
+    },
+    "control_cytosolic_eukaryotic": {
+      "label": "cytosolic control",
+      "n_sites": 1021,
+      "n_proteins": 756,
+      "mean_retention": 0.1206,
+      "ci95": [
+        0.1009,
+        0.1404
+      ],
+      "frac_never_retained": 0.7982
+    }
+  }
+}

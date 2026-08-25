@@ -1,0 +1,16 @@
+{
+  "n_sites": 50,
+  "sample_seed": 20260817,
+  "reference_sd_in_sample": 2.9322,
+  "8_vs_16": {
+    "median_sd_units": 0.0022,
+    "p95_sd_units": 0.0141,
+    "correlation": 0.99998
+  },
+  "4_vs_16": {
+    "median_sd_units": 0.0039,
+    "p95_sd_units": 0.0144,
+    "correlation": 0.99996
+  },
+  "decision": "adopt 8 decoding orders"
+}

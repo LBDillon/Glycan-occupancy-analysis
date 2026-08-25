@@ -1,0 +1,67 @@
+{
+  "status": "secondary and descriptive; no pre-specified margin; not pre-registered",
+  "unit": "one occupied site, against the control matched to it",
+  "bootstrap": "connected components of ortholog clusters and shared control proteins",
+  "comparisons": {
+    "internal control": {
+      "n_pairs": 15,
+      "n_informative": 11,
+      "n_tied": 4,
+      "occupied_mean": 0.1375,
+      "control_mean": 0.2187,
+      "paired_difference": -0.0812,
+      "ci95": [
+        -0.325,
+        0.125
+      ],
+      "excludes_zero": false,
+      "wilcoxon_p": 0.722,
+      "n_resampling_units": 11
+    },
+    "eukaryotic secretory": {
+      "n_pairs": 216,
+      "n_informative": 87,
+      "n_tied": 129,
+      "occupied_mean": 0.1212,
+      "control_mean": 0.0512,
+      "paired_difference": 0.07,
+      "ci95": [
+        -0.0037,
+        0.1185
+      ],
+      "excludes_zero": false,
+      "wilcoxon_p": 0.0033,
+      "n_resampling_units": 71
+    },
+    "bacterial": {
+      "n_pairs": 227,
+      "n_informative": 134,
+      "n_tied": 93,
+      "occupied_mean": 0.1261,
+      "control_mean": 0.2098,
+      "paired_difference": -0.0837,
+      "ci95": [
+        -0.179,
+        -0.0459
+      ],
+      "excludes_zero": true,
+      "wilcoxon_p": 0.0033,
+      "n_resampling_units": 58
+    },
+    "cytosolic": {
+      "n_pairs": 216,
+      "n_informative": 94,
+      "n_tied": 122,
+      "occupied_mean": 0.1243,
+      "control_mean": 0.1055,
+      "paired_difference": 0.0188,
+      "ci95": [
+        -0.074,
+        0.0675
+      ],
+      "excludes_zero": false,
+      "wilcoxon_p": 0.3814,
+      "n_resampling_units": 71
+    }
+  }
+}

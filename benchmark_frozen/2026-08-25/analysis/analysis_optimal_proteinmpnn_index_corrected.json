@@ -1,0 +1,58 @@
+{
+  "comparison": "optimal",
+  "role": "PRIMARY (internal controls, annotated absence)",
+  "question": "Does the model score occupied sequons higher than matched sequons with no modelled glycan?",
+  "variant": "proteinmpnn_index_corrected",
+  "model_provenance": "v_48_020 / conditional / 8",
+  "reference_sd": 0.945671,
+  "reference_sd_population": "318 scoreable dataset sites (290 occupied + 28 internal control); labels not consulted; control sites excluded by construction",
+  "margin_standardised": 0.2,
+  "margin_raw": 0.189134,
+  "n_contrasts": 15,
+  "n_occupied_proteins": 15,
+  "n_ortholog_clusters": 12,
+  "n_resampling_units": 11,
+  "max_control_protein_reuse": 2,
+  "mean_difference_raw": -0.364851,
+  "mean_difference_sd": -0.385811,
+  "ci95_raw": [
+    -1.107526,
+    0.306168
+  ],
+  "ci95_sd": [
+    -1.171154,
+    0.323757
+  ],
+  "ci95_site_level_not_used": [
+    -1.086881,
+    0.303868
+  ],
+  "verdict": "inconclusive",
+  "robustness": {
+    "median": -0.7966,
+    "trimmed_mean_10pct": -0.251,
+    "n_positive": 6,
+    "n_contrasts": 15,
+    "sign_test_p": 0.6072,
+    "wilcoxon_p": 0.7197,
+    "leave_one_out_mean_min": -0.4946,
+    "leave_one_out_mean_max": -0.1294
+  },
+  "by_subtype": {
+    "NXS": {
+      "n": 7,
+      "mean": -1.0446,
+      "mean_sd_units": -1.1046
+    },
+    "NXT": {
+      "n": 8,
+      "mean": 0.2299,
+      "mean_sd_units": 0.2431
+    }
+  },
+  "bootstrap": {
+    "n": 10000,
+    "seed": 20260818,
+    "unit": "connected component of occupied ortholog clusters and shared control proteins"
+  }
+}
