@@ -29,9 +29,10 @@ sys.path.insert(0, "glyco_context/src")
 from experimental_glycosylation_sites.retention import design_sequences
 from experimental_glycosylation_sites.runner_support import (proteinmpnn_dir,
                                                              structure_paths)
-from experimental_glycosylation_sites.mpnn_scoring import load_model
-from glyco_context.fixed_design import (native_sequence, sequon_positions,
-                                        verify_sequon_index)
+from experimental_glycosylation_sites.mpnn_scoring import (chain_mapping, load_model,
+                                                           to_manifest_space)
+from experimental_glycosylation_sites.structures import _parse_chains
+from glyco_context.fixed_design import sequon_positions, verify_sequon_index
 from glyco_context.local_chemistry import (chemistry_panel,
                                            shell_indices_from_structure)
 
@@ -43,6 +44,8 @@ parser.add_argument("--designs", type=int, default=32)
 parser.add_argument("--temperature", type=float, default=0.1)
 parser.add_argument("--policy", default="full_sequon")
 parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--panels-only", action="store_true",
+                    help="wild-type panels for every site, no design. This builds the natural reference distribution, which needs all the sites but none of the designs.")
 parser.add_argument("--out", default="glyco_context/results/analysis/fixed_sequon_panels.csv")
 args = parser.parse_args()
 
@@ -69,23 +72,34 @@ for subtype in ("NXS", "NXT"):
     pool = by_subtype.get(subtype, [])
     rng.shuffle(pool)
     selected.extend(pool[: args.proteins // 2])
+if args.panels_only:
+    selected = {key for key, _ in groups}
 selected = set(selected)
 print(f"selected {len(selected)} chains "
       f"({sum(1 for k in selected if subtype_of[k]=='NXS')} NXS, "
       f"{sum(1 for k in selected if subtype_of[k]=='NXT')} NXT)")
 
 paths = structure_paths(())
-model = load_model(proteinmpnn_dir(), device="cpu")
+model = None if args.panels_only else load_model(proteinmpnn_dir(), device="cpu")
 
-rows, dropped, t0 = [], [], time.time()
+rows, sequences, dropped, t0 = [], [], [], time.time()
 for n, (key, group) in enumerate([g for g in groups if g[0] in selected], start=1):
     pdb_id, chain_id = key
     path = paths.get(str(pdb_id).upper())
     if path is None:
         dropped.append({"pdb": pdb_id, "chain": chain_id, "reason": "structure_not_cached"})
         continue
+    # Everything below is in the manifest's index space: the wild type comes
+    # from the same parse the manifest counts, designs are projected back into
+    # it, and the shell is built from the same residue list. One index space
+    # throughout is the only reason this is checkable at all.
     try:
-        wild_type = native_sequence(path, str(chain_id))
+        mapping, _ = chain_mapping(path, str(chain_id), pdb_id)
+        native = next((c for c in _parse_chains(path, str(pdb_id))
+                       if c.chain_id == str(chain_id)), None)
+        if not mapping or native is None:
+            raise KeyError("chain cannot be mapped onto ProteinMPNN's parse")
+        wild_type = native.sequence
     except Exception as exc:
         dropped.append({"pdb": pdb_id, "chain": chain_id,
                         "reason": f"{type(exc).__name__}: {str(exc)[:60]}"})
@@ -116,17 +130,28 @@ for n, (key, group) in enumerate([g for g in groups if g[0] in selected], start=
                             "reason": "sequence_structure_misalignment"})
             continue
         site_shells[(site.accession, site.position)] = (n_index, shell, site)
-        fixed.extend(sequon_positions(n_index, policy=args.policy))
+        # The mask ProteinMPNN reads is in its own index space, so the sequon
+        # positions are translated on the way in and the designs on the way out.
+        fixed.extend(mapping[i] for i in sequon_positions(n_index, policy=args.policy)
+                     if i in mapping)
     if not site_shells:
         continue
 
-    designs = design_sequences(path, str(chain_id), model, n_designs=args.designs,
-                               temperature=args.temperature, seed=args.seed,
-                               fixed_positions=sorted(set(fixed)))
+    designs = [] if args.panels_only else [
+        to_manifest_space(d, mapping) for d in
+        design_sequences(path, str(chain_id), model, n_designs=args.designs,
+                         temperature=args.temperature, seed=args.seed,
+                         fixed_positions=sorted(set(fixed)))]
 
     # Random control: the same number of altered positions, drawn from this
     # chain's own composition, and never touching the fixed sequon positions.
-    designable = [i for i in range(len(wild_type)) if i not in set(fixed)]
+    # `fixed` is in ProteinMPNN's index space, for the sampler's mask. The random
+    # control edits the manifest-space wild type, so it needs the sequon
+    # positions in *that* space -- using the model-space set here let the control
+    # mutate the very sequon it is supposed to hold constant.
+    protected = {i for (n_index, _, _) in site_shells.values()
+                 for i in sequon_positions(n_index, policy=args.policy)}
+    designable = [i for i in range(len(wild_type)) if i not in protected]
     background = np.array(list(wild_type))
     randoms = []
     for design in designs:
@@ -138,6 +163,16 @@ for n, (key, group) in enumerate([g for g in groups if g[0] in selected], start=
             for spot in spots:
                 seq[spot] = str(rng.choice(background))
         randoms.append("".join(seq))
+
+    # Full sequences kept alongside the panels: the panel is a summary, and a
+    # structure prediction later needs the sequence itself.
+    sequences.append({"structure_pdb_id": pdb_id, "structure_chain_id": chain_id,
+                      "variant": "wild_type", "replicate": 0, "sequence": wild_type})
+    for replicate, (design, control) in enumerate(zip(designs, randoms)):
+        sequences.append({"structure_pdb_id": pdb_id, "structure_chain_id": chain_id,
+                          "variant": "design", "replicate": replicate, "sequence": design})
+        sequences.append({"structure_pdb_id": pdb_id, "structure_chain_id": chain_id,
+                          "variant": "random", "replicate": replicate, "sequence": control})
 
     for (accession, position), (n_index, shell, site) in site_shells.items():
         common = {"accession": accession, "position": position,
@@ -165,6 +200,13 @@ Path(args.out).parent.mkdir(parents=True, exist_ok=True)
 frame.to_csv(args.out, index=False)
 print(f"\n{len(frame)} rows over {frame.groupby(['accession','position']).ngroups} sites "
       f"-> {Path(args.out).resolve()}")
+if sequences:
+    seq_path = Path(args.out).with_name("fixed_sequon_sequences.csv")
+    pd.DataFrame(sequences).drop_duplicates(
+        ["structure_pdb_id", "structure_chain_id", "variant", "replicate"]).to_csv(
+        seq_path, index=False)
+    print(f"sequences -> {seq_path.resolve()}")
+
 if dropped:
     pd.DataFrame(dropped).to_csv(Path(args.out).with_name("fixed_sequon_dropped.csv"), index=False)
     print(f"dropped: {len(dropped)}")

@@ -2,6 +2,25 @@
 
 *Written and committed 2026-08-24, before any design was generated or scored.*
 
+## Amendment, 2026-08-25 — the motivating contrast changed, the question did not
+
+This was written while ProteinMPNN's conditional-score result stood at +0.090 SD
+(BH 0.30, inconclusive) against ESM-IF's +0.431 SD. Correcting ProteinMPNN's
+sequon indexing moved it to **+0.282 SD (BH 0.021)**, so the sharp architectural
+contrast that made "ProteinMPNN preserves the motif but perhaps not its context"
+an attractive hypothesis is much weaker: both models discriminate, one about
+1.5x more strongly.
+
+**Nothing below changes.** The question — does fixing the motif protect the
+biology around it, or only the three letters — does not depend on how the two
+models compare. It is a question about what fixed-backbone redesign does to a
+site's environment, and it would be worth answering if only one model existed.
+
+What does change is what a result would license. A drift away from natural
+context can no longer be read as *the* explanation for a ProteinMPNN-specific
+deficit, because there is no longer much of a ProteinMPNN-specific deficit to
+explain. It would be a statement about protected-sequon redesign, full stop.
+
 ## The question
 
 > When ProteinMPNN is forced to preserve a naturally occupied N-X-S/T sequon,
