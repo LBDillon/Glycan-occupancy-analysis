@@ -70,6 +70,23 @@ RETENTION_CATEGORIES = (
 )
 
 
+def design_mask(length: int, fixed_positions) -> np.ndarray:
+    """1.0 where the model may design, 0.0 where the native residue is kept.
+
+    An out-of-range position raises rather than being ignored: silently dropping
+    it would protect nothing while the run still reports success, and the design
+    would look entirely reasonable.
+    """
+    mask = np.ones(int(length), dtype=np.float32)
+    for position in fixed_positions:
+        index = int(position)
+        if not 0 <= index < length:
+            raise ValueError(
+                f"fixed position {index} is outside a chain of length {length}")
+        mask[index] = 0.0
+    return mask
+
+
 def design_sequences(
     pdb_path: Path,
     chain_id: str,
@@ -119,7 +136,6 @@ def design_sequences(
         # 0 keeps the native residue. Masking before sampling is not the same as
         # repairing the output afterwards -- repairing would let the model
         # condition on residues it was about to overwrite.
-        from glyco_context.fixed_design import design_mask
         keep = design_mask(chain_M_pos.shape[1], fixed_positions)
         chain_M_pos = chain_M_pos * torch.from_numpy(keep).to(chain_M_pos.device)
     # sample() dereferences these regardless of their defaults, so they must be

@@ -50,3 +50,32 @@ def test_mapping_is_rejected_when_it_disagrees_with_the_model_sequence():
 
 def test_empty_inputs_give_an_empty_map():
     assert build_index_map([], "", "") == {}
+
+
+def test_designs_are_projected_into_manifest_index_space():
+    """`design()` must return sequences the manifest's indices address.
+
+    ESM-IF's adapter documents this contract -- "returned in the manifest's
+    index space" -- and honours it. ProteinMPNN returned raw model-space
+    sequences, so retention was read at unmapped positions.
+    """
+    from experimental_glycosylation_sites.mpnn_scoring import to_manifest_space
+    # manifest 0,1,2 -> model 0,1,3 (a placeholder sits at model index 2)
+    mapping = {0: 0, 1: 1, 2: 3}
+    assert to_manifest_space("ACXD", mapping) == "ACD"
+
+
+def test_projection_is_identity_for_a_gapless_chain():
+    from experimental_glycosylation_sites.mpnn_scoring import to_manifest_space
+    assert to_manifest_space("ACDE", {i: i for i in range(4)}) == "ACDE"
+
+
+def test_unmapped_manifest_positions_become_X():
+    """An unresolvable position must not silently borrow a neighbour."""
+    from experimental_glycosylation_sites.mpnn_scoring import to_manifest_space
+    assert to_manifest_space("AC", {0: 0, 2: 1}) == "AXC"
+
+
+def test_projection_of_an_empty_mapping_is_empty():
+    from experimental_glycosylation_sites.mpnn_scoring import to_manifest_space
+    assert to_manifest_space("ACDE", {}) == ""

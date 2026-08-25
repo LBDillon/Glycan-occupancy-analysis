@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from ..mpnn_scoring import (ALPHABET, DEFAULT_DECODING_ORDERS, DEFAULT_MODEL,
-                            chain_mapping,
+                            chain_mapping, to_manifest_space,
                             conditional_probabilities, decodable_positions,
                             load_model, sequon_score)
 from ..retention import design_sequences
@@ -140,7 +140,22 @@ class ProteinMPNNAdapter:
     # --- SequenceDesigner ---------------------------------------------------
     def design(self, structure_path: Path, chain_id: str, n_designs: int,
                temperature: float, seed: int = 0) -> list[str]:
-        return design_sequences(structure_path, chain_id, self.model,
-                                n_designs=n_designs, temperature=temperature,
-                                device=self.device, seed=seed,
-                                max_batch=self.max_batch)
+        """Unconstrained designs, returned in the manifest's index space.
+
+        ProteinMPNN decodes in its own indexing, which inserts a placeholder for
+        every absent author residue number. Returning that unprojected would
+        have `classify_retention` read the manifest's indices against a sequence
+        they do not address -- so the projection happens here, once, rather than
+        being left to each caller to remember.
+        """
+        mapping, _ = chain_mapping(structure_path, chain_id)
+        designs = design_sequences(structure_path, chain_id, self.model,
+                                   n_designs=n_designs, temperature=temperature,
+                                   device=self.device, seed=seed,
+                                   max_batch=self.max_batch)
+        if not mapping:
+            raise KeyError(
+                f"chain {chain_id} of {Path(structure_path).name} cannot be "
+                "mapped onto ProteinMPNN's parse; its designs are not readable "
+                "at manifest indices")
+        return [to_manifest_space(d, mapping) for d in designs]

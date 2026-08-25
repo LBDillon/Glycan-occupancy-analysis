@@ -284,6 +284,27 @@ def check_scoreable(
                     f"outside [0, 1]: min {float(row.min()):.6g}, max {float(row.max()):.6g}")
 
 
+def to_manifest_space(sequence: str, mapping: "dict[int, int]") -> str:
+    """Re-index a model-space sequence so the manifest's indices address it.
+
+    `design()` is documented to return sequences in the manifest's index space
+    -- that is the contract `classify_retention` reads them under, and the one
+    the ESM-IF adapter already honours. ProteinMPNN decodes in its own space, so
+    a design must be projected back before any manifest index is applied to it.
+
+    Positions with no counterpart become 'X' rather than borrowing a neighbour:
+    an unresolvable residue is not evidence about the sequon, and 'X' is never a
+    retained asparagine or hydroxyl.
+    """
+    if not mapping:
+        return ""
+    out = ["X"] * (max(mapping) + 1)
+    for manifest_index, model_index in mapping.items():
+        if 0 <= model_index < len(sequence):
+            out[manifest_index] = sequence[model_index]
+    return "".join(out)
+
+
 def build_index_map(residue_ids, native_sequence: str,
                     model_sequence: str) -> "dict[int, int]":
     """Manifest index -> ProteinMPNN index, or {} if the two cannot be reconciled.
