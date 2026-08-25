@@ -86,7 +86,9 @@ for name, series in [
         ("D(design)", per_site.get("design")),
         ("D(random control)", per_site.get("random")),
         ("dD = design - wild type", per_site.get("design", pd.Series(dtype=float)) - per_site.wild_type),
-        ("dD = random - wild type", per_site.get("random", pd.Series(dtype=float)) - per_site.wild_type)]:
+        ("dD = random - wild type", per_site.get("random", pd.Series(dtype=float)) - per_site.wild_type),
+        ("design - random (same n mutations)",
+         per_site.get("design", pd.Series(dtype=float)) - per_site.get("random", pd.Series(dtype=float)))]:
     if series is None or not len(series.dropna()):
         continue
     stats = bootstrap(series, proteins, args.boot)
@@ -116,9 +118,11 @@ for feature in PANEL:
 features = pd.DataFrame(feature_rows)
 if len(features):
     features["q"] = benjamini_hochberg(features.p.tolist())
-    for row in features.reindex(features["mean"].abs().sort_values(ascending=False).index).itertuples():
+    # 'mean' does not survive itertuples as an attribute; name it for what it is.
+    features = features.rename(columns={"mean": "shift"})
+    for row in features.reindex(features["shift"].abs().sort_values(ascending=False).index).itertuples():
         flag = "*" if row.q < 0.05 else " "
-        print(f"  {row.feature:34}{row._3:+8.3f}  [{row.ci_low:+7.3f},{row.ci_high:+7.3f}]"
+        print(f"  {row.feature:34}{row.shift:+8.3f}  [{row.ci_low:+7.3f},{row.ci_high:+7.3f}]"
               f"  q={row.q:.4f}{flag}")
 
 outdir = Path(args.out); outdir.mkdir(parents=True, exist_ok=True)
