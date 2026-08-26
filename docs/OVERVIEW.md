@@ -304,15 +304,23 @@ Full account, including what the result does not license:
 
 1. ~~**Finish retention** for both models.~~ **Done**, 25/08 — merged from ARC
    and rerun through stages 10, 10b and 11 with the corrected indexing.
-2. **Regenerate ProteinMPNN's joint-mask scores**, which predate the
-   sequon-indexing correction and are the last stale numbers in this document
-   (see the masking section, where that row is flagged).
-3. **Add joint masking to ProteinMPNN.** This is the cheapest high-value
-   experiment available: it tests whether the structure-conditioned effects are
-   the same motif-self-reinforcement artefact that ESMC's sensitivity exposed. If
-   they survive joint masking and ESMC's does not, that is a real
-   structure-specific finding. If they collapse too, the effect is a property of
-   sequon context.
+2. ~~**Regenerate ProteinMPNN's joint-mask scores.**~~ **Done**, 26/08. Its
+   preference survives masking where ESMC's collapses — see the masking section.
+3. **Run ESM-IF joint masking.** Now the highest-value open experiment. The
+   capability exists (`MASK_MODES` includes `joint`, by marginalising over the
+   hidden residues rather than substituting an off-distribution `<mask>` token)
+   and has never been run.
+
+   It is the comparison the ProteinMPNN-against-ESMC contrast cannot make.
+   ProteinMPNN and ESM-IF are both structure-conditioned, so both keep the
+   backbone when residue identities are hidden and are blindable to the same
+   degree. If ESM-IF also survives, the preference is a property of inverse
+   folding given a backbone rather than of one architecture. If it collapses,
+   ProteinMPNN's survival is specific to it and the ESMC contrast was largely
+   about what each model *can* be blinded to.
+
+   Expensive: marginalisation samples the hidden residues 16 times per site, so
+   it is slower than any run so far.
 4. ~~**Regenerate figures and results docs.**~~ **Done**, 26/08 for everything
    except the joint-mask row above.
 5. **ESM3-open**, for sequence-only / structure-only / sequence+structure from one

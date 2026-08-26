@@ -343,10 +343,26 @@ contrast — but it compresses dynamic range and could hide a real difference,
 which is why the sensitivity is worth running.
 
 **The same confound applies to ProteinMPNN and ESM-IF**, which also condition on
-the rest of the native sequon. Neither currently has a joint-masking variant.
-Adding one to ProteinMPNN is straightforward (its `conditional_probs` already
-takes a position set); ESM-IF is harder, since a causal decoder cannot hide an
-upstream residue without also hiding it from everything downstream.
+the rest of the native sequon. **Both now have a joint-masking variant.**
+
+ProteinMPNN's was straightforward — `conditional_probs` already takes a position
+set — and was run on 26/08. Its preference *survives* masking, unlike ESMC's:
+see the masking section of [`OVERVIEW.md`](OVERVIEW.md).
+
+ESM-IF's is harder and is done differently. A causal decoder cannot hide an
+upstream residue without hiding it from everything downstream, and substituting
+a `<mask>` token is off-distribution — it sends most of the probability mass
+onto aromatics. So `marginalised_probabilities` marginalises over the hidden
+residues instead, sampling them from the model's own belief rather than
+substituting a token that means nothing to it. `MASK_MODES = ("single",
+"joint")` and `DEFAULT_MARGINAL_SAMPLES = 16`, a count fixed by measurement
+rather than choice (the check is archived in `archive/settled/`).
+
+**It has never been run.** The capability exists and no ESM-IF joint scores are
+on disk. It is the more informative comparison than ESMC, because ESM-IF and
+ProteinMPNN are both structure-conditioned and so are blindable to the same
+degree — where ESMC, seeing only sequence, loses more when its motif is hidden
+than a structure-conditioned model can.
 
 #### Why there is no SequenceDesigner
 
@@ -431,10 +447,10 @@ N-X-S/T is a heavily learned motif — so a model can infer S/T from the N rathe
 than from anything about the site. Measured on ESMC, that is worth about 0.34
 log-odds of the score. It inflates both arms of a matched pair and therefore
 largely cancels in the paired contrast, but it compresses dynamic range, which
-matters when the effects under discussion are 0.1–0.4 SD. ESMC now has a
-joint-masking variant as a sensitivity; ProteinMPNN could gain one easily, and
-ESM-IF cannot without a causal decoder hiding the residue from everything
-downstream too.
+matters when the effects under discussion are 0.1–0.4 SD. All three models now have a joint-masking
+variant: ESMC and ProteinMPNN by masking the positions, ESM-IF by marginalising
+over them, since a causal decoder cannot hide an upstream residue from what
+follows it. ESMC's and ProteinMPNN's have been run; ESM-IF's has not.
 
 ## The operational lessons
 
