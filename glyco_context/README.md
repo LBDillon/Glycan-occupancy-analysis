@@ -53,8 +53,13 @@ drift, and the benchmark's matching is built on this one.
 
 ## Read this before using the results
 
-`docs/findings_2026-08-24_context_differences.md`. The short version: once
-composition is controlled by matching, nearly every context difference between
-occupied and unoccupied sequons disappears, and the population-level comparison
-is confounded with protein identity. Do not quote the population numbers as
-occupancy effects.
+`docs/findings_2026-08-26_context_retention.md` — the live result. Designs drift
+away from natural occupied context with the sequon fully protected (+0.071
+[0.025, 0.122]), and ProteinMPNN is not measurably better at preserving it than
+changing the same number of residues at random.
+
+The earlier comparative analysis is archived in
+`archive/comparative_analysis/`. Once composition is controlled by matching,
+nearly every context difference between occupied and unoccupied sequons
+disappears, and the population-level comparison is confounded with protein
+identity. Do not quote those population numbers as occupancy effects.

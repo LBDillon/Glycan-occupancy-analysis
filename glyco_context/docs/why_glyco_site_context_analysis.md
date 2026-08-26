@@ -75,7 +75,12 @@ Three models, two outcomes, four comparisons, corrected across the whole family:
 
 - **ESM-IF distinguishes occupied sequons from matched controls** on both what it
   scores and what it writes when redesigning. Both survive correction.
-- **ProteinMPNN does not**, on either outcome — though it points the same way.
+- **ProteinMPNN distinguishes them too, on the conditional score** (+0.282 SD,
+  BH 0.021), about 1.5x more weakly than ESM-IF. On design retention it does not
+  survive correction. *This replaces the earlier reading that ProteinMPNN did
+  not discriminate on either outcome, which rested on a sequon-indexing defect
+  corrected on 25/08 — see
+  [`correction_2026-08-25_sequon_indexing.md`](../../docs/correction_2026-08-25_sequon_indexing.md).*
 - **A sequence-only model (ESMC) also distinguishes them**, which means the
   signal is not purely structural.
 - **The two diagnostic control sets — bacterial and cytosolic — produce large,
@@ -119,20 +124,27 @@ A description of the sequence and structural environments in which glycosylation
 actually occurs, built from sites with experimental evidence, and expressed so
 that an arbitrary site — natural or designed — can be located within it.
 
-Two outputs, deliberately:
+**What was originally planned** was a per-feature profile plus a density score,
+across three populations, so that any site could be located within the natural
+distribution and so that a feature could be shown to be *discriminative* rather
+than merely typical.
 
-**A per-feature profile.** For each property — burial, secondary structure,
-neighbouring chemistry, position in the chain — where a site sits relative to
-natural occupied ones. Interpretable, and it says *which way* a site is unusual.
+**What that turned into.** The discriminative half was attempted and archived.
+Comparing occupied sites against unoccupied ones needs a negative label that does
+not exist, and the two populations share no proteins and no chains — so occupancy
+is confounded with protein identity, and once composition is matched away nearly
+every difference disappears. The account is in
+[`../archive/comparative_analysis/`](../archive/comparative_analysis/README.md);
+it is a real negative result and nothing is built on it.
 
-**A single density-based score.** One number for ranking, so a set of designs can
-be ordered. Less interpretable, but necessary if this is ever to act as a filter.
-
-And three populations rather than one, because a percentile within occupied sites
-alone cannot tell you whether a feature is *discriminative*. A site at the median
-of occupied contexts might be equally typical of unoccupied ones. So the analysis
-describes occupied sites, unoccupied sequons, and the ambient background of all
-motifs — and the interesting quantity is where those distributions differ.
+**What is being done instead** keeps the descriptive half, which was never in
+doubt, and pairs it with a question that does not need a negative label at all:
+take a natural occupied site, redesign the protein around it with the sequon
+held fixed, and ask whether the environment the model builds still resembles the
+ones glycosylation actually occurs in. Same protein, same backbone, same
+position — the comparison is paired by construction, so the confound that
+stopped the comparative analysis cannot arise. Result:
+[`findings_2026-08-26_context_retention.md`](findings_2026-08-26_context_retention.md).
 
 ## Why now, and why in this order
 
@@ -175,10 +187,13 @@ now. The occupancy predictor is not, and should not be claimed.
 
 ## Where it leads
 
-If context features explain ESM-IF's advantage, the next experiments design
-themselves: perturb those specific features while preserving the sequon and see
-whether the model's preference moves. That is a causal test of what the model
-uses, and it is only formulable once the features exist.
+ESM-IF's advantage over ProteinMPNN is now much smaller than it looked — +0.431
+against +0.282 SD, both discriminating — so "explain the architectural gap" is
+no longer the obvious next question. What remains formulable, and more useful, is
+the perturbation test: change specific context features while preserving the
+sequon and see whether a model's preference moves. That is a causal test of what
+a model uses rather than an associational one, and it needs the feature
+vocabulary to exist first.
 
 Further out, the comparison that matters for the programme is the same model
 before and after glycosylation-specific training, evaluated on the same frozen
@@ -191,8 +206,8 @@ the vocabulary to say *how* it beats it, rather than merely *that* it does.
 
 ### Related
 
-- [`OVERVIEW.md`](OVERVIEW.md) — current results and what they support
-- [`adding_models_explainer.md`](adding_models_explainer.md) — how the benchmark
+- [`OVERVIEW.md`](../../docs/OVERVIEW.md) — current results and what they support
+- [`adding_models_explainer.md`](../../docs/adding_models_explainer.md) — how the benchmark
   came to hold three models, and what broke on the way
-- [`negative_controls.md`](negative_controls.md) — what evidence stands behind
+- [`negative_controls.md`](../../docs/negative_controls.md) — what evidence stands behind
   each control set
