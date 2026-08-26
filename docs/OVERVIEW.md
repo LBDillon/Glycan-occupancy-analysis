@@ -80,24 +80,27 @@ contrast is, and that is what the analysis rests on. Details:
 
 ## Current results — scores
 
-All four comparisons, all models, **after** the alphabet correction. Effect is
-the occupied-minus-control paired difference in SD units; positive means the
-model scores occupied sequons higher.
+All four comparisons, all models, after the alphabet correction and — for
+ProteinMPNN — the sequon-indexing correction. Effect is the occupied-minus-control
+paired difference in SD units; positive means the model scores occupied sequons
+higher. ProteinMPNN's n is lower than the other models' because the indexing
+guard refuses sites whose two parses cannot be reconciled.
 
 | Comparison | ProteinMPNN | ESM-IF1 | ESMC single | ESMC joint |
 |---|---|---|---|---|
-| **optimal** (n=16) | +0.640 | −0.337 | **+0.792** * | +0.711 |
-| **secretory** (n=262) | +0.090 | **+0.431** *** | **+0.261** *** | −0.113 |
-| bacterial (n=280) | **−0.396** *** | **−0.265** ** | **+0.416** *** | +0.050 |
-| cytosolic (n=273) | −0.028 | +0.121 * | −0.132 | **−0.529** *** |
+| **optimal** | −0.386 (n=15) | −0.337 (n=16) | **+0.792** * | +0.711 |
+| **secretory** | **+0.282** * (n=232) | **+0.431** *** (n=262) | **+0.261** *** | −0.113 |
+| bacterial | **−0.528** *** (n=251) | **−0.265** ** | **+0.416** *** | +0.050 |
+| cytosolic | −0.002 (n=237) | +0.121 * | −0.132 | **−0.529** *** |
 
 `*` p<0.05, `**` p<0.01, `***` p<0.001 (Wilcoxon, uncorrected). Reference SDs
 differ per model (1.36 / 1.51 / 1.55 / 1.37).
 
 ### What this says
 
-**On the best-powered comparison, two of three models find a real effect.**
-ESM-IF gives +0.431 SD (BH p = 2e-06) and ESMC-single +0.261 SD (BH p = 8e-04),
+**On the best-powered comparison, three of three models find a real effect.**
+ESM-IF gives +0.431 SD (BH p = 2e-06), ESMC-single +0.261 SD (BH p = 8e-04), and
+ProteinMPNN — once its sequon indexing is corrected — +0.282 SD (BH 0.021),
 both with intervals entirely above the ±0.2 SD equivalence margin. ProteinMPNN
 does not resolve it (+0.090, inconclusive).
 
@@ -142,12 +145,14 @@ Now complete for both models, and it agrees with the scores.
 
 | Comparison | ESM-IF1 | ProteinMPNN |
 |---|---|---|
-| eukaryotic secretory | **+0.0925** (BH 0.015) | +0.0423 (BH 0.30) |
+| eukaryotic secretory | **+0.0925** (BH 0.015) | +0.0700 (BH 0.225) |
 | internal control | −0.023 (BH 1.00) | −0.045 (BH 0.87) |
 | bacterial *(diagnostic)* | −0.054 (BH 0.003) | −0.070 (BH 0.002) |
 | cytosolic *(diagnostic)* | +0.022 (BH 0.75) | −0.003 (BH 0.89) |
 
-**ESM-IF clears correction on both outcomes**; ProteinMPNN on neither. Retention
+**ESM-IF clears correction on both outcomes**; ProteinMPNN on the score only.
+Its retention moved the same way after the indexing correction (+0.0423 to
++0.0700) without clearing. Retention
 15.1% vs 5.9% on the secretory comparison, 93 informative pairs of 245.
 
 The two outcomes are methodologically independent — scoring reads probabilities
@@ -253,13 +258,13 @@ teach a model curation patterns.
 
 | Document | For |
 |---|---|
-| [`why_glyco_site_context_analysis.md`](why_glyco_site_context_analysis.md) | **why this work exists, and what the benchmark could not answer** |
+| [`why_glyco_site_context_analysis.md`](../glyco_context/docs/why_glyco_site_context_analysis.md) | **why this work exists, and what the benchmark could not answer** |
 | [`adding_models_explainer.md`](adding_models_explainer.md) | how one model became three, and what broke |
 | [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) | the alphabet defect in full |
 | [`second_model_esm_if.md`](second_model_esm_if.md) | ESM-IF's conditional, index mapping, batched generation |
 | [`third_model_esmc.md`](third_model_esmc.md) | ESMC, the two masking schemes, the environment split |
 | [`negative_controls.md`](negative_controls.md) | what evidence stands behind each control set |
-| [`concepts.md`](concepts.md) | the terms, in plain language |
+| [`glossary.md`](glossary.md) | the terms, in plain language |
 | [`rationale_and_progress.md`](rationale_and_progress.md) | why the module exists |
 | [`running_on_arc.md`](running_on_arc.md) | job arrays, sharding, merging |
 | `../README.md` | how to run everything |

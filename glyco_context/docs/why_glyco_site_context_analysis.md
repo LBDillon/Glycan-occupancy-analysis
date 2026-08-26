@@ -75,9 +75,10 @@ Three models, two outcomes, four comparisons, corrected across the whole family:
 
 - **ESM-IF distinguishes occupied sequons from matched controls** on both what it
   scores and what it writes when redesigning. Both survive correction.
-- **ProteinMPNN distinguishes them too, on the conditional score** (+0.282 SD,
-  BH 0.021), about 1.5x more weakly than ESM-IF. On design retention it does not
-  survive correction. *This replaces the earlier reading that ProteinMPNN did
+- **ProteinMPNN distinguishes them too, on the conditional score**, about 1.5x
+  more weakly than ESM-IF. On design retention it does not survive correction.
+  *(Figures are maintained in [`../../docs/OVERVIEW.md`](../../docs/OVERVIEW.md)
+  and deliberately not repeated here.)* *This replaces the earlier reading that ProteinMPNN did
   not discriminate on either outcome, which rested on a sequon-indexing defect
   corrected on 25/08 — see
   [`correction_2026-08-25_sequon_indexing.md`](../../docs/correction_2026-08-25_sequon_indexing.md).*
@@ -187,9 +188,9 @@ now. The occupancy predictor is not, and should not be claimed.
 
 ## Where it leads
 
-ESM-IF's advantage over ProteinMPNN is now much smaller than it looked — +0.431
-against +0.282 SD, both discriminating — so "explain the architectural gap" is
-no longer the obvious next question. What remains formulable, and more useful, is
+ESM-IF's advantage over ProteinMPNN is now much smaller than it looked — both
+discriminate, ESM-IF roughly 1.5x more strongly — so "explain the architectural
+gap" is no longer the obvious next question. What remains formulable, and more useful, is
 the perturbation test: change specific context features while preserving the
 sequon and see whether a model's preference moves. That is a causal test of what
 a model uses rather than an associational one, and it needs the feature

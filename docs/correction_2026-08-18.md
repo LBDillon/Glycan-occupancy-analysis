@@ -10,7 +10,7 @@
 A short account of two rounds of correction on the same day. The first
 (Amendment 1) fixed a defect in the scorer; the second (Amendment 2, at the end
 of this document) removed an arbitrary dependence in the matching. The detailed
-result is in [`primary_result.md`](primary_result.md); the machine-readable
+result is in [`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md); the machine-readable
 record is `config/scoring_frozen.toml`, sections `[amendment_1]` and
 `[amendment_2]`.
 

@@ -1,3 +1,9 @@
+> **⚠ SUPERSEDED.** The numbers here predate the 2026-08-25 sequon-indexing
+> correction, and the ProteinMPNN figures also predate the 2026-08-20 alphabet
+> correction. The reasoning and method stand; the quantities do not. Current
+> results live in [`../OVERVIEW.md`](../OVERVIEW.md), which is the single place
+> they are maintained. Kept as a dated record of what was concluded at the time.
+
 # The primary comparison
 
 

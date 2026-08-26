@@ -139,7 +139,7 @@ what oligosaccharyltransferase access requires.
 
 The point of the resource is to ask whether protein models have learned the sequon motif or
 its biological use. That question has now been put to one model, and the answer is weak but
-honest. Full account in [`primary_result.md`](primary_result.md); the plain-language version
+honest. Full account in [`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md); the plain-language version
 of what changed along the way is in [`correction_2026-08-18.md`](correction_2026-08-18.md).
 
 **What was run.** ProteinMPNN v_48_020, scored zero-shot on the native backbone and native

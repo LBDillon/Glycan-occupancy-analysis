@@ -11,7 +11,7 @@
 > [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) for
 > what changed and [`OVERVIEW.md`](OVERVIEW.md) for current numbers.
 
-comparison is [`primary_result.md`](primary_result.md).
+comparison is [`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md).
 
 **A fourth control set now exists** — eukaryotic secretory, unannotated — which is
 *not* a diagnostic. It matches the occupied sites on both taxonomy and
@@ -19,7 +19,7 @@ compartment, so it carries neither confound described below, and it supplies 262
 matched pairs against the primary's 16. It gives +0.073 SD, CI [−0.056, +0.346].
 Its trade is a weaker negative label rather than a confounded population; see
 [`negative_controls.md`](negative_controls.md) and
-[`primary_result.md`](primary_result.md). The two sets below remain diagnostics.
+[`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md). The two sets below remain diagnostics.
 
 Both control sets are confounded by construction, and deliberately so. The
 cytosolic set matches taxonomy and differs in subcellular compartment; the

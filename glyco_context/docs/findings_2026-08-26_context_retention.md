@@ -102,4 +102,4 @@ carry only titles, axes, legends and significance markers.
 - `fig2_occupied_context.png` — the natural reference the distances are measured
   against
 
-Terms are defined in [`glossary.md`](glossary.md).
+Terms are defined in [`glossary.md`](../../docs/glossary.md).

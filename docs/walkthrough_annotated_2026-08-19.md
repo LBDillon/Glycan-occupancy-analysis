@@ -66,7 +66,7 @@ form an interpretable pattern. Before the scoring bug was fixed they did —
 cytosolic −0.237, bacterial −0.145, internal −0.057, shrinking neatly as matching
 improved. After the fix they point in different directions with no ordering. The
 argument was sound; the numbers under it were wrong. See
-`docs/concepts.md` § "the logic behind the controls did not survive".
+`docs/glossary.md` § "the logic behind the controls did not survive".
 
 The clade exclusions are worth noting as a point of rigour: bacteria were not
 excluded by *annotation* but by **known machinery** — Archaea wholesale (AglB),

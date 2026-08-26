@@ -4,7 +4,7 @@ Figures carry titles, axes, legends and significance markers only. Everything
 that explains, qualifies or interprets lives here, so a figure can be read
 quickly and understood properly.
 
-Terms are defined in [`glossary.md`](glossary.md).
+Terms are defined in [`glossary.md`](../../docs/glossary.md).
 
 ---
 

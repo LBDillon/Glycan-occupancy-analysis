@@ -4,7 +4,7 @@ What can be done with the site tables this module produces, in a recommended
 order of work, and what will go wrong if the caveats are ignored.
 
 Option 1 below has since been carried out for ProteinMPNN; see
-[`primary_result.md`](primary_result.md). The rest remain unimplemented, and the
+[`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md). The rest remain unimplemented, and the
 module's job still ends at the evidence tables.
 
 Read [`evidence_sources.md`](evidence_sources.md) first. Every analysis below

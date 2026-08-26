@@ -12,7 +12,7 @@
 > what changed and [`OVERVIEW.md`](OVERVIEW.md) for current numbers.
 
 logic can be checked independently of the code. Current as of 2026-08-18. The
-ProteinMPNN analysis is frozen; see [`primary_result.md`](primary_result.md) for
+ProteinMPNN analysis is frozen; see [`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md) for
 the result table and [`correction_2026-08-18.md`](correction_2026-08-18.md) for
 what was corrected along the way.*
 
@@ -255,7 +255,7 @@ interpretable ordering. No interpretation is offered.
 **Nothing reaches significance.** Eight tests across four control sets and two
 outcomes, using a cluster-level permutation test rather than Wilcoxon because the
 pairs are not independent. Smallest raw p 0.030; nothing survives Holm or
-Benjamini–Hochberg correction. See [`significance.md`](significance.md).
+Benjamini–Hochberg correction. See [`significance.md`](archive/significance_SUPERSEDED_2026-08-25.md).
 
 **The bridge holds.** Across 2,423 scoreable sites the conditional score predicts
 retention at Spearman **+0.547**, monotonically: sites in the lowest score

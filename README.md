@@ -262,10 +262,10 @@ isinstance(a, SequonScorer), isinstance(a, SequenceDesigner)   # (True, True)
 | Document | For |
 |---|---|
 | [`docs/OVERVIEW.md`](docs/OVERVIEW.md) | **start here — current results, what they mean, what is running, what is next** |
-| [`docs/primary_result.md`](docs/primary_result.md) | the result and its limits (pre-correction numbers) |
+| [`docs/primary_result.md`](docs/archive/primary_result_SUPERSEDED_2026-08-25.md) | the result and its limits (pre-correction numbers) |
 | [`docs/figures.md`](docs/figures.md) | all nine figures explained in prose |
-| [`docs/concepts.md`](docs/concepts.md) | what the terms mean, in plain language |
-| [`docs/significance.md`](docs/significance.md) | the eight tests and why none survives correction |
+| [`docs/docs/glossary.md`](docs/docs/glossary.md) | what the terms mean, in plain language |
+| [`docs/significance.md`](docs/archive/significance_SUPERSEDED_2026-08-25.md) | the eight tests and why none survives correction |
 | [`docs/negative_controls.md`](docs/negative_controls.md) | the four control sets and what evidence stands behind each |
 | [`docs/correction_2026-08-18.md`](docs/correction_2026-08-18.md) | what was corrected and why |
 | [`docs/correction_2026-08-20_alphabet.md`](docs/correction_2026-08-20_alphabet.md) | **the alphabet defect — read before quoting any ProteinMPNN number** |

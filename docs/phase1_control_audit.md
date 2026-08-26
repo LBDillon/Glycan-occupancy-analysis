@@ -16,7 +16,7 @@
 > sites ProteinMPNN cannot decode had not yet been identified, so the totals here
 > are larger than the scoreable sets the analysis actually used.
 >
-> Current figures: [`primary_result.md`](primary_result.md) and
+> Current figures: [`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md) and
 > [`diagnostic_controls.md`](diagnostic_controls.md). What changed and why:
 > [`correction_2026-08-18.md`](correction_2026-08-18.md).
 

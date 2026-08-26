@@ -153,7 +153,7 @@ bacterial and cytosolic ones is riding along in this comparison.
 
 Because every control was matched site-by-site to an occupied site, the paired
 contrast is available and is the right test — see Figure 9 and
-[`significance.md`](significance.md). An earlier version of this figure was
+[`significance.md`](archive/significance_SUPERSEDED_2026-08-25.md). An earlier version of this figure was
 titled "occupied sequons are destroyed at the same rate as unoccupied ones",
 which was drawn from these class averages before a taxonomy- and
 compartment-matched control set existed. That claim has been withdrawn.
@@ -195,7 +195,7 @@ design can resolve.
 
 The paired versions of the retention contrast — each occupied site against the
 control matched to it, rather than class averages — are in
-[`significance.md`](significance.md). They show occupied sequons retained more
+[`significance.md`](archive/significance_SUPERSEDED_2026-08-25.md). They show occupied sequons retained more
 often in both comparisons that hold eukaryotic secretory context constant, and
 not at all in the two confounded sets, but nothing that survives correction for
 the number of comparisons run.
