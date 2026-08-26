@@ -52,6 +52,11 @@ parser.add_argument("--panels-only", action="store_true",
                     help="wild-type panels for every site, no design. This builds the natural reference distribution, which needs all the sites but none of the designs.")
 parser.add_argument("--out", default="glyco_context/results/analysis/fixed_sequon_panels.csv")
 args = parser.parse_args()
+if args.reuse_designs and args.fix_disulfides:
+    raise SystemExit(
+        "--reuse-designs and --fix-disulfides cannot be combined: stored designs "
+        "were generated under whatever mask was in force at the time, and "
+        "protection cannot be applied to them afterwards. Regenerate the designs.")
 
 core = pd.read_csv(args.core, low_memory=False)
 occ = core[core.population == "occupied"].copy()
@@ -92,7 +97,6 @@ model = (None if args.panels_only or stored is not None
          else load_model(proteinmpnn_dir(), device="cpu"))
 
 rows, sequences, dropped, t0 = [], [], [], time.time()
-protected_cys = set()
 for n, (key, group) in enumerate([g for g in groups if g[0] in selected], start=1):
     pdb_id, chain_id = key
     path = paths.get(str(pdb_id).upper())
@@ -147,6 +151,10 @@ for n, (key, group) in enumerate([g for g in groups if g[0] in selected], start=
     if not site_shells:
         continue
 
+    # Per chain. Held outside the loop this accumulates, so a later chain
+    # inherits every earlier chain's cysteine indices and protects positions
+    # that have nothing to do with it.
+    protected_cys = set()
     if args.fix_disulfides:
         cys = disulfide_indices(path, str(chain_id), wild_type)
         fixed.extend(mapping[i] for i in cys if i in mapping)

@@ -55,14 +55,18 @@ drift, and the benchmark's matching is built on this one.
 
 Two live findings:
 
-`docs/findings_2026-08-26_sequon_retention_rate.md` — sequons are lost at about
-the rate any three-residue motif is lost, so the loss reflects general redesign
-rather than glycan blindness. Needs no occupancy labels.
+`docs/findings_2026-08-26_sequon_retention_rate.md` — no detectable excess loss:
+ProteinMPNN does not selectively protect occupied sequons, and loses them at
+about its ordinary sequence-recovery rate. Needs no occupancy labels.
 
-`docs/findings_2026-08-26_context_retention.md` — the fixed-sequon result. Designs drift
-away from natural occupied context with the sequon fully protected (+0.071
-[0.025, 0.122]), and ProteinMPNN is not measurably better at preserving it than
-changing the same number of residues at random.
+`docs/findings_2026-08-26_context_retention.md` — the fixed-sequon result. Over
+285 sites, designs drift away from natural occupied context with the sequon
+fully protected (+0.050 [0.033, 0.067]), and further than a composition-
+preserving random control (+0.033 [0.020, 0.046]). The composition control then
+shows that shift is global to the chain rather than local to the sequon.
+
+Numbers are maintained in [`../docs/OVERVIEW.md`](../docs/OVERVIEW.md); these are
+one-line orientations, not the record.
 
 The earlier comparative analysis is archived in
 `archive/comparative_analysis/`. Once composition is controlled by matching,

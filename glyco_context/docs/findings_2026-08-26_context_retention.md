@@ -46,9 +46,9 @@ that error and worth recording.*
 
 The wild types *are* natural occupied sites, so they sit inside the reference
 distribution by construction and any perturbation moves outward. Without a
-control, "+0.071, p = 0.002" would read as a finding about ProteinMPNN when much
-of it is the arithmetic of disturbing a point that starts near the centre. The
-mutation-count-matched control puts roughly half the drift down to that.
+control, "+0.050, p = 0.0005" would read as a finding about ProteinMPNN when a
+third of it is the arithmetic of disturbing a point that starts near the centre:
+the control moves +0.017 on its own.
 
 The effect is a tendency across sites rather than something that happens to each
 one: a substantial minority move inward.

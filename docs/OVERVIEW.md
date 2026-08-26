@@ -268,15 +268,20 @@ No. Unconstrained redesign over 318 occupied sites, 220 proteins:
 | Control triplet retained, exact | 9.5% | [9.0, 10.0] |
 | **control − sequon** | **1.8 pp** | **[−1.0, +4.6]** |
 
-Sequons are lost at about the rate any three-residue motif is lost, so the loss
-reflects **general redesign rather than glycan blindness** — the interval spans
-zero. Validated against the ARC retention run (13.0% against 13.6% on the
-pattern definition, correlated 0.993), and sequon residues are not unusually
-vulnerable (N/S/T average 41.7% retention against 45.5% overall).
+**No detectable excess loss**: ProteinMPNN shows no evidence of selectively
+protecting occupied sequons, and their loss rate is broadly consistent with its
+overall sequence recovery. Note the interval reaches +4.6 pp, so this is *not* a
+demonstration that the rates are equal.
 
-This and the composition control agree from opposite directions: nothing about
-ProteinMPNN's behaviour at glycosylation sites is special. Sequons are lost in
-roughly 92% of designs, so preserving them requires instructing the model to.
+It is also not evidence against glycan blindness — a blind model would be
+expected to lose the motif at the ordinary rate, so the two are not alternatives.
+What it establishes is that a known biological requirement is treated as ordinary
+mutable sequence unless the model is told otherwise.
+
+Validated against the ARC retention run (13.0% against 13.6% on the pattern
+definition, correlated 0.993); sequon residues are not unusually vulnerable
+(N/S/T average 41.7% retention against 45.5% overall). Sequons are lost in
+roughly 92% of designs.
 
 Full account:
 [`../glyco_context/docs/findings_2026-08-26_sequon_retention_rate.md`](../glyco_context/docs/findings_2026-08-26_sequon_retention_rate.md).
@@ -292,21 +297,24 @@ Full account, including what the result does not license:
 
 ## Next, in priority order
 
-1. **Finish retention** for both models, merge, and rerun stages 10, 10b, 11.
-   Until this lands the picture is half-complete and the live lead is untested.
-2. **Add joint masking to ProteinMPNN.** This is the cheapest high-value
+1. ~~**Finish retention** for both models.~~ **Done**, 25/08 — merged from ARC
+   and rerun through stages 10, 10b and 11 with the corrected indexing.
+2. **Regenerate ProteinMPNN's joint-mask scores**, which predate the
+   sequon-indexing correction and are the last stale numbers in this document
+   (see the masking section, where that row is flagged).
+3. **Add joint masking to ProteinMPNN.** This is the cheapest high-value
    experiment available: it tests whether the structure-conditioned effects are
    the same motif-self-reinforcement artefact that ESMC's sensitivity exposed. If
    they survive joint masking and ESMC's does not, that is a real
    structure-specific finding. If they collapse too, the effect is a property of
    sequon context.
-3. **Regenerate figures and the results docs** from corrected numbers, and retire
-   the staleness banners.
-4. **ESM3-open**, for sequence-only / structure-only / sequence+structure from one
+4. ~~**Regenerate figures and results docs.**~~ **Done**, 26/08 for everything
+   except the joint-mask row above.
+5. **ESM3-open**, for sequence-only / structure-only / sequence+structure from one
    set of weights — the cleanest possible conditioning contrast. Gated behind a
    licence and a token; leave the function and annotation tracks empty or they can
    leak the label.
-5. **Pre-register before the next analysis.** The secretory result was not
+6. **Pre-register before the next analysis.** The secretory result was not
    pre-specified and is the same set that generated the retention lead, so it is
    not independent confirmation of it. Freezing the contrasts and the correction
    family before the ARC numbers land is the cheapest available guard.

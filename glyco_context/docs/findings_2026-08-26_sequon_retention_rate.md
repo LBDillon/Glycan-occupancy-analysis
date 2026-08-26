@@ -15,7 +15,9 @@ ProteinMPNN changes most residues. The question is whether sequons are lost
 
 ## The answer
 
-**No. Sequons are lost at about the rate any three-residue motif is lost.**
+**No detectable excess loss. ProteinMPNN shows no evidence of selectively
+protecting occupied sequons during unconstrained redesign, and their high loss
+rate is broadly consistent with its overall sequence-recovery rate.**
 
 318 occupied sites, 220 proteins, 32 unconstrained designs each, nothing held
 fixed. Intervals resample proteins.
@@ -60,21 +62,33 @@ per-residue rates as though independent predicts about 8% exact-triplet
 retention, close to the observed 7.6%. There is no motif-level effect beyond the
 residues the motif happens to contain.
 
-## What this settles
+## What this settles, and a correction to how it was first framed
 
-It was an open question whether sequon loss reflects **glycan blindness** or
-**general sequence redesign**. On this evidence it is general redesign. A model
-that specifically disregarded glycosylation would lose sequons *faster* than
-comparable motifs, and this one does not.
+This was initially written up as showing that sequon loss reflects "general
+redesign rather than glycan blindness". **That is a false dichotomy and the
+conclusion does not follow.** A glycan-blind model would be *expected* to treat
+the sequon as ordinary mutable sequence and lose it at about the ordinary rate.
+Finding the ordinary rate is therefore consistent with blindness, not evidence
+against it. The two are not alternatives.
 
-This agrees with the fixed-sequon composition control, which found the
-compositional changes around a protected sequon to be global to the chain rather
-than local to the site. Two independent analyses, the same conclusion: **nothing
-about ProteinMPNN's behaviour at glycosylation sites is special.**
+What the result does establish is narrower and still useful:
 
-The practical consequence is unchanged and arguably strengthened. Sequons are
-lost in roughly 92% of designs, and if you want them kept you must say so — no
-model is going to preserve them incidentally.
+> ProteinMPNN shows no evidence of **selectively protecting** occupied sequons.
+> It treats a known biological requirement as ordinary mutable sequence.
+
+That is precisely the concern the project started from, now measured rather than
+assumed. Without an explicit constraint the model has no reason to keep the
+motif, and it does not.
+
+It also agrees with the fixed-sequon composition control, which found the
+compositional changes around a *protected* sequon to be global to the chain
+rather than local to the site. Neither analysis finds glycosylation sites being
+treated differently from anything else — and neither can distinguish "the model
+knows nothing about glycosylation" from "the model knows something but is not
+acting on it during unconstrained design".
+
+The practical consequence is unchanged. Sequons are lost in roughly 92% of
+designs, so keeping them requires instructing the model to.
 
 ## What it does not establish
 
@@ -85,3 +99,13 @@ model is going to preserve them incidentally.
   windows, not matched on residue composition. The per-residue check above makes
   a strong confound unlikely, and a matched control would sharpen a null rather
   than overturn it.
+- **Not that the rates are equal.** The interval on control minus sequon runs to
+  **+4.6 percentage points**, so a real excess loss of that size is entirely
+  compatible with these data. "No detectable excess" is the claim; "the same" is
+  not.
+- **Not a complete answer about the functional motif.** Exact-against-exact is
+  the fair *sequence-recovery* comparison, and it is the one reported, but the
+  biological requirement is the permissive N-X-S/T pattern. An arbitrary triplet
+  has no equivalent latitude, so no clean control exists for the pattern reading,
+  and whether the functional motif receives special treatment is not fully
+  settled by this design.

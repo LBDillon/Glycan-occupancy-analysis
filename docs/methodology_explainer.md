@@ -426,9 +426,15 @@ it is a **pattern** — asparagine, not proline, then serine or threonine — so
 sequon can survive while its residues change. An arbitrary triplet has no such
 latitude, so only exact-against-exact is like for like.
 
-The answer is that sequons are lost at about the rate any triplet is lost. Which
-means the loss reflects general redesign, not glycan blindness — a question the
-project had left open and could not answer without this control.
+The answer is no detectable excess loss. It is worth being careful about what
+that licenses. It does **not** show the loss reflects "general redesign rather
+than glycan blindness", because those are not alternatives: a glycan-blind model
+would be expected to treat the motif as ordinary sequence and lose it at the
+ordinary rate, so the ordinary rate is consistent with blindness rather than
+evidence against it. What it shows is that the model does not *selectively
+protect* the motif — it treats a known biological requirement as ordinary
+mutable sequence. And an interval spanning zero is not equivalence: an excess of
+several percentage points remains compatible with the data.
 
 ## What the result is, and what it is not
 

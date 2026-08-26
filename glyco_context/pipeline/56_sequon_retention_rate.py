@@ -121,4 +121,8 @@ frame.to_csv(args.out, index=False)
 print(f"\n{len(frame)} design-site rows over "
       f"{frame.groupby(['accession','position']).ngroups} sites -> {Path(args.out).resolve()}")
 if dropped:
-    print(f"dropped chains: {len(dropped)}")
+    # Coverage is part of the result: a rate over an unrecorded subset cannot be
+    # checked later.
+    record = Path(args.out).with_name(Path(args.out).stem + "_dropped.csv")
+    pd.DataFrame(dropped).to_csv(record, index=False)
+    print(f"dropped chains: {len(dropped)} -> {record.resolve()}")
