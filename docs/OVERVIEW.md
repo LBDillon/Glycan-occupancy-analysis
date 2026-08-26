@@ -217,6 +217,30 @@ silently overwrote the first.
 
 → [`running_on_arc.md`](running_on_arc.md)
 
+## Current results — glyco-site context
+
+The fixed-sequon context-retention test asks whether protecting the motif during
+redesign also protects its surroundings. 285 occupied sites, 207 proteins, 32
+ProteinMPNN designs each with the sequon held fixed.
+
+| Quantity | Mean | 95% CI | p |
+|---|---|---|---|
+| design − wild type | **+0.050** | [0.033, 0.067] | 0.0005 |
+| random control − wild type | +0.018 | [0.006, 0.031] | 0.002 |
+| **design − random** | **+0.032** | [0.019, 0.045] | 0.0005 |
+
+**Protecting the sequon does not protect its environment**, and ProteinMPNN
+drifts further from natural occupied context than changing the same number of
+residues at random. Five features survive correction: proline and glycine rise
+near the site, aromatic content falls, in both the sequence window and the ND2
+shell.
+
+Directly relevant to SugarFix preserve mode: sequon retention as a metric does
+not capture what redesign does around a protected site.
+
+Full account, including what the result does not license:
+[`../glyco_context/docs/findings_2026-08-26_context_retention.md`](../glyco_context/docs/findings_2026-08-26_context_retention.md).
+
 ## Next, in priority order
 
 1. **Finish retention** for both models, merge, and rerun stages 10, 10b, 11.

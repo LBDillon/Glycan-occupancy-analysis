@@ -96,7 +96,7 @@ if path.exists():
     name = (notable.feature.str.replace("_fraction", "", regex=False)
             .str.replace("flank_", "flanking ", regex=False)
             .str.replace("shell_", "near ND2: ", regex=False))
-    fig, ax = plt.subplots(figsize=(9.0, 3.4))
+    fig, ax = plt.subplots(figsize=(9.4, 3.8))
     y = np.arange(len(notable))
     for i, r in enumerate(notable.itertuples()):
         colour = OCC if getattr(r, col) > 0 else CTL
@@ -105,12 +105,24 @@ if path.exists():
         ax.plot([r.ci_low, r.ci_high], [i, i], color=colour, lw=3, alpha=alpha,
                 solid_capstyle="round")
         ax.plot(getattr(r, col), i, "o", color=colour, ms=9, alpha=alpha)
-        ax.text(0.995, i, f"q={r.q:.2f}", transform=ax.get_yaxis_transform(),
-                ha="right", va="center", fontsize=9, color=DIM)
+        label = "q<0.01" if r.q < 0.01 else f"q={r.q:.2f}"
+        ax.text(1.02, i, label, transform=ax.get_yaxis_transform(),
+                ha="left", va="center", fontsize=9, color=DIM)
     ax.axvline(0, color=INK, lw=1.0)
     ax.set_yticks(y); ax.set_yticklabels(name)
     ax.set_xlabel("shift after design  (reference standard deviations)")
-    ax.set_title("Five of fifteen features move at all\nthe strongest: more glycine, fewer aromatics near the site", pad=10)
+    top = notable.reindex(notable[col].abs().sort_values(ascending=False).index).head(3)
+    rising = sorted({n.split()[-1] for n, v in zip(
+        top.feature.str.replace("_fraction", "", regex=False).str.replace("_", " "),
+        top[col]) if v > 0})
+    falling = sorted({n.split()[-1] for n, v in zip(
+        top.feature.str.replace("_fraction", "", regex=False).str.replace("_", " "),
+        top[col]) if v < 0})
+    movement = " and ".join(filter(None, [
+        "more " + ", ".join(rising) if rising else "",
+        "fewer " + ", ".join(falling) if falling else ""]))
+    ax.set_title(f"{len(notable)} of 15 features move at all\n"
+                 f"the strongest: {movement} near the site", pad=10)
     ax.tick_params(left=False)
     fig.savefig(OUT / "fig5_context_features.png", dpi=200, bbox_inches="tight")
     print("wrote", OUT / "fig5_context_features.png")
