@@ -68,11 +68,51 @@ change:
 | glycine in the ND2 shell | +0.124 | 0.093 |
 
 **Designs put proline and glycine near the site and take aromatics away**, in
-both the sequence window and the three-dimensional shell.
+both the sequence window and the three-dimensional shell — **but they do the
+same thing to the whole chain.** See the next section, which changes what this
+table means.
 
 At 50 sites the leading feature appeared to be glycine, with proline at q = 0.21.
 At full scale proline is the strongest of the set. Which feature leads was not
 stable at the smaller sample; the direction of the whole pattern was.
+
+## The composition shift is global, not local
+
+The obvious question about the table above is whether ProteinMPNN is doing
+something to sequon surroundings or simply doing what it always does. The random
+control cannot answer it: replacements are drawn from the wild-type chain's own
+frequencies, so it changes which residues sit where without changing the mix,
+while ProteinMPNN changes the mix.
+
+Measuring the same classes in the flanking window and in every other designable
+position of the same designed chains, 213 chains, designs averaged within chain:
+
+| Class | Near sequon | Rest of chain | Local excess | p |
+|---|---|---|---|---|
+| proline | +0.0137 | **+0.0200** | −0.0063 | 0.11 |
+| aromatic | −0.0114 | **−0.0146** | +0.0032 | 0.49 |
+| glycine | +0.0079 | +0.0038 | +0.0041 | 0.29 |
+| hydrophobic | +0.0008 | +0.0168 | **−0.0159** | 0.026 |
+| cysteine | −0.0020 | −0.0063 | **+0.0043** | 0.036 |
+
+**ProteinMPNN adds proline and glycine and removes aromatics everywhere**, and
+near the sequon it does so *slightly less* than elsewhere rather than more. The
+three features that survived correction above are that global preference showing
+up locally, not a local effect.
+
+The only classes with a significant local difference are hydrophobic and
+cysteine, both small and both in the direction of *less* change near the sequon
+than elsewhere.
+
+This does not overturn the distance result — designs really do sit further from
+natural occupied context, and further than composition-preserving random change.
+It changes the mechanism. The drift is not ProteinMPNN disregarding
+glycosylation context specifically; it is ProteinMPNN redesigning everything to
+its own preferences, and the sequon surroundings being no exception.
+
+For a design tool that distinction matters less than it might seem — the
+environment is not preserved either way — but any claim that the model treats
+glycosylation sites particularly badly is not supported.
 
 ## What this licenses
 
@@ -90,17 +130,20 @@ architectural contrast that originally motivated this — ESM-IF discriminating
 where ProteinMPNN did not — largely dissolved when ProteinMPNN's sequon indexing
 was corrected on 25/08. This is a statement about protected-sequon redesign.
 
+**And it is not about sequons specifically either.** The composition control
+above shows the shift is global to the chain. What survives is the narrower
+claim: fixing three residues does not hold their surroundings in place, because
+redesign changes composition everywhere and the sequon neighbourhood is part of
+everywhere.
+
 ## Scope and limits
 
 - 285 sites, 207 proteins — every site that passes the mapping gates, so this
   cannot be enlarged without relaxing them or extending to other populations.
-- **The random control preserves composition; ProteinMPNN does not.** Its
-  replacements are drawn from the wild-type chain's own amino-acid frequencies,
-  so it changes *which* residues sit where without changing the overall mix.
-  ProteinMPNN has its own composition preferences, so part of `design − random`
-  may be a global bias rather than anything specific to sequon surroundings. The
-  control that would separate these is ProteinMPNN's shift at non-sequon
-  positions in the same proteins, which has not been measured.
+- **The random control preserves composition; ProteinMPNN does not**, so part of
+  `design − random` is a global bias. That control has now been run and is
+  reported above: the bias is global, and the sequon-local excess is null for
+  the features that drove the result.
 - Fixed-backbone design cannot change accessibility, secondary structure or
   distance to the termini, so those are excluded from the outcome by
   construction and condition the reference instead. This says nothing about

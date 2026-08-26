@@ -231,9 +231,13 @@ ProteinMPNN designs each with the sequon held fixed.
 
 **Protecting the sequon does not protect its environment**, and ProteinMPNN
 drifts further from natural occupied context than changing the same number of
-residues at random. Five features survive correction: proline and glycine rise
-near the site, aromatic content falls, in both the sequence window and the ND2
-shell.
+residues at random.
+
+A composition control qualifies the mechanism: measuring the same classes at
+non-sequon positions of the same designed chains shows ProteinMPNN adds proline
+and glycine and removes aromatics **across the whole chain**, slightly less near
+the sequon than elsewhere. The drift is a global composition preference, not a
+local disregard for glycosylation context.
 
 Directly relevant to SugarFix preserve mode: sequon retention as a metric does
 not capture what redesign does around a protected site.
