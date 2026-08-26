@@ -125,3 +125,41 @@ def shell_indices_from_structure(path, chain_id: str, resseq: int, icode: str,
                 indices.append(index)
                 break
     return indices
+
+
+def disulfide_indices(path, chain_id: str, sequence: str, radius: float = 2.5):
+    """Chain indices of cysteines whose SG is bonded to another chain's SG.
+
+    Held fixed during design because a redesign that removes half a disulfide
+    produces a structure the backbone no longer supports, and the resulting
+    sequence is not a fair test of anything. Partners on other chains count: the
+    bond constrains this residue either way.
+    """
+    import numpy as np
+    from Bio.PDB import MMCIFParser, PDBParser
+    from Bio.PDB.Polypeptide import is_aa
+
+    parser = MMCIFParser(QUIET=True) if str(path).endswith(".cif") else PDBParser(QUIET=True)
+    try:
+        model = parser.get_structure("x", str(path))[0]
+        chain = model[str(chain_id)]
+    except Exception:
+        return []
+    resolved = [r for r in chain if is_aa(r, standard=False) and "CA" in r]
+    if len(resolved) != len(sequence):
+        return []
+
+    partners = [r for other in model for r in other
+                if is_aa(r, standard=False) and "SG" in r]
+    indices = []
+    for index, residue in enumerate(resolved):
+        if "SG" not in residue:
+            continue
+        origin = residue["SG"].coord
+        for partner in partners:
+            if partner is residue:
+                continue
+            if float(np.linalg.norm(partner["SG"].coord - origin)) <= radius:
+                indices.append(index)
+                break
+    return indices

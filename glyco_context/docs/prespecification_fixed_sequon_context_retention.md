@@ -21,6 +21,23 @@ context can no longer be read as *the* explanation for a ProteinMPNN-specific
 deficit, because there is no longer much of a ProteinMPNN-specific deficit to
 explain. It would be a statement about protected-sequon redesign, full stop.
 
+## Deviation, 2026-08-26 — disulfide cysteines were not held fixed
+
+The protocol below says the design holds fixed "the three sequon positions
+(N, X, S/T); every cysteine participating in a detected disulfide". **Only the
+sequon positions were fixed.** The disulfide clause was written and not
+implemented, and the results reported so far were produced without it.
+
+The capability now exists behind `--fix-disulfides` and is off by default so the
+existing results reproduce. Turning it on requires regenerating the designs,
+which is a ProteinMPNN run rather than a rescore.
+
+What it plausibly affects: a design free to remove one half of a disulfide
+produces a chain the backbone no longer supports, so those designs are less
+realistic than intended, and it may contribute to the cysteine terms in the
+composition control. What it does not plausibly affect: the sequon itself, which
+was fixed throughout and verified present in every design.
+
 ## The question
 
 > When ProteinMPNN is forced to preserve a naturally occupied N-X-S/T sequon,

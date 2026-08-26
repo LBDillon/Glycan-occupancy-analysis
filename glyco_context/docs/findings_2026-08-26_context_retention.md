@@ -30,7 +30,7 @@ protein held out of its own reference.
 | D(random control) | 0.675 | [0.667, 0.683] | |
 | **design − wild type** | **+0.050** | **[0.033, 0.067]** | **0.0005** |
 | random − wild type | +0.018 | [0.006, 0.031] | 0.002 |
-| **design − random** | **+0.032** | **[0.019, 0.045]** | **0.0005** |
+| **design − random** | **+0.033** | **[0.020, 0.046]** | **0.0005** |
 
 Designs drift away from natural occupied context with the motif fully protected,
 and they drift **further than changing the same number of residues at random**.
@@ -135,6 +135,28 @@ above shows the shift is global to the chain. What survives is the narrower
 claim: fixing three residues does not hold their surroundings in place, because
 redesign changes composition everywhere and the sequon neighbourhood is part of
 everywhere.
+
+## Two corrections to this analysis, 2026-08-26
+
+**The random control was not mutation-count matched.** It selected the right
+number of positions but sampled replacements from the chain's composition
+*without excluding the original residue*, so a fraction of intended mutations
+were no-ops — about sum(freq^2), which is 6.6% for these chains. Measured, the
+designs carried 182.9 real mutations on average against the control's 171.1, so
+the control was 6.5% less perturbed than the design it was matched to, and part
+of `design − random` could have been unequal perturbation rather than anything
+about the model.
+
+Corrected by drawing until the residue differs. The controls were regenerated
+from the stored designs, so no ProteinMPNN time was spent. Counts now match
+exactly at 182.9 against 182.9, and the result is essentially unchanged:
+`design − random` moves from +0.032 [0.019, 0.045] to **+0.033 [0.020, 0.046]**.
+The concern was legitimate and was not what was driving the number.
+
+**Disulfide cysteines were not held fixed**, contrary to the pre-specification.
+Recorded as a deviation there. It is not correctable by rescoring — it needs the
+designs regenerating — and it is a reason to treat the cysteine terms in the
+composition control with particular caution.
 
 ## Scope and limits
 

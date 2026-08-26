@@ -33,7 +33,7 @@ from experimental_glycosylation_sites.mpnn_scoring import (chain_mapping, load_m
                                                            to_manifest_space)
 from experimental_glycosylation_sites.structures import _parse_chains
 from glyco_context.fixed_design import sequon_positions, verify_sequon_index
-from glyco_context.local_chemistry import (chemistry_panel,
+from glyco_context.local_chemistry import (chemistry_panel, disulfide_indices,
                                            shell_indices_from_structure)
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -43,7 +43,11 @@ parser.add_argument("--proteins", type=int, default=40)
 parser.add_argument("--designs", type=int, default=32)
 parser.add_argument("--temperature", type=float, default=0.1)
 parser.add_argument("--policy", default="full_sequon")
+parser.add_argument("--fix-disulfides", action="store_true",
+                    help="also hold cysteines in detected disulfides fixed, as the pre-specification states. Off by default so existing results reproduce; turning it on requires regenerating the designs.")
 parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--reuse-designs", default=None,
+                    help="a sequences CSV from an earlier run. Designs are read from it rather than regenerated, so a control or panel fix costs no model time.")
 parser.add_argument("--panels-only", action="store_true",
                     help="wild-type panels for every site, no design. This builds the natural reference distribution, which needs all the sites but none of the designs.")
 parser.add_argument("--out", default="glyco_context/results/analysis/fixed_sequon_panels.csv")
@@ -80,9 +84,15 @@ print(f"selected {len(selected)} chains "
       f"{sum(1 for k in selected if subtype_of[k]=='NXT')} NXT)")
 
 paths = structure_paths(())
-model = None if args.panels_only else load_model(proteinmpnn_dir(), device="cpu")
+stored = (pd.read_csv(args.reuse_designs, low_memory=False)
+          if args.reuse_designs else None)
+if stored is not None:
+    print(f"reusing designs from {args.reuse_designs}")
+model = (None if args.panels_only or stored is not None
+         else load_model(proteinmpnn_dir(), device="cpu"))
 
 rows, sequences, dropped, t0 = [], [], [], time.time()
+protected_cys = set()
 for n, (key, group) in enumerate([g for g in groups if g[0] in selected], start=1):
     pdb_id, chain_id = key
     path = paths.get(str(pdb_id).upper())
@@ -137,11 +147,27 @@ for n, (key, group) in enumerate([g for g in groups if g[0] in selected], start=
     if not site_shells:
         continue
 
-    designs = [] if args.panels_only else [
-        to_manifest_space(d, mapping) for d in
-        design_sequences(path, str(chain_id), model, n_designs=args.designs,
-                         temperature=args.temperature, seed=args.seed,
-                         fixed_positions=sorted(set(fixed)))]
+    if args.fix_disulfides:
+        cys = disulfide_indices(path, str(chain_id), wild_type)
+        fixed.extend(mapping[i] for i in cys if i in mapping)
+        protected_cys.update(cys)
+
+    if args.panels_only:
+        designs = []
+    elif stored is not None:
+        prior = stored[(stored.structure_pdb_id == pdb_id)
+                       & (stored.structure_chain_id == chain_id)
+                       & (stored.variant == "design")].sort_values("replicate")
+        designs = prior.sequence.tolist()
+        if not designs:
+            dropped.append({"pdb": pdb_id, "chain": chain_id,
+                            "reason": "no stored designs for this chain"})
+            continue
+    else:
+        designs = [to_manifest_space(d, mapping) for d in
+                   design_sequences(path, str(chain_id), model, n_designs=args.designs,
+                                    temperature=args.temperature, seed=args.seed,
+                                    fixed_positions=sorted(set(fixed)))]
 
     # Random control: the same number of altered positions, drawn from this
     # chain's own composition, and never touching the fixed sequon positions.
@@ -151,6 +177,7 @@ for n, (key, group) in enumerate([g for g in groups if g[0] in selected], start=
     # mutate the very sequon it is supposed to hold constant.
     protected = {i for (n_index, _, _) in site_shells.values()
                  for i in sequon_positions(n_index, policy=args.policy)}
+    protected |= protected_cys
     designable = [i for i in range(len(wild_type)) if i not in protected]
     background = np.array(list(wild_type))
     randoms = []
@@ -161,7 +188,15 @@ for n, (key, group) in enumerate([g for g in groups if g[0] in selected], start=
             spots = rng.choice(designable, size=min(changed, len(designable)),
                                replace=False)
             for spot in spots:
-                seq[spot] = str(rng.choice(background))
+                # Draw until the residue actually differs. Sampling the chain's
+                # composition without this leaves the original residue in the
+                # draw, so a fraction of "mutations" are no-ops -- about
+                # sum(freq^2), which is ~6.6% here -- and the control ends up
+                # less perturbed than the design it is matched to.
+                current = wild_type[spot]
+                alternatives = background[background != current]
+                if len(alternatives):
+                    seq[spot] = str(rng.choice(alternatives))
         randoms.append("".join(seq))
 
     # Full sequences kept alongside the panels: the panel is a summary, and a

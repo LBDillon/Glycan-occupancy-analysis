@@ -181,10 +181,18 @@ Hiding the whole sequon asks what the surroundings alone say.
 | | gap, motif visible | gap, motif hidden | change |
 |---|---|---|---|
 | ESMC (sequence only) | +0.121 | +0.007 | **+0.113** [+0.071, +0.147] |
-| ProteinMPNN (structure) | +0.022 | +0.029 | −0.007 [−0.016, −0.002] |
+| ProteinMPNN (structure) | +0.022 ⚠ | +0.029 ⚠ | −0.007 ⚠ |
+
+> **⚠ The ProteinMPNN row is stale and must not be interpreted.** Its joint-mask
+> scores were computed before the 2026-08-25 sequon-indexing correction, which
+> moved that model's unmasked secretory result from +0.090 to +0.282 SD. The
+> masked variant has not been regenerated, so the comparison between the two
+> columns is not currently meaningful for ProteinMPNN. ESMC is unaffected — its
+> adapter validated the triplet and never used the raw index.
 
 The sequence-only model's discrimination depends entirely on seeing the motif in
-context; the structure-conditioned model's does not. ESM-IF has no joint variant
+context. Whether the structure-conditioned model's does is currently unknown,
+pending that regeneration. ESM-IF has no joint variant
 — `<mask>` is off-distribution in its decoder prefix (it sends 93% of the
 probability mass onto aromatics), so the honest version needs marginalisation
 rather than substitution. Not built.
