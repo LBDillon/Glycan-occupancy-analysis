@@ -106,9 +106,21 @@ def design_sequences(
     which is what the retention measurement requires.
 
     All `n_designs` are decoded as one batch: `sample()` already carries a batch
-    dimension, and the featurised tensors describe a single backbone, so tiling
-    them turns 32 sequential decodes into one. Sampling one at a time projected
-    to roughly 32 hours over this corpus, which no Colab session survives.
+    dimension, and the featurised tensors describe a single backbone, so they are
+    tiled rather than looped over.
+
+    **How much this buys depends entirely on the device**, and an earlier version
+    of this note claimed a speedup that does not hold on CPU. Measured on one
+    124-residue chain, CPU, 2026-08-26: 1 design 0.20 s, 8 designs 1.12 s, 32
+    designs 4.28 s. That is about 1.5x over sampling one at a time, not the order
+    of magnitude batching gives on a GPU, because a single sequence already
+    saturates the cores. The batch is still worth having, and it is not what
+    makes a corpus run tractable.
+
+    What does is loading the model once and reusing it -- 0.85 s paid once rather
+    than per chain -- and keeping everything in memory instead of round-tripping
+    through files. Per chain the cost tracks length: 4.2 s for 124 residues,
+    7.0 s for 200, against a corpus median of 332.
 
     Each batch row draws its own `randn`, so the decoding orders stay independent
     and the designs are independent samples rather than 32 copies.
