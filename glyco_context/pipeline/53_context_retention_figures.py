@@ -1,16 +1,14 @@
-"""Figures for the fixed-sequon context-retention test, from the scored table.
+"""Figures for the fixed-sequon context-retention test.
 
-Two figures.
+Two plain figures, each answering one question.
 
-  fig4  the result: where each site's wild type sits relative to natural
-        occupied context, where its designs sit, and how that compares to
-        changing the same number of residues at random
-  fig5  which features move, and by how much
+  fig4  how far designs sit from natural occupied context, and by how much that
+        differs from the wild type and from arbitrary change of the same size
+  fig5  which features move
 
-The paired panel shows every site rather than a summary. With fifty of them the
-individual pairings are the evidence, and the random control is the reason the
-shift is readable at all -- a wild type sits inside the reference by
-construction, so any perturbation moves outward.
+Deliberately spare. An earlier version drew all fifty pairings as crossing lines
+and the differences as jittered clouds; both were honest and neither was
+readable. The numbers here are small and few, so the figures should be too.
 
 Usage:  53_context_retention_figures.py
 """
@@ -23,9 +21,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-plt.rcParams.update({"font.size": 10, "axes.titlesize": 11.5,
+plt.rcParams.update({"font.size": 11, "axes.titlesize": 12.5,
                      "axes.titlelocation": "left", "axes.spines.top": False,
-                     "axes.spines.right": False})
+                     "axes.spines.right": False, "axes.spines.left": False})
 INK, OCC, CTL, DIM = "#22252b", "#1f6f8b", "#b05c3b", "#9aa0a6"
 
 ANALYSIS = Path("glyco_context/results/analysis")
@@ -35,75 +33,88 @@ OUT.mkdir(parents=True, exist_ok=True)
 scored = pd.read_csv(ANALYSIS / "context_retention_distances.csv")
 site = scored.pivot_table(index=["accession", "position"], columns="variant",
                           values="distance", aggfunc="mean").dropna(subset=["wild_type"])
-site = site.sort_values("wild_type").reset_index()
+
+def ci(values, n_boot=2000, seed=0):
+    values = np.asarray(values, float)
+    rng = np.random.default_rng(seed)
+    draws = rng.choice(values, (n_boot, len(values)), replace=True).mean(axis=1)
+    return values.mean(), np.percentile(draws, 2.5), np.percentile(draws, 97.5)
 
 # =============================================================================
-# fig4 — the result
+# fig4 — the result, as two simple rows of dots
 # =============================================================================
-fig, (ax, bx) = plt.subplots(1, 2, figsize=(12.4, 5.8),
-                             gridspec_kw={"width_ratios": [1.5, 1]})
+fig, (ax, bx) = plt.subplots(2, 1, figsize=(8.6, 6.2),
+                             gridspec_kw={"height_ratios": [1, 1.15]})
 
-for i, r in site.iterrows():
-    ax.plot([0, 1], [r.wild_type, r.design], color=(OCC if r.design > r.wild_type else CTL),
-            alpha=0.55, lw=1.2, zorder=2)
-ax.scatter(np.zeros(len(site)), site.wild_type, s=30, color=INK, zorder=3,
-           label="wild type")
-ax.scatter(np.ones(len(site)), site.design, s=30, color=OCC, zorder=3,
-           label="design (sequon held fixed)")
-ax.set_xlim(-0.35, 1.35); ax.set_xticks([0, 1])
-ax.set_xticklabels(["wild type", "design"])
-ax.set_ylabel("distance from natural occupied context  (median |z| over the panel)")
-moved = int((site.design > site.wild_type).sum())
-ax.set_title(f"Every design keeps the sequon; {moved} of {len(site)} still move\n"
-             "further from natural occupied context", fontsize=12)
-ax.legend(frameon=False, fontsize=9, loc="upper left")
+# where each group sits
+groups = [("wild type", site.wild_type, INK),
+          ("random control", site.random, DIM),
+          ("design", site.design, OCC)]
+for i, (name, values, colour) in enumerate(groups):
+    mean, low, high = ci(values)
+    ax.plot([low, high], [i, i], color=colour, lw=3, solid_capstyle="round")
+    ax.plot(mean, i, "o", color=colour, ms=10)
+    ax.text(high + 0.012, i, f"{mean:.3f}", va="center", fontsize=10.5, color=INK)
+ax.set_yticks(range(3)); ax.set_yticklabels([g[0] for g in groups])
+ax.set_ylim(-0.6, 2.6); ax.invert_yaxis()
+ax.set_xlabel("distance from natural occupied context")
+ax.set_title("Designs sit further from natural context than the wild type", pad=10)
+ax.tick_params(left=False)
 
-deltas = {"design\n- wild type": site.design - site.wild_type,
-          "random control\n- wild type": site.random - site.wild_type,
-          "design\n- random": site.design - site.random}
-positions = np.arange(len(deltas))
-for i, (name, values) in enumerate(deltas.items()):
-    bx.scatter(np.random.default_rng(i).normal(i, 0.055, len(values)), values,
-               s=16, color=DIM, alpha=0.6, zorder=2)
-    mean = values.mean()
-    bx.plot([i - 0.22, i + 0.22], [mean, mean], color=OCC, lw=2.6, zorder=4)
-    bx.text(i + 0.27, mean, f"{mean:+.3f}", fontsize=9.5, color=INK, va="center")
-bx.axhline(0, color=INK, lw=1.0, zorder=1)
-bx.set_xticks(positions); bx.set_xticklabels(list(deltas), fontsize=9)
-bx.set_ylabel("change in distance from natural context")
-bx.set_title("Designs drift; arbitrary change of the\nsame size drifts about half as far",
-             fontsize=12)
-bx.text(0.0, -0.22, "Each point is one site. Bars are means. A wild type sits inside the "
-        "reference by\nconstruction, so any change moves outward — which is what the "
-        "random control measures.",
-        transform=bx.transAxes, fontsize=8.6, color=INK, va="top")
+# the paired change
+changes = [("design\nminus wild type", site.design - site.wild_type, OCC),
+           ("random control\nminus wild type", site.random - site.wild_type, DIM)]
+for i, (name, values, colour) in enumerate(changes):
+    mean, low, high = ci(values)
+    bx.plot([low, high], [i, i], color=colour, lw=3, solid_capstyle="round")
+    bx.plot(mean, i, "o", color=colour, ms=10)
+    bx.text(high + 0.004, i, f"+{mean:.3f}", va="center", fontsize=10.5, color=INK)
+bx.axvline(0, color=INK, lw=1.0, zorder=1)
+bx.set_yticks(range(len(changes))); bx.set_yticklabels([c[0] for c in changes])
+bx.set_ylim(-0.6, len(changes) - 0.4); bx.invert_yaxis()
+bx.set_xlabel("change in distance  (right = further from natural context)")
+bx.set_title("The design moves about twice as far as arbitrary change\n"
+             "of the same size — but the gap between them is not significant", pad=10)
+bx.tick_params(left=False)
+bx.text(0, -0.30, f"{len(site)} sites, 38 proteins. Bars are 95% intervals. Every design "
+        "keeps the sequon.\nA wild type sits inside the reference by construction, so the "
+        "random control\nshows how much of the drift is simply that.",
+        transform=bx.transAxes, fontsize=9.5, color=INK, va="top")
 fig.tight_layout()
 fig.savefig(OUT / "fig4_context_retention.png", dpi=200, bbox_inches="tight")
 print("wrote", OUT / "fig4_context_retention.png")
 
 # =============================================================================
-# fig5 — which features move
+# fig5 — only the features that move at all
 # =============================================================================
 path = ANALYSIS / "context_retention_features.csv"
 if path.exists():
     features = pd.read_csv(path)
     col = "shift" if "shift" in features.columns else "mean"
-    features = features.reindex(features[col].abs().sort_values().index)
-    pretty = (features.feature.str.replace("_fraction", "", regex=False)
-              .str.replace("flank_", "flank: ", regex=False)
-              .str.replace("shell_", "ND2 shell: ", regex=False)
-              .str.replace("_", " ", regex=False))
-    fig, ax = plt.subplots(figsize=(8.8, 6.4))
-    y = np.arange(len(features))
-    for i, r in enumerate(features.itertuples()):
-        ax.plot([r.ci_low, r.ci_high], [i, i], color=DIM, lw=1.6, zorder=2)
-    ax.scatter(features[col], y, s=46,
-               color=[OCC if q < 0.10 else DIM for q in features.q], zorder=3)
-    ax.axvline(0, color=INK, lw=1.0, zorder=1)
-    ax.set_yticks(y); ax.set_yticklabels(pretty, fontsize=9.5)
-    ax.set_xlabel("shift, design minus wild type (reference standard deviations)")
-    ax.set_title("No single feature carries the drift\n"
-                 "(shaded: q < 0.10; none survives correction at 0.05)", fontsize=12)
+    notable = features[features.q < 0.25].copy()
+    notable = notable.reindex(notable[col].abs().sort_values().index)
+    name = (notable.feature.str.replace("_fraction", "", regex=False)
+            .str.replace("flank_", "flanking ", regex=False)
+            .str.replace("shell_", "near ND2: ", regex=False))
+    fig, ax = plt.subplots(figsize=(9.0, 3.4))
+    y = np.arange(len(notable))
+    for i, r in enumerate(notable.itertuples()):
+        colour = OCC if getattr(r, col) > 0 else CTL
+        # Weaker evidence drawn fainter, so strength is visible without a legend.
+        alpha = 1.0 if r.q < 0.10 else 0.42
+        ax.plot([r.ci_low, r.ci_high], [i, i], color=colour, lw=3, alpha=alpha,
+                solid_capstyle="round")
+        ax.plot(getattr(r, col), i, "o", color=colour, ms=9, alpha=alpha)
+        ax.text(0.995, i, f"q={r.q:.2f}", transform=ax.get_yaxis_transform(),
+                ha="right", va="center", fontsize=9, color=DIM)
+    ax.axvline(0, color=INK, lw=1.0)
+    ax.set_yticks(y); ax.set_yticklabels(name)
+    ax.set_xlabel("shift after design  (reference standard deviations)")
+    ax.set_title("Five of fifteen features move at all\nthe strongest: more glycine, fewer aromatics near the site", pad=10)
+    ax.tick_params(left=False)
+    ax.text(0, -0.42, "Faint bars are weaker evidence. None survives multiple-testing "
+            "correction at\nq < 0.05, so this is a lead rather than a result.",
+            transform=ax.transAxes, fontsize=9.5, color=INK, va="top")
     fig.tight_layout()
     fig.savefig(OUT / "fig5_context_features.png", dpi=200, bbox_inches="tight")
     print("wrote", OUT / "fig5_context_features.png")
