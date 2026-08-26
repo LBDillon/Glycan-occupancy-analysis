@@ -198,8 +198,8 @@ Three models are registered:
 | Name | Conditions on | Implements | Notes |
 |---|---|---|---|
 | `proteinmpnn` | backbone + all other native residues, 8 decoding orders | scorer + designer | [correction](docs/correction_2026-08-20_alphabet.md) |
-| `esm_if` | backbone + native prefix (autoregressive) | scorer + designer | [doc](docs/second_model_esm_if.md) |
-| `esmc` | **sequence only** (masked LM) | scorer | [doc](docs/third_model_esmc.md) |
+| `esm_if` | backbone + native prefix (autoregressive) | scorer + designer | [doc](docs/models.md) |
+| `esmc` | **sequence only** (masked LM) | scorer | [doc](docs/models.md) |
 
 **`esmc` cannot be installed alongside `esm_if`.** `fair-esm` and
 EvolutionaryScale's `esm` both claim the top-level import name `esm`. Use a
@@ -263,15 +263,15 @@ isinstance(a, SequonScorer), isinstance(a, SequenceDesigner)   # (True, True)
 |---|---|
 | [`docs/OVERVIEW.md`](docs/OVERVIEW.md) | **start here — current results, what they mean, what is running, what is next** |
 | [`docs/primary_result.md`](docs/archive/primary_result_SUPERSEDED_2026-08-25.md) | the result and its limits (pre-correction numbers) |
-| [`docs/figures.md`](docs/figures.md) | all nine figures explained in prose |
+| [`docs/figures.md`](docs/figures_and_captions.md) | all nine figures explained in prose |
 | [`docs/docs/glossary.md`](docs/docs/glossary.md) | what the terms mean, in plain language |
 | [`docs/significance.md`](docs/archive/significance_SUPERSEDED_2026-08-25.md) | the eight tests and why none survives correction |
-| [`docs/negative_controls.md`](docs/negative_controls.md) | the four control sets and what evidence stands behind each |
+| [`docs/negative_controls.md`](docs/control_sets.md) | the four control sets and what evidence stands behind each |
 | [`docs/correction_2026-08-18.md`](docs/correction_2026-08-18.md) | what was corrected and why |
 | [`docs/correction_2026-08-20_alphabet.md`](docs/correction_2026-08-20_alphabet.md) | **the alphabet defect — read before quoting any ProteinMPNN number** |
-| [`docs/second_model_esm_if.md`](docs/second_model_esm_if.md) | ESM-IF: what its conditional is, the index mapping, how to run it |
-| [`docs/third_model_esmc.md`](docs/third_model_esmc.md) | ESMC: sequence-only baseline, the two masking schemes, the environment split |
-| [`docs/adding_models_explainer.md`](docs/adding_models_explainer.md) | **how the benchmark went from one model to three, and what went wrong on the way** |
+| [`docs/second_model_esm_if.md`](docs/models.md) | ESM-IF: what its conditional is, the index mapping, how to run it |
+| [`docs/third_model_esmc.md`](docs/models.md) | ESMC: sequence-only baseline, the two masking schemes, the environment split |
+| [`docs/adding_models_explainer.md`](docs/models.md) | **how the benchmark went from one model to three, and what went wrong on the way** |
 | `config/scoring_frozen.toml` | the frozen configuration and both amendments |
 
 ---

@@ -1,4 +1,13 @@
-# Negative control sets
+# Control sets
+
+Why the comparison sets exist, what each uses as evidence for "no glycan here",
+how the diagnostics behave, and what the data audit found. Merges the former
+`negative_controls.md`, `diagnostic_controls.md` and `phase1_control_audit.md`.
+
+Terms are defined in [`glossary.md`](glossary.md); current results live in
+[`OVERVIEW.md`](OVERVIEW.md) and are deliberately not repeated here.
+
+---
 
 ## Why these exist
 
@@ -331,7 +340,293 @@ python pipeline/05_scoreability.py results/manifests/candidate_manifest_controls
 python pipeline/06b_match_diagnostics.py
 ```
 
-Results are in [`diagnostic_controls.md`](diagnostic_controls.md). Both sets remain
+Results are in [`diagnostic_controls.md`](control_sets.md). Both sets remain
 **diagnostics**: each is confounded by construction, and neither substitutes for the 32
 internal controls, which are the only ones holding organism, compartment and
 experimental context roughly constant.
+
+---
+
+## The diagnostics in detail — bacterial and cytosolic
+
+These two sets are confounded on purpose and in opposite directions. They are
+informative about how the measurement behaves and are not a valid answer to the
+occupancy question.
+
+**These are not the primary result and cannot substitute for it.** The primary
+
+> **⚠ Numbers below predate the 2026-08-20 alphabet correction.**
+> `mpnn_scoring.ALPHABET` held the wrong string, so `p_asn_at_n` was reading
+> P(aspartate). Every ProteinMPNN score and every retention figure produced
+> before that date is superseded. Scores have since been regenerated; retention
+> has not. **The argument and the method here still stand — the specific
+> quantities do not.** See
+> [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) for
+> what changed and [`OVERVIEW.md`](OVERVIEW.md) for current numbers.
+
+comparison is [`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md).
+
+**A fourth control set now exists** — eukaryotic secretory, unannotated — which is
+*not* a diagnostic. It matches the occupied sites on both taxonomy and
+compartment, so it carries neither confound described below, and it supplies 262
+matched pairs against the primary's 16. It gives +0.073 SD, CI [−0.056, +0.346].
+Its trade is a weaker negative label rather than a confounded population; see
+[`negative_controls.md`](control_sets.md) and
+[`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md). The two sets below remain diagnostics.
+
+Both control sets are confounded by construction, and deliberately so. The
+cytosolic set matches taxonomy and differs in subcellular compartment; the
+bacterial set matches compartment and differs in taxonomy. They were built to be
+read against one another, on the reasoning that a signal surviving both
+orthogonal confounds is less likely to be produced by either.
+
+They were also built because there are only 28 scoreable internal controls. That
+scarcity is the real constraint, and a large well-matched comparison against the
+wrong population does not relieve it.
+
+### Matching
+
+Same discipline as the primary: scoreable pool fixed before matching, 1:1
+without replacement, exact NXS/NXT, caliper 0.25 on relative accessibility,
+neighbour count and hydrophobic fraction.
+
+| | Bacterial | Cytosolic |
+|---|---|---|
+| Scoreable controls available | 3,068 | 3,024 |
+| Matched pairs | 278 | 270 |
+| Occupied proteins / ortholog clusters | 210 / 95 | 205 / 96 |
+| Resampling units | 58 | 75 |
+| Most-reused control protein | 4 contrasts | 3 contrasts |
+| Worst \|SMD\| after matching | 0.003 | 0.009 |
+
+Control-protein reuse is why the resampling unit is the connected component of
+the graph joining occupied ortholog clusters to shared control proteins. With 278
+contrasts across only 58 such units, a site-level interval would be far too
+narrow — as the comparison below shows.
+
+### Results
+
+All on the common reference scale (SD = 1.3316 log-odds, from dataset sites only).
+
+Primary figures are from the deterministic optimal matching (Amendment 2).
+
+| Comparison | n | Mean | 95% CI (cluster-aware) | Site-level CI (not used) | Verdict |
+|---|---|---|---|---|---|
+| **Internal control** (primary) | 16 | **+0.458 SD** | [−0.227, +1.098] | [−0.200, +1.121] | inconclusive |
+| Bacterial extracytoplasmic | 278 | −0.174 SD | [−0.459, −0.027] | [−0.334, −0.015] | directional, magnitude undetermined |
+| Cytosolic eukaryotic | 270 | +0.062 SD | [−0.145, +0.270] | [−0.112, +0.233] | inconclusive |
+
+Robustness:
+
+| | Bacterial | Cytosolic |
+|---|---|---|
+| Occupied higher | 125 of 278 | 151 of 270 |
+| Median | −0.191 | +0.214 |
+| Sign test | p = 0.105 | p = 0.059 |
+| Wilcoxon | p = 0.044 | p = 0.228 |
+
+### What this does and does not support
+
+**The earlier "gradient" is withdrawn.** The previous version of this analysis
+reported all three comparisons as negative, shrinking as matching improved
+(−0.237, −0.145, −0.057 SD), and read that ordering as evidence that the
+apparent effects came from compartment and taxonomy rather than occupancy. That
+pattern was an artefact of the corrupted scores. It does not survive correction.
+
+What replaces it is less tidy. The three comparisons now point in **different
+directions**: positive but not significant against internal controls, negative
+against bacterial controls, and indistinguishable from zero against cytosolic
+controls. There is no monotone ordering to interpret.
+
+That is a genuine inconsistency and it should be treated as one. The most
+economical reading is that the two diagnostic contrasts are dominated by their
+respective confounds — bacterial folds and cytosolic environments differ from
+secreted eukaryotic ones in ways ProteinMPNN can see directly — and that neither
+tells us much about occupancy. But this is the reading that was *not* available
+before correction, when the confounds appeared to be pushing the same way, and
+it should not be presented as a finding.
+
+The primary comparison is the only one that holds organism, compartment and
+experimental context roughly constant. It has 16 pairs. Nothing in this appendix
+changes that, and nothing here should be quoted as support for the primary
+estimate.
+
+### Subtype
+
+| Comparison | NXS | NXT |
+|---|---|---|
+| Bacterial | −0.167 SD (n=132) | −0.181 SD (n=146) |
+| Cytosolic | −0.094 SD (n=135) | +0.218 SD (n=135) |
+
+The cytosolic subtypes disagree in sign at n=135 each, which is not a sample-size
+problem. It is unexplained and recorded as such.
+
+### Artefacts
+
+`results/matching/matched_pairs_{bacterial,cytosolic}.csv`,
+`results/matching/matching_balance_{bacterial,cytosolic}.json`,
+`results/analysis/contrasts_{bacterial,cytosolic}.csv`,
+`results/analysis/analysis_{bacterial,cytosolic}.json`,
+`results/scores/scores_controls.csv`, `results/manifests/manifest_matched_controls.csv`,
+`results/manifests/scoreability_controls.csv`.
+
+Reproduce with `pipeline/06b_match_diagnostics.py`, then `pipeline/07_score.py` on
+`results/manifests/manifest_matched_controls.csv`, then
+`pipeline/09_analyse_scores.py bacterial` and `... cytosolic`.
+
+---
+
+## Data audit — what verification found
+
+
+
+> **⚠ Numbers below predate the 2026-08-20 alphabet correction.**
+> `mpnn_scoring.ALPHABET` held the wrong string, so `p_asn_at_n` was reading
+> P(aspartate). Every ProteinMPNN score and every retention figure produced
+> before that date is superseded. Scores have since been regenerated; retention
+> has not. **The argument and the method here still stand — the specific
+> quantities do not.** See
+> [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) for
+> what changed and [`OVERVIEW.md`](OVERVIEW.md) for current numbers.
+
+> **Historical: a pre-scoring snapshot.** This records the state of the control
+> data at the gate, before any ProteinMPNN scoring ran, and is kept as the record
+> that the gate was passed. Its counts predate the corrections of 18 August 2026:
+> sites ProteinMPNN cannot decode had not yet been identified, so the totals here
+> are larger than the scoreable sets the analysis actually used.
+>
+> Current figures: [`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md) and
+> [`diagnostic_controls.md`](control_sets.md). What changed and why:
+> [`correction_2026-08-18.md`](correction_2026-08-18.md).
+
+Gate for model scoring. Nothing in Phase 2 onward may proceed on data that fails
+these checks.
+
+### Verdict
+
+**Pass, after two defects were found and repaired.** Both were real and both
+would have invalidated the comparisons had scoring started on the previous
+state.
+
+### Defects found
+
+#### 1. Provenance scrambled — 43.5% of rows mislabelled
+
+`build_features` re-sorts its output by `(accession, position)`. The caller
+attached `control_set` afterwards positionally, pairing labels from input order
+against rows in sorted order.
+
+| | bacterial (source) | cytosolic (source) |
+|---|---|---|
+| **labelled bacterial** | 3,258 | 2,608 |
+| **labelled cytosolic** | 2,607 | 3,505 |
+
+5,215 of 11,978 rows carried the wrong set, so the bacterial and cytosolic
+matched comparisons were thoroughly mixed. `occupancy_status`, which travelled
+with the row rather than being reattached, was correct — which is what localised
+the fault.
+
+**Repair.** `build_features` now takes `carry_columns` and copies provenance per
+row, so no caller can reattach positionally. The joining script uses a key-based
+merge with `validate="one_to_one"`. A regression test supplies input in
+reverse-sorted order, which fails against the old behaviour.
+
+#### 2. The cytosolic set was not eukaryotic
+
+`go:0005829` carries no taxonomic restriction, and none was applied. The set
+contained at least **1,929 bacterial** and **302 archaeal** proteins; *E. coli*
+was its third most common organism.
+
+The archaeal contamination is the serious part. Archaea N-glycosylate via AglB,
+so those were potentially genuine glycoproteins inside a set whose definition is
+that its members cannot be glycosylated. It also explains the 13 accessions that
+appeared in *both* control sets: bacterial proteins annotated cytosolic and
+periplasmic satisfied both queries.
+
+**Repair.** `taxonomy_id:2759` added to the cytosolic query; inventory and all
+downstream files rebuilt.
+
+### Assertions
+
+| Check | Result |
+|---|---|
+| `control_set` agrees with source inventory | **0** disagreeing rows |
+| `occupancy_status` equals `control_<control_set>` | **0** disagreeing rows |
+| Each matched comparison contains only its intended controls | **0** violations, across 3 comparisons × 5 seeds |
+| No control protein in both biological control sets | **0** accessions |
+| Cytosolic set is eukaryotic | **0** bacterial or archaeal organisms |
+
+### Final counts
+
+**Control inventories**
+
+| Set | Proteins | Sequons | With structural features |
+|---|---|---|---|
+| Cytosolic eukaryotic | 4,764 | 16,386 | 3,543 sequons / 1,719 proteins |
+| Bacterial extracytoplasmic | 1,141 | 5,865 | 3,280 sequons / 1,033 proteins |
+
+Cytosolic fell from 19,337 to 16,386 sequons when the non-eukaryotic proteins
+were removed. Bacterial was unaffected, as expected.
+
+**Dataset sites with structural features**
+
+| Class | Sites | Proteins |
+|---|---|---|
+| `occupied_supported` | 332 | 245 |
+| `observed_unmodified` | 32 | — |
+
+**Matched sets** (seed 0; 1:1 for the scarce comparison, 1:5 otherwise)
+
+| Comparison | Controls available | Occupied sites matched | Pairs |
+|---|---|---|---|
+| vs observed-unmodified | 32 | 24 | 24 |
+| vs bacterial control | 3,280 | 280 | 1,180 |
+| vs cytosolic control | 3,543 | 275 | 1,196 |
+
+#### Reading the observed-unmodified comparison correctly
+
+It contains **24 occupied sites matched to 24 observed-unmodified controls**.
+Those 24 are drawn from the **332 structurally scoreable occupied sites** — they
+are not "24 of 32". The 32 is the size of the available control pool, of which 24
+found a partner inside the caliper. The statistical unit is the occupied site,
+and there are 24 of them in this comparison.
+
+### Weighted balance
+
+Each occupied site carries total weight one; the controls matched to it share
+weight one between them. Without this, a case matched to five controls would
+contribute five times as much to the control mean as a case matched to one, so
+the statistic would describe the matching's bookkeeping rather than the
+comparison. Verified: total control weight equals the number of matched cases.
+
+Standardised mean differences, seed 0, with the range across seeds 0–4:
+
+| Comparison | RSA | Neighbours | Hydrophobic fraction |
+|---|---|---|---|
+| vs observed-unmodified | +0.017 (−0.049..+0.017) | 0.000 | 0.000 |
+| vs bacterial | +0.011 (−0.005..+0.021) | 0.000 | −0.000 |
+| vs cytosolic | +0.020 (+0.020..+0.030) | 0.000 | −0.000 |
+
+Worst absolute value across all comparisons, features and seeds: **0.030**,
+comfortably inside the conventional 0.1 threshold. Seed-to-seed spread is at most
+0.066 and mostly far smaller, so the matching is not seed-sensitive.
+
+**The exact zeros are real, not a bug.** `n_neighbours_8a` is integer-valued and
+`hydrophobic_fraction_8a` is a ratio over 5–6 neighbours, so both are effectively
+discrete and the matcher finds exact partners for 100% of pairs. Confirmed at
+pair level; RSA, being continuous, matches to within about 0.01. It was checked
+precisely because a reported SMD of exactly zero usually indicates an error.
+
+### Known limitations carried forward
+
+- Structures above 20 MB are skipped at parsing, mapping and linkage detection,
+  so ribosomal and proteasomal control proteins largely lack features. This is
+  reported as `structure_too_large`, not silently dropped, but it biases the
+  control subset against large-complex components.
+- Fewer than half of control sequons have features (6,823 of 15,107), mostly
+  through unmapped residues and the size guard.
+- The 32 observed-unmodified sites exist only where someone solved a glycoprotein
+  structure, so they represent well-studied secreted and membrane proteins rather
+  than a random draw from the unlabelled pool.
+- 24 pairs cannot support a null result on their own. Any equivalence claim needs
+  a smallest effect size of interest fixed before the labelled contrasts are seen.

@@ -59,7 +59,7 @@ comparisons.
 | `cytosolic` | 273 | Diagnostic |
 
 The diagnostics exist to detect confounding, not to support a claim. See
-[`negative_controls.md`](negative_controls.md).
+[`negative_controls.md`](control_sets.md).
 
 ## The three models, and what each conditions on
 
@@ -72,9 +72,9 @@ The diagnostics exist to detect confounding, not to support a claim. See
 This is a **conditioning spectrum**, not three attempts at one number. Raw score
 magnitudes are not comparable across models; the SD-standardised matched-pair
 contrast is, and that is what the analysis rests on. Details:
-[`second_model_esm_if.md`](second_model_esm_if.md),
-[`third_model_esmc.md`](third_model_esmc.md),
-[`adding_models_explainer.md`](adding_models_explainer.md).
+[`second_model_esm_if.md`](models.md),
+[`third_model_esmc.md`](models.md),
+[`adding_models_explainer.md`](models.md).
 
 ---
 
@@ -259,11 +259,11 @@ teach a model curation patterns.
 | Document | For |
 |---|---|
 | [`why_glyco_site_context_analysis.md`](../glyco_context/docs/why_glyco_site_context_analysis.md) | **why this work exists, and what the benchmark could not answer** |
-| [`adding_models_explainer.md`](adding_models_explainer.md) | how one model became three, and what broke |
+| [`adding_models_explainer.md`](models.md) | how one model became three, and what broke |
 | [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) | the alphabet defect in full |
-| [`second_model_esm_if.md`](second_model_esm_if.md) | ESM-IF's conditional, index mapping, batched generation |
-| [`third_model_esmc.md`](third_model_esmc.md) | ESMC, the two masking schemes, the environment split |
-| [`negative_controls.md`](negative_controls.md) | what evidence stands behind each control set |
+| [`second_model_esm_if.md`](models.md) | ESM-IF's conditional, index mapping, batched generation |
+| [`third_model_esmc.md`](models.md) | ESMC, the two masking schemes, the environment split |
+| [`negative_controls.md`](control_sets.md) | what evidence stands behind each control set |
 | [`glossary.md`](glossary.md) | the terms, in plain language |
 | [`rationale_and_progress.md`](rationale_and_progress.md) | why the module exists |
 | [`running_on_arc.md`](running_on_arc.md) | job arrays, sharding, merging |

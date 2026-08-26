@@ -1,0 +1,480 @@
+# The models
+
+How the benchmark grew from one model to three, what each one is, and how to
+run it. Merges the former `adding_models_explainer.md`, `second_model_esm_if.md`
+and `third_model_esmc.md`.
+
+*Written 2026-08-20, covering the day ProteinMPNN stopped being the only model.*
+
+## The shape of the problem
+
+The benchmark asks one question: does a model treat an experimentally occupied
+N-X-S/T sequon differently from a structurally matched sequon carrying no glycan?
+Answering it for a single model tells you about that model. Answering it for one
+model and calling it a result about *models* is a mistake, because a null can
+just as easily be a property of one architecture's inductive bias as a fact about
+what protein models know.
+
+So the aim was never "add ESM-IF". It was to make the benchmark **model-shaped**:
+to get to a state where the question is asked of an interchangeable thing, and
+adding the next one is a day's work rather than a rewrite.
+
+## The one decision everything else follows from
+
+Downstream of scoring, nothing is allowed to know which model produced a number.
+
+Matching, contrasts, the cluster bootstrap, significance testing and the figures
+all operate on tables keyed by `(accession, position)`. A model contributes two
+columns — a conditional sequon score and a retention fraction — and contributes
+nothing else. That constraint is what makes a second model an adapter instead of
+a fork.
+
+It also has a consequence worth stating plainly: **matching is model-independent
+and is never recomputed.** Pairs are built from RSA, neighbour counts and
+hydrophobic fraction, never from model output. Every model is therefore scored on
+exactly the same pairs, and a disagreement between models is a disagreement about
+the same sixteen, or two hundred and sixty-two, comparisons. If matching moved
+per model, no cross-model comparison would mean anything.
+
+## The interface, and the two invariants it enforces
+
+`adapters/base.py` declares two protocols. A model implements either or both.
+
+| Protocol | Question | Feeds |
+|---|---|---|
+| `SequonScorer` | what probability does the model hold at the three sequon residues? | `07_score.py` |
+| `SequenceDesigner` | what does it write when redesigning the chain? | `08_design.py` |
+
+Two rules are non-negotiable, and both were learned by being burned.
+
+**Never score a residue the model did not evaluate.** ProteinMPNN returns a row
+of zeros for residues with incomplete backbones, which exponentiates to
+twenty-one ones and scores about +13.8. That defect inverted the sign of the
+first result this project produced. Adapters raise rather than return.
+
+**`decodable_positions` must not need a model pass.** Scoreability has to be
+answerable before matching. Settle it afterwards and matched sets quietly lose
+members, unbalancing exactly what matching had just balanced.
+
+One addition was made this week. `SequonScorer` gained
+`prepare_chain` / `score_from` alongside `score_site`, because the models waste
+effort in opposite directions: ProteinMPNN runs a decoder pass *per position*, so
+it wants every position on a chain at once; ESM-IF decodes the whole chain in one
+pass, so its second sequon should cost nothing. Splitting the once-per-chain work
+from the per-sequon read serves both without either model's quirk leaking into a
+pipeline stage.
+
+## What each model turned out to be
+
+### ProteinMPNN — the incumbent
+
+Backbone plus every other native residue, averaged over eight sampled decoding
+orders. Bidirectional and symmetric.
+
+### ESM-IF1 — a second structure-conditioned opinion
+
+The closest conceptual comparison: also reads a backbone, also generates
+sequence. The point is to ask whether ProteinMPNN's null is specific to
+ProteinMPNN or general to inverse folding.
+
+Its scoring is genuinely not equivalent, and pretending otherwise would have been
+the easy mistake. ESM-IF is autoregressive, so the only conditional it can
+honestly produce is prefix-only:
+
+    P(residue at i | backbone, native residues 1..i-1)
+
+There is no decoding-order distribution to average, because permuting a causal
+decoder's order is off-distribution. So `conditional_sequon_score_sd` is
+structurally zero and `n_decoding_orders` is one, and the `conditioning` column
+records `autoregressive_prefix` rather than `conditional` so the two can never be
+silently pooled. Scoring the +2 residue, both models see the native asparagine
+upstream; only ProteinMPNN also sees C-terminal context. Raw magnitudes are not
+comparable between models. The SD-standardised matched-pair contrast is, and that
+is what the analysis rests on.
+
+The alternative — falling back to a whole-sequence likelihood — was rejected. A
+per-residue mean over several hundred positions cannot resolve a three-residue
+question, which is the objection the module already raises against protein-level
+scores.
+
+#### What ESM-IF's conditional is, and why it is not ProteinMPNN's
+
+ProteinMPNN gives
+
+    P(residue at i | backbone, ALL other native residues)
+
+averaged over eight sampled decoding orders. ESM-IF is trained strictly left to
+right, so the only conditional it can honestly produce is the prefix one, from a
+single teacher-forced pass:
+
+    P(residue at i | backbone, native residues 1..i-1)
+
+Three consequences that belong in any write-up putting the two side by side:
+
+1. **Asymmetric context.** Scoring the +2 residue, both models see the native
+   asparagine upstream; only ProteinMPNN also sees the sequence C-terminal to the
+   site. The two numbers answer neighbouring questions.
+2. **Raw magnitudes are not comparable.** Compare the *matched-pair contrast*
+   within each model — which is what the analysis rests on anyway — never the
+   score means.
+3. **No decoding-order spread.** A teacher-forced pass is deterministic, so
+   `conditional_sequon_score_sd` is structurally 0 and `n_decoding_orders` is 1.
+   Those columns exist so both models share a schema. They are not evidence that
+   ESM-IF is the more precise model.
+
+`conditioning` is recorded as `autoregressive_prefix` rather than `conditional`,
+so the two are never silently pooled.
+
+#### The index hazard, and why it is closed
+
+The manifest's `model_index` is an ordinal into the chain as
+`structures._parse_chains` reads it: Biopython, keeping residues that satisfy
+`is_aa(standard=False)` and carry a CA. ESM-IF reads structures through biotite,
+whose residue set is not guaranteed to be the same. Trusting the index would
+score the wrong residue and still return a plausible number.
+
+Measured on the four matched sets before any mitigation: **~5% of sites**
+disagreed. Two causes, two fixes:
+
+- **biotite raises `KeyError`** converting a non-standard residue name (PCA and
+  friends) to one letter, aborting a whole chain over one residue. The residue
+  *count* is unaffected, because `coords` is built by
+  `get_atom_coords_residuewise` independently of the sequence string — so mapping
+  unknown names to `X` recovers the chain **without shifting any index**.
+- **Where the sequences still differ**, the module's own `_alignment_pairs`
+  decides the correspondence.
+
+A site is then scored only if its three residues map to positions whose
+identities reproduce the manifest's triplet (`ChainMapping.check_triplet`);
+anything else raises. After both fixes, attrition is **zero** across all four
+matched sets, so the frozen matching is preserved exactly:
+
+| Comparison | Pairs | Sites | ESM-IF usable |
+|---|---|---|---|
+| optimal | 16 | 32 | 32 (100%) |
+| secretory | 262 | 525 | 525 (100%) |
+| bacterial | 280 | 560 | 560 (100%) |
+| cytosolic | 273 | 547 | 547 (100%) |
+
+#### Generation
+
+`design_sequences` decodes all 32 designs as **one batch**. ESM-IF is
+autoregressive, so a chain of length L costs L sequential decoder steps however
+many sequences are wanted; sampling one at a time pays that latency 32 times for
+no benefit. Measured against ESM-IF's own `model.sample()` on 1A2W/A, 12 designs
+at T=0.1:
+
+| | native recovery | speed |
+|---|---|---|
+| batched (this adapter) | 0.421 ± 0.010 | 2.63 s/design |
+| `model.sample()` | 0.415 ± 0.010 | 3.73 s/design |
+
+Residue-composition total variation distance 0.022 — the two agree in
+distribution. The batching speedup is only ~1.4x on CPU, which is compute-bound;
+the large win is on GPU, where each decoder step is latency-bound.
+
+Sampling is restricted to the twenty standard amino acids, matching
+ProteinMPNN's design pass omitting `X`. Without it the decoder can emit a special
+token at a sequon position, which `classify_retention` would score as a lost
+motif — a fact about the vocabulary, not about the model.
+
+Sequences are returned **in the manifest's index space**, with `X` where ESM-IF
+has no counterpart residue, so `design[n_model_index]` reads correctly for either
+model. Those `X` positions are unscoreable by construction, so no scored site
+ever reads one.
+
+**One deliberate divergence from the earlier ESM-IF work in
+`decoding-design-bias`.** That code seeds each design individually
+(`torch.manual_seed(seeds[i])`, then one `model.sample`). Batching cannot
+preserve per-design seeds: the whole batch is drawn from one seeded generator, so
+run *i* of a batch is not reproducible as an individually-seeded sample. The run
+as a whole is reproducible from its seed, and retention is a fraction over
+designs rather than a claim about any single one, so nothing downstream depends
+on per-design identity. It is recorded here because the two repositories would
+otherwise look like they disagree.
+
+#### Environment
+
+fair-esm 2.0.0 does not import against biotite >= 1.0 without help; both patches
+are applied by `esmif_scoring.patch_biotite()` and are idempotent.
+
+- `filter_backbone` was renamed `filter_peptide_backbone`.
+- `ProteinSequence.convert_letter_3to1` raises on unknown residue names; it is
+  wrapped to return `X`.
+
+Requires `torch-geometric`. It does **not** require `torch-sparse` (absent here
+and unused), and `torch-scatter` is optional.
+
+`torch-scatter` is a compiled extension needing a wheel matched to the exact
+torch build. PyG stops publishing them for older torch, and building from source
+needs `nvcc` — so on a current torch it is simply unavailable, which is what
+blocked the first ARC setup. ESM-IF imports two names from it, calls one
+(`scatter_add`, to count edges into each node) and never uses the other, so
+`_torch_scatter_shim.py` supplies both in native torch and registers itself as
+`torch_scatter` when the real package is missing. Verified `torch.equal` against
+the real package, and ESM-IF scores through the shim are bit-identical on the
+same device.
+
+**Cross-device reproducibility, separately:** the same sites scored on CPU and on
+a GPU differ by up to ~2e-3 in the sequon score. That is ordinary float32
+arithmetic, not a defect, but it means a score table should record which device
+produced it if runs are ever to be compared at that precision.
+
+Carried over from `decoding-design-bias/design/score_esmif_cohort.py`: **GVP and
+torch_scatter are most reliable on CPU on macOS**, which is why `--device`
+defaults to `cpu` and `resolve_device` downgrades rather than failing. Use
+`--device cuda` on Colab.
+
+#### Running it
+
+```bash
+python pipeline/05_scoreability.py <manifest> <out> --model esm_if
+python pipeline/07_score.py        <manifest> <out> --model esm_if [--device cuda]
+python pipeline/08_design.py       <manifest> <out> --model esm_if [--device cuda]
+```
+
+Defaults are unchanged (`--model proteinmpnn`, `--device cpu`), and the
+refactored ProteinMPNN path reproduces the previous scores bit-for-bit.
+
+For GPU: build the bundle with `pipeline/30_package_for_colab.py`, then run
+`notebooks/esm_if_and_mpnn_gpu.ipynb`.
+
+#### Not done
+
+- A protein-level ESM-IF likelihood (`score_sequence`'s `ll_fullseq`), which is
+  the score `decoding-design-bias` reports. It answers a chain-level question and
+  cannot resolve a three-residue one, but it would make a reasonable **covariate**
+  — does a site-level effect survive conditioning on overall chain likelihood?
+  Not built, because it was not asked for.
+- ESM-IF has no soluble-weights variant to pair with ProteinMPNN's.
+
+
+### ESMC 300M — the sequence-only control
+
+The first model here that sees no structure at all. It exists to ask whether
+sequence context alone reproduces whatever the structure-conditioned models
+report. If it does, the effect need not be structural. If it does not, they are
+doing work sequence cannot.
+
+It is scored on the chain sequence as the module's own parser reads it, rather
+than the full UniProt sequence, so indices, scoreability and matched pairs stay
+identical and "sequence alone versus sequence plus structure" is like-for-like
+rather than also changing the context window.
+
+It implements `SequonScorer` only. Sampling from a masked language model would
+condition on sequence rather than a backbone, so "retention" would not mean what
+it means for the other two.
+
+
+#### Environment: ESMC and ESM-IF cannot coexist
+
+`fair-esm` (ESM-IF1) and EvolutionaryScale's `esm` (ESMC, ESM3) both install a
+top-level package named **`esm`**. Installing one shadows the other. This is not
+a version conflict that can be pinned around — it is the same import name.
+
+So each needs its own environment. The registry lazy-imports, so the absent model
+is simply unavailable rather than breaking the package, and `tests/` skips its
+model-dependent test when the SDK is missing.
+
+```bash
+python -m venv --system-site-packages esmcenv
+esmcenv/bin/pip install --no-deps esm==3.2.2
+esmcenv/bin/pip install --no-deps huggingface_hub'<1.0' 'tokenizers>=0.21,<0.22' \
+    'transformers<4.48.2' tenacity httpx zstd msgpack-numpy cloudpathlib \
+    brotli attrs einops regex safetensors
+```
+
+`--no-deps` throughout is deliberate: the SDK declares `torchtext`, which is
+dead against modern torch and is not imported by ESMC.
+
+#### What is scored, and on which sequence
+
+The chain sequence as `structures._parse_chains` reads it — the same string the
+manifest's `model_index` is an ordinal into. Chosen over the full UniProt
+sequence so that model indices, scoreability and the matched pairs stay identical
+to the structure-conditioned models: "sequence alone versus sequence plus
+structure" is then a like-for-like comparison rather than one that also changes
+the context window.
+
+The cost is that ESMC sees only the resolved chain. Unresolved loops and
+truncated termini are absent — exactly as they are for the other two models. The
+full-UniProt variant remains a reasonable sensitivity analysis; it is not built.
+
+Because a sequence model has no backbone requirement, `decodable_positions`
+returns all True. ESMC's scoreable set is a superset of the others', which never
+widens a matched set: the pairs were frozen on ProteinMPNN's scoreability.
+
+#### The token offset, verified rather than assumed
+
+The tokenizer prepends `<cls>`, so sequence position *i* is token index *i + 1*.
+`_assert_token_offset` round-trips a probe sequence through the tokenizer at load
+and raises if it does not reproduce it.
+
+This is the check the ProteinMPNN alphabet defect went undetected for. An
+assumption about how a model indexes or encodes its own input is not a fact until
+something reproduces the input from it.
+
+#### Masking: two estimands, not two estimates
+
+| Mode | Reads | Use |
+|---|---|---|
+| `single` (default) | `P(residue at i \| every other native residue)` | primary — closest sequence-only analogue of ProteinMPNN's conditional |
+| `joint` | all three sequon positions masked together | sensitivity |
+
+`joint` exists because `single` leaves a confound. Masking only the +2 residue
+still shows the model a native asparagine two positions upstream, and N-X-S/T is
+a heavily learned motif — so the model can infer S/T from the N rather than from
+anything about this site.
+
+Measured on 13 dataset sites:
+
+| | single | joint | delta |
+|---|---|---|---|
+| P(N) | 0.2244 | 0.1767 | −0.0477 |
+| P(S)+P(T) | 0.6022 | 0.5404 | −0.0618 |
+| score | −0.3795 | −0.7195 | **−0.3400** |
+
+Correlation between modes r = 0.837. So roughly **0.34 log-odds of the score is
+the motif reinforcing itself** rather than site-specific information.
+
+This does not invalidate `single`. Occupied and control sites both carry a
+sequon, so the inflation applies to both arms and largely cancels in the paired
+contrast — but it compresses dynamic range and could hide a real difference,
+which is why the sensitivity is worth running.
+
+**The same confound applies to ProteinMPNN and ESM-IF**, which also condition on
+the rest of the native sequon. Neither currently has a joint-masking variant.
+Adding one to ProteinMPNN is straightforward (its `conditional_probs` already
+takes a position set); ESM-IF is harder, since a causal decoder cannot hide an
+upstream residue without also hiding it from everything downstream.
+
+#### Why there is no SequenceDesigner
+
+ESMC is a masked language model. Sampling from it would condition on sequence
+rather than on a backbone, so "retention" would not mean what it means for the
+inverse-folding models. Scoring only.
+
+#### Running it
+
+```bash
+esmcenv/bin/python pipeline/07_score.py <manifest> <out> --model esmc
+```
+
+Cost on CPU: ~1.6 s/site under `single` (three masked variants per sequon,
+batched per chain), ~0.6 s/site under `joint` (one). Cheaper than either
+inverse-folding model.
+
+#### Not done
+
+- ESM3-open, which would give sequence-only / structure-only / sequence+structure
+  from one set of weights. Gated behind a licence acceptance and a token, ~1.4B
+  parameters. The function and annotation tracks must be left empty, or they can
+  leak the glycosylation label.
+- ESM-2, which occupies the same position in the benchmark as ESMC.
+- The full-UniProt-sequence sensitivity described above.
+
+## The recurring bug, which is really one bug
+
+Three separate failures this week were the same failure wearing different
+clothes: **an assumption about how a model represents its own input, believed
+rather than checked.**
+
+**ProteinMPNN's alphabet.** `mpnn_scoring.ALPHABET` held
+`ARNDCQEGHILKMFPSTWYVX`, which is a local three-letter lookup table from inside
+`parse_PDB_biounits` — not the model's token alphabet, which is
+`ACDEFGHIKLMNPQRSTVWYX`. `p_asn_at_n` was reading P(aspartate). P(Ser) and P(Thr)
+were correct by coincidence, because `S` and `T` happen to be two of only four
+fixed points between the two orderings. The test asserted the constant against a
+copy of itself, so it locked the defect in rather than catching it.
+
+**ESM-IF's residue indices.** The manifest's `model_index` is a Biopython
+ordinal; ESM-IF reads structures through biotite. They disagreed on about 5% of
+matched-set sites. Trusting the index would have scored a neighbouring residue
+and returned a perfectly plausible number.
+
+**ESMC's token offset.** The tokenizer prepends `<cls>`, so sequence position *i*
+is token index *i+1* — obvious, easy to get right, and exactly the kind of thing
+that is silently wrong when a tokenizer changes.
+
+The fix in all three cases is the same and it is cheap: **round-trip the model's
+own representation back to something you already know.** Decode ProteinMPNN's `S`
+tensor and check it reproduces the native sequence (19.97% with the wrong
+alphabet, 99.53% with the right one). Map manifest indices through ESM-IF's
+parser and check the residues reproduce the manifest's triplet. Encode a probe
+sequence with ESMC's tokenizer and read it back.
+
+All three checks now run in code — `_assert_token_offset` at load,
+`check_triplet` per site, and an assertion in the Colab preflight that refuses to
+score if alphabet agreement drops below 95%. None of them is clever. All of them
+would have caught their defect on day one.
+
+## Where the models genuinely differ, and why that is the point
+
+The three models are not three measurements of one quantity. They condition on
+different things:
+
+| Model | Sees | Conditional |
+|---|---|---|
+| ProteinMPNN | backbone + all other residues | bidirectional, 8 orders averaged |
+| ESM-IF1 | backbone + native prefix | autoregressive, single pass |
+| ESMC | sequence only | masked position, single pass |
+
+That is a **conditioning spectrum**, and it is more informative than three
+attempts at the same number would be. Sequence-only versus structure-conditioned
+is the comparison that says whether structure is doing any work. It is also why
+the `conditioning` column exists and why raw scores are never pooled across
+models.
+
+A confound they share was found while building ESMC's masking. Masking only the
++2 residue still shows the model a native asparagine two positions upstream, and
+N-X-S/T is a heavily learned motif — so a model can infer S/T from the N rather
+than from anything about the site. Measured on ESMC, that is worth about 0.34
+log-odds of the score. It inflates both arms of a matched pair and therefore
+largely cancels in the paired contrast, but it compresses dynamic range, which
+matters when the effects under discussion are 0.1–0.4 SD. ESMC now has a
+joint-masking variant as a sensitivity; ProteinMPNN could gain one easily, and
+ESM-IF cannot without a causal decoder hiding the residue from everything
+downstream too.
+
+## The operational lessons
+
+**Two packages can own the same name.** `fair-esm` (ESM-IF) and
+EvolutionaryScale's `esm` (ESMC, ESM3) both install a top-level module called
+`esm`. Not a pinnable version conflict — the same import name. They need separate
+environments. The registry lazy-imports, so an absent model is unavailable rather
+than fatal, and the test suite skips model-dependent tests rather than failing.
+
+**Filenames are an interface.** The analysis stages hard-coded every input path.
+With one model that is tidy; with three it is a silent-wrong-answer generator,
+because corrected and per-model outputs land under new names and the stages went
+on reading the old ones without complaint. Every stage now takes `--variant`,
+the empty variant reproduces the original filenames byte-for-byte, and a variant
+whose score file is missing **stops** rather than falling back.
+
+**Provenance belongs to the data.** The analysis used to write
+`"model": "ProteinMPNN v_48_020"` into its output JSON as a literal. It now reads
+`model` / `conditioning` / `n_orders` from the score file. A label restated by
+hand is a label that eventually lies.
+
+## Adding the fourth
+
+1. Write `adapters/<name>.py` implementing one or both protocols, plus
+   `describe()` for the provenance columns.
+2. Register it in `adapters/__init__.py`.
+3. Add a round-trip check that the model's own representation reproduces
+   something you already know.
+4. Run stages 05, 07 and 08 with `--model <name>`, then the analysis with
+   `--variant <name>`.
+
+Nothing else should need touching. If something does, that is worth
+investigating before working around it — it usually means a model-specific quirk
+has escaped its adapter.
+
+### Read next
+
+- [`second_model_esm_if.md`](models.md) — ESM-IF's conditional, its
+  index mapping, batched generation
+- [`third_model_esmc.md`](models.md) — ESMC's masking schemes and the
+  environment split
+- [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) — the
+  alphabet defect in full

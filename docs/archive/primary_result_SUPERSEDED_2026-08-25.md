@@ -193,7 +193,7 @@ with a structure carry a glycoprotein keyword, so the unannotated half certainly
 holds unrecorded sites. A name audit found 32 of 1,543 control proteins suspect,
 8 of which reach the matched pairs; removing them changes nothing (+0.073 →
 +0.074 SD). See `pipeline/13_name_audit.py` and
-[`negative_controls.md`](negative_controls.md).
+[`negative_controls.md`](control_sets.md).
 
 ## Significance
 
@@ -210,7 +210,7 @@ above, which is unaffected.
 
 Rerun on validated scores; neither is part of the conclusion above.
 
-- **[Diagnostic controls](diagnostic_controls.md)** — bacterial (278 pairs,
+- **[Diagnostic controls](control_sets.md)** — bacterial (278 pairs,
   −0.174 SD) and cytosolic (270 pairs, +0.062 SD). The three comparisons point
   in different directions, so the earlier "gradient" reading is withdrawn.
 - **Design retention** — sweep complete, scoreable sites only (2,423 of 2,526):

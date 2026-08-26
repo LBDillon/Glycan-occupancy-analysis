@@ -92,7 +92,7 @@ was corrected on 25/08. This is a statement about protected-sequon redesign.
 
 ## Figures
 
-Captions in [`figure_captions.md`](figure_captions.md); the figures themselves
+Captions in [`figure_captions.md`](../../docs/figures_and_captions.md); the figures themselves
 carry only titles, axes, legends and significance markers.
 
 - `fig4_context_retention.png` — the paired result and the random control

@@ -208,7 +208,7 @@ the vocabulary to say *how* it beats it, rather than merely *that* it does.
 ### Related
 
 - [`OVERVIEW.md`](../../docs/OVERVIEW.md) — current results and what they support
-- [`adding_models_explainer.md`](../../docs/adding_models_explainer.md) — how the benchmark
+- [`adding_models_explainer.md`](../../docs/models.md) — how the benchmark
   came to hold three models, and what broke on the way
-- [`negative_controls.md`](../../docs/negative_controls.md) — what evidence stands behind
+- [`negative_controls.md`](../../docs/control_sets.md) — what evidence stands behind
   each control set

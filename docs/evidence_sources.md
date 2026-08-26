@@ -34,7 +34,7 @@ absence informative: the entry models a glycan elsewhere in the same structure,
 and the protein was expressed in a host competent to glycosylate. 32 sites across
 25 proteins qualify — sequons with no modelled glycan under internal-control
 conditions, which is not the same as a proven biochemical negative. See
-`structures.py` and [`negative_controls.md`](negative_controls.md).
+`structures.py` and [`negative_controls.md`](control_sets.md).
 
 ---
 
