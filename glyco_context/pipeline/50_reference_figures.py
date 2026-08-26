@@ -101,9 +101,6 @@ cx.set_xticklabels([{"alpha_R": "α-right", "beta": "β", "alpha_L": "α-left",
                      "other": "other"}.get(i, i) for i in counts.index])
 cx.set_ylabel("occupied sites")
 cx.set_title("Backbone region at the Asn")
-cx.text(0.98, 0.94, "α-left is common for Asn\nspecifically — not an artefact",
-        transform=cx.transAxes, ha="right", va="top", fontsize=8.4, color=INK)
-fig.tight_layout()
 fig.savefig(OUT / "fig2_occupied_context.png", dpi=200, bbox_inches="tight")
 print("wrote", OUT / "fig2_occupied_context.png")
 

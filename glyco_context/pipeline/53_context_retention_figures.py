@@ -35,10 +35,12 @@ site = scored.pivot_table(index=["accession", "position"], columns="variant",
                           values="distance", aggfunc="mean").dropna(subset=["wild_type"])
 
 def ci(values, n_boot=2000, seed=0):
+    """Mean, percentile interval, and the two-sided bootstrap p against zero."""
     values = np.asarray(values, float)
     rng = np.random.default_rng(seed)
     draws = rng.choice(values, (n_boot, len(values)), replace=True).mean(axis=1)
-    return values.mean(), np.percentile(draws, 2.5), np.percentile(draws, 97.5)
+    p = min(1.0, max(2 * min((draws <= 0).mean(), (draws >= 0).mean()), 1 / n_boot))
+    return values.mean(), np.percentile(draws, 2.5), np.percentile(draws, 97.5), p
 
 # =============================================================================
 # fig4 — the result, as two simple rows of dots
@@ -51,7 +53,7 @@ groups = [("wild type", site.wild_type, INK),
           ("random control", site.random, DIM),
           ("design", site.design, OCC)]
 for i, (name, values, colour) in enumerate(groups):
-    mean, low, high = ci(values)
+    mean, low, high, _ = ci(values)
     ax.plot([low, high], [i, i], color=colour, lw=3, solid_capstyle="round")
     ax.plot(mean, i, "o", color=colour, ms=10)
     ax.text(high + 0.012, i, f"{mean:.3f}", va="center", fontsize=10.5, color=INK)
@@ -65,10 +67,12 @@ ax.tick_params(left=False)
 changes = [("design\nminus wild type", site.design - site.wild_type, OCC),
            ("random control\nminus wild type", site.random - site.wild_type, DIM)]
 for i, (name, values, colour) in enumerate(changes):
-    mean, low, high = ci(values)
+    mean, low, high, p = ci(values)
     bx.plot([low, high], [i, i], color=colour, lw=3, solid_capstyle="round")
     bx.plot(mean, i, "o", color=colour, ms=10)
-    bx.text(high + 0.004, i, f"+{mean:.3f}", va="center", fontsize=10.5, color=INK)
+    star = "*" if p < 0.05 else ""
+    bx.text(high + 0.004, i, f"+{mean:.3f}   p={p:.3f}{star}", va="center",
+            fontsize=10.5, color=INK)
 bx.axvline(0, color=INK, lw=1.0, zorder=1)
 bx.set_yticks(range(len(changes))); bx.set_yticklabels([c[0] for c in changes])
 bx.set_ylim(-0.6, len(changes) - 0.4); bx.invert_yaxis()
@@ -76,10 +80,6 @@ bx.set_xlabel("change in distance  (right = further from natural context)")
 bx.set_title("The design moves about twice as far as arbitrary change\n"
              "of the same size — but the gap between them is not significant", pad=10)
 bx.tick_params(left=False)
-bx.text(0, -0.30, f"{len(site)} sites, 38 proteins. Bars are 95% intervals. Every design "
-        "keeps the sequon.\nA wild type sits inside the reference by construction, so the "
-        "random control\nshows how much of the drift is simply that.",
-        transform=bx.transAxes, fontsize=9.5, color=INK, va="top")
 fig.tight_layout()
 fig.savefig(OUT / "fig4_context_retention.png", dpi=200, bbox_inches="tight")
 print("wrote", OUT / "fig4_context_retention.png")
@@ -112,9 +112,5 @@ if path.exists():
     ax.set_xlabel("shift after design  (reference standard deviations)")
     ax.set_title("Five of fifteen features move at all\nthe strongest: more glycine, fewer aromatics near the site", pad=10)
     ax.tick_params(left=False)
-    ax.text(0, -0.42, "Faint bars are weaker evidence. None survives multiple-testing "
-            "correction at\nq < 0.05, so this is a lead rather than a result.",
-            transform=ax.transAxes, fontsize=9.5, color=INK, va="top")
-    fig.tight_layout()
     fig.savefig(OUT / "fig5_context_features.png", dpi=200, bbox_inches="tight")
     print("wrote", OUT / "fig5_context_features.png")

@@ -128,12 +128,6 @@ bx.set_ylim(-0.6, len(bars) - 0.15)
 bx.set_xlim(0, 100)
 bx.set_xlabel("% of comparison proteins that also carry an occupied site")
 bx.set_title("Why: occupancy was confounded\nwith protein identity", fontsize=12.5, pad=12)
-bx.text(0, -0.30,
-        "The secretory comparison shares no proteins and no chains with the\n"
-        "occupied set, so every difference there is also a difference between\n"
-        "two different sets of proteins. The internal controls largely are not,\n"
-        "which is why their near-zero estimates carry weight.",
-        transform=bx.transAxes, fontsize=9, color=INK, va="top")
 fig.subplots_adjust(wspace=0.42)
 fig.savefig(OUT / "fig1_effects_collapse.png", dpi=200, bbox_inches="tight")
 print("wrote", OUT / "fig1_effects_collapse.png")
@@ -173,11 +167,6 @@ ax.set_ylabel("standardised difference")
 ax.set_title("One feature holds its direction under every framing; the large ones do not",
              fontsize=12)
 ax.legend(frameon=False, fontsize=9, ncol=2)
-ax.text(0.0, -0.30,
-        "* survives Benjamini–Hochberg within that comparison. The two matched-pair "
-        "framings control composition;\nthe two population framings do not, and their "
-        "large values are the confounded ones.",
-        transform=ax.transAxes, fontsize=9, color=INK, va="top")
 fig.tight_layout()
 fig.savefig(OUT / "fig3_framings.png", dpi=200, bbox_inches="tight")
 print("wrote", OUT / "fig3_framings.png")

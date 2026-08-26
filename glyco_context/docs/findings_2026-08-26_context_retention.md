@@ -92,8 +92,14 @@ was corrected on 25/08. This is a statement about protected-sequon redesign.
 
 ## Figures
 
-- `fig4_context_retention.png` — every site's wild type paired to its designs,
-  and the three paired differences
+Captions in [`figure_captions.md`](figure_captions.md); the figures themselves
+carry only titles, axes, legends and significance markers.
+
+- `fig4_context_retention.png` — the paired result and the random control
 - `fig5_context_features.png` — per-feature shifts with intervals
+- `fig6_feature_distributions.png` — natural, wild type and design as empirical
+  cumulative distributions, per feature
 - `fig2_occupied_context.png` — the natural reference the distances are measured
   against
+
+Terms are defined in [`glossary.md`](glossary.md).

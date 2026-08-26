@@ -28,7 +28,8 @@ tested against the frozen model contrasts.
                          change_audit      attribute every changed row
 
     docs/       why this exists, the mapping correction, the pre-specification,
-                Amendment 1, and the findings
+                the findings, plus glossary.md (every term defined) and
+                figure_captions.md (figures carry no explanatory text)
     results/    generated tables, reports and figures (git-ignored)
     tests/      run from the repository root with the rest of the suite
 
