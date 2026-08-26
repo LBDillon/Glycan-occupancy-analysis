@@ -243,7 +243,7 @@ ProteinMPNN designs each with the sequon held fixed.
 |---|---|---|---|
 | design − wild type | **+0.050** | [0.033, 0.067] | 0.0005 |
 | random control − wild type | +0.018 | [0.006, 0.031] | 0.002 |
-| **design − random** | **+0.032** | [0.019, 0.045] | 0.0005 |
+| **design − random** | **+0.033** | [0.020, 0.046] | 0.0005 |
 
 **Protecting the sequon does not protect its environment**, and ProteinMPNN
 drifts further from natural occupied context than changing the same number of
@@ -257,6 +257,35 @@ local disregard for glycosylation context.
 
 Directly relevant to SugarFix preserve mode: sequon retention as a metric does
 not capture what redesign does around a protected site.
+
+### Is a sequon lost faster than anything else?
+
+No. Unconstrained redesign over 318 occupied sites, 220 proteins:
+
+| Quantity | Mean | 95% CI |
+|---|---|---|
+| Sequon retained, exact triplet | 7.6% | [4.9, 10.4] |
+| Control triplet retained, exact | 9.5% | [9.0, 10.0] |
+| **control − sequon** | **1.8 pp** | **[−1.0, +4.6]** |
+
+Sequons are lost at about the rate any three-residue motif is lost, so the loss
+reflects **general redesign rather than glycan blindness** — the interval spans
+zero. Validated against the ARC retention run (13.0% against 13.6% on the
+pattern definition, correlated 0.993), and sequon residues are not unusually
+vulnerable (N/S/T average 41.7% retention against 45.5% overall).
+
+This and the composition control agree from opposite directions: nothing about
+ProteinMPNN's behaviour at glycosylation sites is special. Sequons are lost in
+roughly 92% of designs, so preserving them requires instructing the model to.
+
+Full account:
+[`../glyco_context/docs/findings_2026-08-26_sequon_retention_rate.md`](../glyco_context/docs/findings_2026-08-26_sequon_retention_rate.md).
+
+Two caveats carried with this result: the random control was corrected on 26/08
+after it was found not to be mutation-count matched (the result moved +0.032 to
++0.033), and disulfide cysteines were never held fixed despite the
+pre-specification saying they would be — recorded as a deviation, not correctable
+without regenerating the designs.
 
 Full account, including what the result does not license:
 [`../glyco_context/docs/findings_2026-08-26_context_retention.md`](../glyco_context/docs/findings_2026-08-26_context_retention.md).

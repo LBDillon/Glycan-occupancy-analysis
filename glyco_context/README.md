@@ -16,6 +16,7 @@ tested against the frozen model contrasts.
                 52  distance from natural occupied context, and the random control
                 53  result figures          54  feature distributions
                 55  composition control: is the shift local or global?
+                56  retention rate: is a sequon lost faster than other motifs?
 
     src/glyco_context/   local_chemistry   the fifteen-feature panel
                          fixed_design      holding positions fixed, and verifying it
@@ -52,7 +53,13 @@ drift, and the benchmark's matching is built on this one.
 
 ## Read this before using the results
 
-`docs/findings_2026-08-26_context_retention.md` — the live result. Designs drift
+Two live findings:
+
+`docs/findings_2026-08-26_sequon_retention_rate.md` — sequons are lost at about
+the rate any three-residue motif is lost, so the loss reflects general redesign
+rather than glycan blindness. Needs no occupancy labels.
+
+`docs/findings_2026-08-26_context_retention.md` — the fixed-sequon result. Designs drift
 away from natural occupied context with the sequon fully protected (+0.071
 [0.025, 0.122]), and ProteinMPNN is not measurably better at preserving it than
 changing the same number of residues at random.

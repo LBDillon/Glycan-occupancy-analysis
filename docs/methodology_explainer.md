@@ -404,6 +404,32 @@ could be a global preference rather than anything local.
 Running only the first would have supported a conclusion the second does not.
 That is the argument for both.
 
+## A second experiment that needs no labels
+
+The fixed-sequon test asks what happens to a *protected* motif's surroundings.
+The complementary question is what happens to an *unprotected* one, and it is
+the cleaner question because it needs no occupancy labels at all:
+
+> When unconstrained design is applied to proteins with known occupied sequons,
+> how often are those sequons lost relative to the overall mutation rate and to
+> comparable non-glycan three-residue motifs?
+
+"The model destroys sequons" is true and uninformative on its own — the model
+changes most residues. The control carries the experiment: every three-residue
+window in the same chains that does not touch a sequon, measured on the same
+designs. With sequence recovery around 44%, three consecutive residues surviving
+is unlikely whatever they spell, and comparing sequon loss against the
+*per-residue* rate would make an ordinary outcome look alarming.
+
+Two readings are reported because they differ. Retention as the benchmark defines
+it is a **pattern** — asparagine, not proline, then serine or threonine — so a
+sequon can survive while its residues change. An arbitrary triplet has no such
+latitude, so only exact-against-exact is like for like.
+
+The answer is that sequons are lost at about the rate any triplet is lost. Which
+means the loss reflects general redesign, not glycan blindness — a question the
+project had left open and could not answer without this control.
+
 ## What the result is, and what it is not
 
 Designs drift away from natural occupied context with the motif fully protected,
