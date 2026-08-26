@@ -178,24 +178,29 @@ and not for ProteinMPNN**.
 Both arms carry the motif, so motif recognition alone cannot separate them.
 Hiding the whole sequon asks what the surroundings alone say.
 
-| | gap, motif visible | gap, motif hidden | change |
-|---|---|---|---|
-| ESMC (sequence only) | +0.121 | +0.007 | **+0.113** [+0.071, +0.147] |
-| ProteinMPNN (structure) | +0.022 ⚠ | +0.029 ⚠ | −0.007 ⚠ |
+| | motif visible | motif hidden | change | p |
+|---|---|---|---|---|
+| ESMC (sequence only) | +0.404 | −0.155 | **+0.558** [+0.447, +0.724] | 0.0001 |
+| ProteinMPNN (structure) | +0.266 | +0.301 | **−0.035** [−0.088, −0.008] | 0.008 |
 
-> **⚠ The ProteinMPNN row is stale and must not be interpreted.** Its joint-mask
-> scores were computed before the 2026-08-25 sequon-indexing correction, which
-> moved that model's unmasked secretory result from +0.090 to +0.282 SD. The
-> masked variant has not been regenerated, so the comparison between the two
-> columns is not currently meaningful for ProteinMPNN. ESMC is unaffected — its
-> adapter validated the triplet and never used the raw index.
+*Log odds, on the same scale as the score table above. Earlier notes gave ESMC's
+change as +0.113 in predicted-probability units, a scale used nowhere else.
+Both ProteinMPNN rows are the corrected indexing, regenerated 26/08; the
+previously stale row is retired.*
 
-The sequence-only model's discrimination depends entirely on seeing the motif in
-context. Whether the structure-conditioned model's does is currently unknown,
-pending that regeneration. ESM-IF has no joint variant
-— `<mask>` is off-distribution in its decoder prefix (it sends 93% of the
-probability mass onto aromatics), so the honest version needs marginalisation
-rather than substitution. Not built.
+**The two models behave oppositely, and this is the clearest architecture
+difference the benchmark has found.** Hiding the motif destroys ESMC's
+preference — it was judging how well the motif fits its context, not reading the
+context alone. ProteinMPNN's preference survives and slightly strengthens, so it
+does not depend on seeing the motif.
+
+One caveat bounds that reading. **ProteinMPNN cannot be fully blinded to the
+sequon**: joint masking hides the other two residues' identities while the
+backbone stays, and backbone geometry at a sequon is itself informative. So
+"survives masking" means "does not need the neighbouring residue identities",
+not "knows nothing about the motif being there". ESMC, seeing only sequence, has
+no such residual channel — which is exactly why the two are not directly
+comparable, and why the contrast between them is suggestive rather than decisive.
 
 ## What went wrong, and what it cost
 
