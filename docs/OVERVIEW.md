@@ -339,14 +339,20 @@ teach a model curation patterns.
 
 | Document | For |
 |---|---|
-| [`why_glyco_site_context_analysis.md`](../glyco_context/docs/why_glyco_site_context_analysis.md) | **why this work exists, and what the benchmark could not answer** |
-| [`adding_models_explainer.md`](models.md) | how one model became three, and what broke |
+| [`summary_2026-08-26.md`](summary_2026-08-26.md) | **the short account, current** |
+| [`methodology_explainer.md`](methodology_explainer.md) | **the whole project: data, assumptions, maths, limits** |
+| [`why_glyco_site_context_analysis.md`](../glyco_context/docs/why_glyco_site_context_analysis.md) | why the context branch exists, and what was abandoned |
+| [`glossary.md`](glossary.md) | every term, in plain language |
+| [`models.md`](models.md) | how one model became three, what each conditions on, how to run them |
+| [`control_sets.md`](control_sets.md) | what evidence stands behind each control set |
+| [`figures_and_captions.md`](figures_and_captions.md) | every figure, and what it does not show |
+| [`methods_sequon_indexing.md`](methods_sequon_indexing.md) | how a site becomes an index a model can be read at |
+| [`correction_2026-08-25_sequon_indexing.md`](correction_2026-08-25_sequon_indexing.md) | the defect that reversed the ProteinMPNN headline |
 | [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) | the alphabet defect in full |
-| [`second_model_esm_if.md`](models.md) | ESM-IF's conditional, index mapping, batched generation |
-| [`third_model_esmc.md`](models.md) | ESMC, the two masking schemes, the environment split |
-| [`negative_controls.md`](control_sets.md) | what evidence stands behind each control set |
-| [`glossary.md`](glossary.md) | the terms, in plain language |
-| [`rationale_and_progress.md`](rationale_and_progress.md) | why the module exists |
+
+Dated records — never updated, kept as accounts of a moment:
+`summary_2026-08-23.md`, the four `correction_*` notes,
+`walkthrough_annotated_2026-08-19.md`, and `archive/`.
 | [`running_on_arc.md`](running_on_arc.md) | job arrays, sharding, merging |
 | `../README.md` | how to run everything |
 
