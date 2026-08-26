@@ -264,9 +264,20 @@ copies, and one control protein can serve several occupied cases. The test flips
 the sign of every contrast within a whole resample unit at once, so the null
 respects the dependency. Wilcoxon p-values are reported alongside and are
 systematically smaller; that gap is the dependency, not extra evidence.
-Correction spans all eight tests — four control sets times two outcomes —
-because correcting within one outcome would understate how many chances the
-result had to appear.
+Correction spans the **confirmatory** comparisons only: internal control and
+eukaryotic secretory, across both outcomes. Bacterial and cytosolic sequons
+cannot be occupied in any compartment sense, so a test against them can never
+answer the question and does not belong in a family whose purpose is to price
+the chances a real answer had to appear.
+
+That change is not free, and not in the direction one might expect. Those two
+diagnostics were reliably and strongly significant, so under Benjamini–Hochberg
+they occupied the lowest ranks and loosened the threshold for everything above
+them — the secretory result read BH 0.021 in a family of eight and reads 0.031
+in a family of four. The help was illegitimate: BH controls the false-discovery
+proportion, and stuffing a family with guaranteed discoveries inflates its
+estimate of how many are real. Under Holm, which has no such mechanism, the
+narrower family is straightforwardly better.
 
 ## What would settle it
 

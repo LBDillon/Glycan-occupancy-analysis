@@ -45,6 +45,14 @@ COMPARISONS = [("internal control", "optimal", "internal"),
                ("bacterial", "bacterial", "bacterial"),
                ("cytosolic", "cytosolic", "cytosolic")]
 
+# Bacterial and cytosolic sequons cannot be occupied -- wrong compartment, no
+# oligosaccharyltransferase -- so they are unoccupied irrespective of anything
+# local. They are diagnostics: informative about how the measurement behaves,
+# and not tests of occupancy. Correcting across them spent half the family on
+# comparisons that could never answer the question, which cost significance on
+# the ones that could. They are still computed and reported, without correction.
+CONFIRMATORY = {"internal control", "eukaryotic secretory"}
+
 SCORE = [(label, paths.contrasts(key, VARIANT)) for label, key, _ in COMPARISONS]
 RETENTION = [(label, paths.retention_paired(stem, VARIANT))
              for label, _, stem in COMPARISONS]
@@ -118,11 +126,20 @@ for outcome, table in (("conditional score", SCORE), ("design retention", RETENT
         })
 
 results = pd.DataFrame(rows)
-results["p_holm"] = holm(results.p_permutation.to_numpy())
-results["p_bh"] = benjamini_hochberg(results.p_permutation.to_numpy())
+results["family"] = results.comparison.map(
+    lambda c: "confirmatory" if c in CONFIRMATORY else "diagnostic")
+confirmatory = results.family.eq("confirmatory").to_numpy()
+results["p_holm"] = np.nan
+results["p_bh"] = np.nan
+results.loc[confirmatory, "p_holm"] = holm(
+    results.loc[confirmatory, "p_permutation"].to_numpy())
+results.loc[confirmatory, "p_bh"] = benjamini_hochberg(
+    results.loc[confirmatory, "p_permutation"].to_numpy())
 results.to_csv(paths.significance(VARIANT), index=False)
 
-print(f"cluster-level sign-flip permutation, {N_PERM:,} draws, {len(results)} tests\n")
+print(f"cluster-level sign-flip permutation, {N_PERM:,} draws.\n"
+      f"correction spans the {int(confirmatory.sum())} confirmatory tests; the "
+      f"{int((~confirmatory).sum())} diagnostics are reported uncorrected.\n")
 for outcome in results.outcome.unique():
     part = results[results.outcome == outcome]
     print(f"=== {outcome} ===")

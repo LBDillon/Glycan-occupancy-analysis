@@ -96,11 +96,19 @@ guard refuses sites whose two parses cannot be reconciled.
 `*` p<0.05, `**` p<0.01, `***` p<0.001 (Wilcoxon, uncorrected). Reference SDs
 differ per model (1.36 / 1.51 / 1.55 / 1.37).
 
+**Multiplicity correction spans the confirmatory comparisons only** — internal
+control and eukaryotic secretory, across both outcomes. Bacterial and cytosolic
+sequons cannot be occupied, so they are reported as diagnostics without
+correction. Including them had put four guaranteed-significant tests in the
+family, which under Benjamini–Hochberg loosened the threshold for everything
+else: ProteinMPNN's secretory score reads BH 0.031 corrected across the four
+confirmatory tests, against 0.021 when the diagnostics were included.
+
 ### What this says
 
 **On the best-powered comparison, three of three models find a real effect.**
 ESM-IF gives +0.431 SD (BH p = 2e-06), ESMC-single +0.261 SD (BH p = 8e-04), and
-ProteinMPNN — once its sequon indexing is corrected — +0.282 SD (BH 0.021),
+ProteinMPNN — once its sequon indexing is corrected — +0.282 SD (BH 0.031),
 both with intervals entirely above the ±0.2 SD equivalence margin. ProteinMPNN
 does not resolve it (+0.090, inconclusive).
 

@@ -11,27 +11,25 @@ tested against the frozen model contrasts.
 
 ## Layout
 
-    pipeline/   41  build the context manifest (one row per biological site)
-                43  extract structural features   43b  merge shards, gated
-                44  the three analysis views      45   enforcing QC report
-                46  old-vs-new change audit
-                47  describe the occupied distribution        (Step 2)
-                48  population comparisons                    (Step 3)
-                49  matched-pair comparisons                  (Amendment 1)
+    pipeline/   50  the natural reference picture
+                51  redesign with the sequon held fixed, and measure local chemistry
+                52  distance from natural occupied context, and the random control
+                53  result figures          54  feature distributions
+                55  composition control: is the shift local or global?
 
-    src/glyco_context/   context_features  extraction
-                         context_merge     shard merging, fatal on loss
-                         context_views     the three views and exclusion reasons
-                         context_qc        invariants
+    src/glyco_context/   local_chemistry   the fifteen-feature panel
+                         fixed_design      holding positions fixed, and verifying it
+                         context_distance  distance from the reference, protein held out
                          context_stats     effect sizes, cluster bootstrap, BH
-                         sequence_qc       row-level sequence checks
-                         change_audit      attribute every changed row
 
-    docs/       why this exists, the mapping correction, the pre-specification,
-                the findings, plus ../docs/glossary.md (every term defined) and
-                figure_captions.md (figures carry no explanatory text)
+    docs/       why this exists, the pre-specification, the findings
+    archive/    context_extractor/     the 97-column structural description
+                comparative_analysis/  occupied against unoccupied, a negative result
     results/    generated tables, reports and figures (git-ignored)
     tests/      run from the repository root with the rest of the suite
+
+Two things are archived rather than deleted, each with a README explaining why.
+The extractor's output is retained and still read; only its code is archived.
 
 ## Running it
 
