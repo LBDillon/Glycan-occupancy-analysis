@@ -27,6 +27,8 @@ parser.add_argument("pattern", help="glob matching the shard files (quote it)")
 parser.add_argument("out")
 parser.add_argument("--expect-manifest", default=None,
                     help="manifest the run came from, to report coverage")
+parser.add_argument("--allow-incomplete", action="store_true",
+                    help="write the merged table even when shards are missing. For inspecting a partial run, never for analysis.")
 parser.add_argument("--shards", type=int, default=None,
                     help="array width; warns if a shard index is missing")
 args = parser.parse_args()
@@ -62,8 +64,19 @@ if args.shards:
             for m in [re.search(r"shard(\d+)", Path(p).name)] if m}
     missing = sorted(set(range(args.shards)) - seen)
     if missing:
-        print(f"  WARNING: shards {missing} are absent. The merged table is "
-              "INCOMPLETE -- resubmit those array indices before analysing it.")
+        # Exit non-zero rather than warn. A warning scrolls past, and what is
+        # left behind is a file that looks exactly like a complete one -- which
+        # is the failure this stage exists to prevent, not to narrate.
+        # --allow-incomplete is for deliberately inspecting a partial run.
+        message = (f"shards {missing} are absent of {args.shards}. The merged "
+                   "table is INCOMPLETE. Resubmit those array indices, and "
+                   "delete the partial shards first: a resubmitted array "
+                   "resumes from existing output, so stale shards are mistaken "
+                   "for finished work.")
+        if not args.allow_incomplete:
+            raise SystemExit(f"MERGE REFUSED: {message}\n"
+                             "Pass --allow-incomplete to write it anyway.")
+        print(f"  WARNING: {message}")
     else:
         print(f"all {args.shards} shards present")
 

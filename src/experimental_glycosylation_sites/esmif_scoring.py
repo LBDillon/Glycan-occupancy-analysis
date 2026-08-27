@@ -453,6 +453,9 @@ def design_sequences(mapping: ChainMapping, model, alphabet, n_designs: int,
 MASK_MODES = ("single", "joint")
 DEFAULT_MASK_MODE = "single"
 DEFAULT_MARGINAL_SAMPLES = 16
+# Samples pushed through the encoder at once. The whole structure is tiled per
+# sample, so this caps memory by chain length rather than by sample count.
+DEFAULT_MARGINAL_BATCH = 4
 
 CONDITIONING_JOINT = "autoregressive_prefix_marginalised"
 
@@ -467,7 +470,8 @@ def marginalised_probabilities(mapping: ChainMapping, model, alphabet,
                                n_index: int, plus1_index: int, plus2_index: int,
                                device: str = "cpu",
                                n_samples: int = DEFAULT_MARGINAL_SAMPLES,
-                               seed: int = 0):
+                               seed: int = 0,
+                               max_batch: "int | None" = DEFAULT_MARGINAL_BATCH):
     """P at the three sequon positions with the upstream sequon residues hidden.
 
     ESM-IF is causal, so hiding is not symmetric and only one term needs work:
@@ -510,13 +514,42 @@ def marginalised_probabilities(mapping: ChainMapping, model, alphabet,
     allowed = _standard_indices(alphabet).to(device)
     generator = torch.Generator(device="cpu").manual_seed(seed)
 
-    def forward(token_batch):
+    def _forward_chunk(token_batch):
         size = token_batch.shape[0]
         coords, confidence, _, _, padding = converter(
             [(mapping.coords, None, mapping.esm_seq)] * size, device=device)
         with torch.no_grad():
             logits, _ = model.forward(coords, padding, confidence, token_batch[:, :-1])
         return F.softmax(logits.transpose(1, 2).float(), dim=-1)   # [B, L, vocab]
+
+    def forward(token_batch):
+        """`_forward_chunk`, but in pieces small enough to fit in memory.
+
+        The whole structure is tiled once per sample, so cost is batch times
+        chain length. A batch of 16 is nothing for a short chain and thousands
+        of residue-slots for a long one, which is what took out seven of eight
+        ARC tasks with OUT_OF_MEMORY. `design_sequences` already solved this;
+        the fix had not been carried across.
+
+        Chunking changes nothing about the estimate: the draws differ only in
+        their prefix, so splitting them is arithmetic, not approximation.
+        """
+        total = token_batch.shape[0]
+        size = total if max_batch is None else max(1, min(total, int(max_batch)))
+        while True:
+            try:
+                pieces = [_forward_chunk(token_batch[start:start + size])
+                          for start in range(0, total, size)]
+                return torch.cat(pieces, dim=0) if len(pieces) > 1 else pieces[0]
+            except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
+                if size > 1 and "out of memory" in str(exc).lower():
+                    if device.startswith("cuda"):
+                        torch.cuda.empty_cache()
+                    size = max(1, size // 2)
+                    print(f"    OOM in marginalisation; retrying with batch {size}",
+                          flush=True)
+                    continue
+                raise
 
     # Native tokens, as the baseline prefix. The BOS shift means sequence index
     # i sits at token index i + 1.
