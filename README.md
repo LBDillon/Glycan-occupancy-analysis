@@ -193,18 +193,40 @@ cluster bootstrap, significance testing and the figures all work on tables keyed
 by `(accession, position)`. Adding ESM-IF, ESM3 or anything else means writing
 **one adapter** and touching nothing else.
 
-Three models are registered:
+Four models are registered:
 
 | Name | Conditions on | Implements | Notes |
 |---|---|---|---|
 | `proteinmpnn` | backbone + all other native residues, 8 decoding orders | scorer + designer | [correction](docs/correction_2026-08-20_alphabet.md) |
 | `esm_if` | backbone + native prefix (autoregressive) | scorer + designer | [doc](docs/models.md) |
 | `esmc` | **sequence only** (masked LM) | scorer | [doc](docs/models.md) |
+| `carbonara` | backbone + all other native residues, one pass | **scorer only** | [doc](docs/models.md) |
 
 **`esmc` cannot be installed alongside `esm_if`.** `fair-esm` and
 EvolutionaryScale's `esm` both claim the top-level import name `esm`. Use a
 separate environment for each; the registry lazy-imports, so the absent model is
 unavailable rather than breaking the package.
+
+**`carbonara` needs a checkout, not a package.** Clone
+[CARBonAra](https://github.com/LBM-EPFL/CARBonAra) — it ships its own weights
+under `model/save/` — and point `CARBONARA_DIR` at it, or leave it beside this
+repository. It additionally needs `gemmi`, `blosum`, `scikit-learn` and `h5py`,
+none of which this package installs — upstream's `src/__init__.py` imports its
+whole `src` package, so the scoring and dataset modules' dependencies are needed
+even though this integration calls none of them. Discovery is deferred until the model is first used, so a missing
+checkout is a clear error from `--model carbonara` and affects nothing else.
+
+```bash
+python pipeline/05_scoreability.py results/manifests/scoring_manifest_secretory.csv \
+  results/manifests/scoreability_secretory_carbonara.csv --model carbonara
+
+python pipeline/07_score.py results/manifests/scoring_manifest_secretory.csv \
+  results/scores/scores_secretory_carbonara.csv --model carbonara --device cpu
+```
+
+CARBonAra needs its own scoreability pass: its parser is gemmi, not Biopython,
+so which sites it can address is a different question again. It implements no
+`design()`, so there is **no stage 08 and no retention number** for it.
 
 `src/experimental_glycosylation_sites/adapters/` defines two protocols. A model
 may implement either or both:

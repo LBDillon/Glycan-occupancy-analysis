@@ -11,6 +11,11 @@ _REGISTRY = {
     # Sequence-only. Needs EvolutionaryScale's `esm`, which cannot be installed
     # alongside `fair-esm` -- both claim the import name `esm`.
     "esmc": ("experimental_glycosylation_sites.adapters.esmc", "ESMCAdapter"),
+    # Scorer only, by design: upstream generation samples stochastically from
+    # raw confidences, so there is no retention number to report. Needs a
+    # CARBonAra checkout plus gemmi and blosum, none of them core dependencies.
+    "carbonara": ("experimental_glycosylation_sites.adapters.carbonara",
+                  "CARBonAraAdapter"),
 }
 
 

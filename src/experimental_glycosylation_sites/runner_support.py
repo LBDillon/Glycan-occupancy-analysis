@@ -120,6 +120,43 @@ def proteinmpnn_dir() -> Path:
           "PROTEINMPNN_DIR to its checkout.")
 
 
+# Where a CARBonAra checkout might be. Upstream is a script layout rather than
+# an installable package -- `carbonara.py` at the root, `src/` beside it -- so
+# the checkout directory itself is what goes on sys.path.
+CARBONARA_CANDIDATES = ("../../CARBonAra", "/content/CARBonAra",
+                        "../CARBonAra", "CARBonAra", "~/CARBonAra")
+
+
+def carbonara_dir() -> Path:
+    """Locate CARBonAra, honouring $CARBONARA_DIR first.
+
+    Identified by `carbonara.py` rather than by the directory merely existing,
+    so an empty or half-cloned checkout is rejected here with a clear message
+    instead of failing later inside an import. Called only when the `carbonara`
+    adapter actually needs the model, so every other command is unaffected by
+    its absence.
+    """
+    import os
+
+    candidates = []
+    override = os.environ.get("CARBONARA_DIR")
+    if override:
+        candidates.append(override)
+    candidates.extend(CARBONARA_CANDIDATES)
+
+    for candidate in candidates:
+        path = Path(candidate).expanduser()
+        if (path / "carbonara.py").exists():
+            return path
+
+    raise FileNotFoundError(
+        "CARBonAra not found. Looked for carbonara.py in: "
+        + ", ".join(str(Path(c).expanduser()) for c in candidates)
+        + ". Clone it (https://github.com/LBM-EPFL/CARBonAra), which ships its "
+          "own weights under model/save/, or set CARBONARA_DIR to its checkout. "
+          "It also needs gemmi and blosum, which this package does not install.")
+
+
 def build_adapter(name: str, device: str = "cpu", **options):
     """Construct a registered adapter, passing what it understands.
 

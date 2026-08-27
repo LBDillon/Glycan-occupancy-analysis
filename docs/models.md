@@ -1,6 +1,6 @@
 # The models
 
-How the benchmark grew from one model to three, what each one is, and how to
+How the benchmark grew from one model to four, what each one is, and how to
 run it. Merges the former `adding_models_explainer.md`, `second_model_esm_if.md`
 and `third_model_esmc.md`.
 
@@ -389,6 +389,161 @@ inverse-folding model.
 - ESM-2, which occupies the same position in the benchmark as ESMC.
 - The full-UniProt-sequence sensitivity described above.
 
+### CARBonAra — a fourth parser, and a scorer only
+
+*Added 2026-08-27.* CARBonAra (Krapp et al., Nat Commun 2024) is a geometric
+transformer over atomic coordinates and element names, built on PeSTo. It has no
+amino-acid-specific parameterisation, which is what lets it read arbitrary
+molecular context — and is exactly the capability this integration switches off.
+
+**The input is protein only.** One chain, MSE converted to MET, every glycan,
+ligand, ion, water, hydrogen and other chain removed, heteroatom and water
+removal set on the loader as well for good measure. That is the same view
+ProteinMPNN gets. Scoring CARBonAra on its default context-aware input would not
+be a fourth opinion on the same question; it would be a different question, and a
+partly circular one, since a NAG modelled onto ND2 is covalently bonded to the
+asparagine whose probability is being read.
+
+**The conditional is `conditional_all_other_native`, `n_orders = 1`.**
+CARBonAra is not autoregressive and has no decoding order. Residue identity
+enters as an "imprint": a per-residue one-hot that is zero wherever identity is
+withheld. `apply_model` sees element types plus that imprint and nothing else —
+side chains are stripped and an idealised C-beta placed at every residue,
+glycine included — so a withheld position genuinely leaks no identity, from the
+sequence or from a side chain. Scoring position *i* means imprinting every other
+mappable canonical residue natively and zeroing row *i*:
+
+    P(residue at i | backbone, all other native residues)
+
+That is nearer ProteinMPNN's bidirectional conditional than ESM-IF's causal one,
+but it is not the same: there is no decoding-order distribution to average, so
+`conditional_sequon_score_sd` is structurally 0 and `n_decoding_orders` is 1, as
+they are for ESM-IF. One forward pass per position, three per site.
+
+**The probabilities are calibrated before use.** The network emits independent
+sigmoids that do not sum to one. Scoring them directly would put a logit on
+something that is not a probability. The checkpoint's own empirical confidence
+map — `CARBonAra.conf`, a smoothed CDF shipped beside the weights — runs first,
+and every row is then checked for twenty finite entries in `[0, 1]` summing to
+one before it is scored.
+
+**The alphabet is sorted by abundance, not alphabetically.** Upstream
+`src/data_encoding.py`:
+
+```python
+std_aminoacids = np.array([
+    'LEU', 'GLU', 'ARG', 'LYS', 'VAL', 'ILE', 'PHE', 'ASP', 'TYR',
+    'ALA', 'THR', 'SER', 'GLN', 'ASN', 'PRO', 'GLY', 'HIS', 'TRP',
+    'MET', 'CYS'])
+```
+
+Asparagine is column **13**, serine 11, threonine 10, proline 14. Every
+`probs_*` column this model writes is twenty entries in that order — not
+twenty-one like ProteinMPNN's, and not alphabetical. Assuming otherwise is the
+2026-08-20 defect exactly, so `verify_alphabet` runs against the checkout at
+model load and stops the run if upstream ever reorders.
+
+**MSE has no special case upstream, and that is an indexing hazard.**
+ProteinMPNN maps `HETATM MSE` to methionine. CARBonAra's `clean_structure` does
+not: dropped as a heteroatom the residue vanishes and every index after it
+shifts; kept as MSE it is not in `std_aminoacids` and becomes a ligand. Structure
+preparation converts it, and emits every record as `ATOM` so that nothing else
+can be removed by the heteroatom flag either.
+
+**The residue enumeration is friendlier than ProteinMPNN's.** `clean_structure`
+renumbers observed residues consecutively from 1 in file order, so there is no
+gap-filling and no placeholder token, and a numbering gap shifts nothing. The
+mapping is therefore an identity — but it is *verified* against what CARBonAra
+parsed rather than assumed, residue by residue, and a chain that disagrees is
+dropped. An unverified identity mapping is precisely what the 25.3% ProteinMPNN
+misindexing looked like before anyone checked.
+
+#### Why there is no SequenceDesigner
+
+Upstream generation goes through `imprint_sampling`, which samples stochastically
+from raw confidences at a chosen imprint ratio. Neither the sampling nor the
+uncalibrated values belong in this benchmark, and a `design()` here would let
+stage 08 produce a retention number that looked like ProteinMPNN's without
+meaning the same thing. `isinstance(adapter, SequenceDesigner)` is False, and
+there is no stage 08 for CARBonAra.
+
+#### Environment and running it
+
+CARBonAra is a script layout rather than an installable package, so the checkout
+directory itself goes on `sys.path`. Clone it — the weights ship in the
+repository under `model/save/` — and set `CARBONARA_DIR`, or leave it beside this
+one. It needs `gemmi` and `blosum`, which are not core dependencies here.
+Discovery is deferred to first model use, so nothing else notices its absence.
+
+```bash
+python pipeline/05_scoreability.py results/manifests/scoring_manifest_secretory.csv \
+  results/manifests/scoreability_secretory_carbonara.csv --model carbonara
+
+python pipeline/07_score.py results/manifests/scoring_manifest_secretory.csv \
+  results/scores/scores_secretory_carbonara.csv --model carbonara --device cpu
+```
+
+#### Smoke test against the real checkpoint
+
+Run 2026-08-27 on `s_v6_4_2022-09-16_11-51`, against the three chains
+[`methods_sequon_indexing.md`](methods_sequon_indexing.md) already verifies
+end-to-end for ProteinMPNN.
+
+| Chain | Residues | Manifest idx | Mapped idx | Reads | Score |
+|---|---|---|---|---|---|
+| 4EBY:A | 200 | 27 | 27 | `NSS` | −1.2495 |
+| 5H5Y:A | 286 | 226 | 226 | `NRS` | −0.8520 |
+| 9G3Q:A | 402 | 181 | 181 | `NES` | −1.3440 |
+
+Every residue count matches the documented figure, and **the mapping is the
+identity on all three** — including the chains with 10 and 20 numbering gaps,
+where ProteinMPNN needs +10 and +20 shifts. That is the predicted consequence of
+consecutive renumbering, confirmed rather than assumed: the triplet check is what
+establishes it. All nine probability rows carry twenty finite entries in [0, 1]
+summing to one. All three guards fire on real data (wrong triplet, out-of-range
+index, unevaluated position).
+
+Protein-only preparation was exercised on real glycoproteins: 4EBY carries `NAG`
+and `BMA`, 9G3Q carries `NAG` and `MLT`, and the prepared input for both contains
+zero `HETATM` records and no non-amino-acid residue.
+
+**Sequence recovery, as an independent check on the alphabet.** Nothing
+imprinted, so this is plain inverse folding:
+
+```
+4EBY:A  62.0%      5H5Y:A  52.8%      9G3Q:A  59.5%
+```
+
+against upstream's reported ~51% on CATH. A scrambled column order would give
+about 5%. This settles the alphabet against the model's own behaviour rather than
+against a constant transcribed from a source file — the check the 2026-08-20
+defect went a month without.
+
+#### The Asn/Asp ambiguity, which is a real limit on this score
+
+At two of the three sites the model's most likely residue at the sequon
+asparagine was **aspartate**, not asparagine, and across the three chains a
+native Asn was called Asp in 13 of 56 cases. This is not an indexing artefact —
+recovery above rules that out, and 4EBY calls its Asn correctly. It is chemistry:
+Asn and Asp are isosteric, differing by an oxygen where an amide sits, and
+CARBonAra is shown neither side chain. From a stripped backbone the two are close
+to indistinguishable.
+
+The consequence matters for interpretation. Half of `conditional_sequon_score` is
+the log odds of asparagine, so for CARBonAra that half rests on the single
+hardest discrimination in backbone-only inverse folding. Expect the asparagine
+term to be compressed relative to the hydroxyl term, and do not read a small
+CARBonAra effect as evidence of a small biological one without checking whether
+P(Asn) + P(Asp) behaves differently from P(Asn) alone.
+
+#### Not done
+
+No context-conditioned scoring: no glycan-present arm, no ligands, ions or water.
+No generation, retention or stage 08. No matching, contrast, statistic or figure
+has been rerun — this adds a scorer and nothing downstream of it. The smoke test
+above establishes that the plumbing is correct on three chains; it is **not** a
+result, and no manifest has been scored.
+
 ## The recurring bug, which is really one bug
 
 Three separate failures this week were the same failure wearing different
@@ -426,7 +581,7 @@ would have caught their defect on day one.
 
 ## Where the models genuinely differ, and why that is the point
 
-The three models are not three measurements of one quantity. They condition on
+The four models are not four measurements of one quantity. They condition on
 different things:
 
 | Model | Sees | Conditional |
@@ -434,6 +589,7 @@ different things:
 | ProteinMPNN | backbone + all other residues | bidirectional, 8 orders averaged |
 | ESM-IF1 | backbone + native prefix | autoregressive, single pass |
 | ESMC | sequence only | masked position, single pass |
+| CARBonAra | backbone + all other residues | one-shot, single pass per position |
 
 That is a **conditioning spectrum**, and it is more informative than three
 attempts at the same number would be. Sequence-only versus structure-conditioned
@@ -472,7 +628,7 @@ whose score file is missing **stops** rather than falling back.
 `model` / `conditioning` / `n_orders` from the score file. A label restated by
 hand is a label that eventually lies.
 
-## Adding the fourth
+## Adding the fifth
 
 1. Write `adapters/<name>.py` implementing one or both protocols, plus
    `describe()` for the provenance columns.
