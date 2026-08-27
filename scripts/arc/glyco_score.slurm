@@ -7,6 +7,14 @@
 #   sbatch scripts/arc/glyco_score.slurm esmc single
 #   sbatch scripts/arc/glyco_score.slurm proteinmpnn
 #
+# CARBonAra is the expensive one: it is not autoregressive, so each position
+# needs its own forward pass with that residue's identity withheld, and each pass
+# builds a full atom-by-atom distance matrix. Measured at ~0.9 min/site on 3
+# cores, which is ~2.5 h per shard across all three sets. Give it a longer wall
+# than the 4 h default here:
+#
+#   sbatch --partition=medium --time=12:00:00 scripts/arc/glyco_score.slurm carbonara
+#
 #
 # Runs CPU-only by default: ARC's short/medium partitions have no GPUs and
 # reject --gres with "Invalid feature specification". Scoring is cheap; a narrow array is plenty.
@@ -32,7 +40,7 @@ source "${PROJECT_ROOT}/env.sh"
 # allocation is the unit, so let torch use the cores it was given.
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 
-MODEL="${1:?usage: sbatch glyco_score.slurm <proteinmpnn|esm_if|esmc> [mask_mode]}"
+MODEL="${1:?usage: sbatch glyco_score.slurm <proteinmpnn|esm_if|esmc|carbonara> [mask_mode]}"
 MASK_MODE="${2:-}"
 # The denominator is FIXED, not SLURM_ARRAY_TASK_COUNT. Resubmitting a few
 # failed indices (--array=36,41) would otherwise set the count to 2 and compute
@@ -41,9 +49,14 @@ MASK_MODE="${2:-}"
 SHARDS="${SHARDS:-8}"
 SHARD="${SLURM_ARRAY_TASK_ID}/${SHARDS}"
 
-# ESMC needs the other environment: fair-esm and EvolutionaryScale's esm both
-# claim the import name `esm` and cannot be installed together.
-if [[ "${MODEL}" == "esmc" ]]; then VENV="${PROJECT_ROOT}/venv-esmc"; else VENV="${PROJECT_ROOT}/venv-if"; fi
+# ESMC needs its own environment: fair-esm and EvolutionaryScale's esm both claim
+# the import name `esm` and cannot be installed together. CARBonAra needs a third
+# for gemmi, blosum, scikit-learn and h5py.
+case "${MODEL}" in
+  esmc)      VENV="${PROJECT_ROOT}/venv-esmc" ;;
+  carbonara) VENV="${PROJECT_ROOT}/venv-carbonara" ;;
+  *)         VENV="${PROJECT_ROOT}/venv-if" ;;
+esac
 
 # VARIANT names the output files. Override it to write a re-run alongside an
 # existing set instead of over it -- a regenerated run must never land on top of

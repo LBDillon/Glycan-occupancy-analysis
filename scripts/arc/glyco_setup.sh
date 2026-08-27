@@ -33,6 +33,23 @@ mkdir -p "${PIP_CACHE_DIR}" "${XDG_CACHE_HOME}" "${TMPDIR}"
 [[ -d module ]] || git clone --depth 1 "${REPO_URL}" module
 [[ -d ProteinMPNN ]] || git clone --depth 1 https://github.com/dauparas/ProteinMPNN.git ProteinMPNN
 
+# CARBonAra ships its own weights, so there is no separate checkpoint to fetch --
+# but the repository is 1.1 GB, of which 838 MB is the authors' own result files.
+# Sparse-checkout takes only the entry point, src/ and one checkpoint (~7 MB).
+CARBONARA_MODEL="${CARBONARA_MODEL:-s_v6_4_2022-09-16_11-51}"
+if [[ ! -d CARBonAra ]]; then
+  git clone --depth 1 --filter=blob:none --sparse \
+      https://github.com/LBM-EPFL/CARBonAra.git CARBonAra \
+    && git -C CARBonAra sparse-checkout set src "model/save/${CARBONARA_MODEL}" \
+    || { echo "sparse clone failed; falling back to a full one"; rm -rf CARBonAra;
+         git clone --depth 1 https://github.com/LBM-EPFL/CARBonAra.git CARBonAra; }
+fi
+if [[ -s "CARBonAra/model/save/${CARBONARA_MODEL}/model.pt" ]]; then
+  echo "CARBonAra weights: $(du -h "CARBonAra/model/save/${CARBONARA_MODEL}/model.pt" | cut -f1)"
+else
+  echo "WARNING: CARBonAra checkpoint missing; --model carbonara will not run"
+fi
+
 # --- environments ---------------------------------------------------------
 # Two of them, because fair-esm (ESM-IF) and EvolutionaryScale's esm (ESMC)
 # both install a top-level package called `esm` and cannot coexist.
@@ -64,6 +81,18 @@ if [[ ! -d venv-esmc ]]; then
       "tokenizers>=0.21,<0.22" "transformers<4.48.2" tenacity httpx zstd \
       msgpack-numpy cloudpathlib brotli attrs einops regex safetensors \
       tqdm filelock pyyaml requests packaging
+fi
+
+# A third environment for CARBonAra. Not merged into venv-if: it needs gemmi,
+# blosum, scikit-learn and h5py -- upstream's src/__init__.py imports its whole
+# src package, so the scoring and dataset modules' dependencies are needed even
+# though this integration calls none of them -- and adding four packages to a
+# working ESM-IF environment to save 2.5 GB is not a trade worth making.
+if [[ ! -d venv-carbonara ]]; then
+  python -m venv venv-carbonara
+  ./venv-carbonara/bin/pip install -q --upgrade pip
+  ./venv-carbonara/bin/pip install -q torch numpy pandas scipy biopython \
+      gemmi blosum scikit-learn h5py tqdm
 fi
 
 # --- structures -----------------------------------------------------------
@@ -116,6 +145,7 @@ export XDG_CACHE_HOME="${PROJECT_ROOT}/cache/xdg"
 export TMPDIR="${PROJECT_ROOT}/cache/tmp"
 export HF_HUB_OFFLINE=1
 export PROTEINMPNN_DIR="${PROJECT_ROOT}/ProteinMPNN"
+export CARBONARA_DIR="${PROJECT_ROOT}/CARBonAra"
 export KMP_DUPLICATE_LIB_OK=TRUE
 export OMP_NUM_THREADS=1
 ENVEOF

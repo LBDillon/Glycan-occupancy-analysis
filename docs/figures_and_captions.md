@@ -237,6 +237,111 @@ Regenerate with `python pipeline/24_figures_schematics.py`.
 
 ---
 
+## Figure 15 — Three models, two measurements
+
+![model comparison](../results/figures/fig_model_comparison.png)
+
+*Written 2026-08-27. **Unlike most of Part 1, every number here is post-correction**
+— ProteinMPNN index-corrected, ESM-IF index-corrected, ESMC as run.*
+
+**What it shows:** the whole benchmark in four panels, each carrying one claim.
+
+**A — the scoring effect.** Occupied minus matched control, in each model's own
+reference SD. ProteinMPNN +0.282 [+0.114, +0.426]; ESM-IF +0.431 [+0.267, +0.726];
+ESMC +0.261 [+0.063, +0.598]. All three intervals exclude zero, which is why all
+three carry a marker.
+
+**B — what survives hiding the motif.** Filled dot is the motif visible, open dot
+hidden, arrow is the change. ESMC falls +0.261 → −0.113 and crosses zero: its
+apparent preference *was* motif recognition. The two structure-conditioned models
+barely move — ESM-IF +0.431 → +0.398, ProteinMPNN +0.282 → +0.315.
+
+**C — the design result.** Sequon retention, occupied against matched control.
+ProteinMPNN 0.121 vs 0.051; ESM-IF 0.151 vs 0.059. ESMC's blank row is a fact
+about the model, not missing data: it has no `SequenceDesigner`.
+
+**D — the per-site contrasts panel A averages.** Standardised so the three are
+comparable at all.
+
+**The point:** structure-conditioned models retain their preference when the
+motif is hidden and a sequence-only model does not. That is the strongest single
+result in the benchmark, because both arms of every pair contain a sequon — so
+whatever separates them once the motif is hidden cannot be motif recognition.
+
+**What it does not show, and four cautions:**
+
+- **Panel D undercuts panel A, and should.** After standardisation the three
+  distributions are nearly identical, and **35–40% of sites have negative
+  contrasts**. These are shifts in broad overlapping distributions, not
+  separation. Nothing here would classify a site.
+- **Panel B's markers refer to the change, not the effect** — and all three
+  changes are significant, including ProteinMPNN's, which moves the *wrong way*:
+  hiding the motif slightly *improved* its contrast. There is no account of why.
+  "Robust to masking" and "a small significant effect in an unexpected direction"
+  are different statements, and this is the second.
+- **Panel B mixes two scales.** The dots are SD-standardised; the significance
+  comes from `15_masking_comparison`, which works in log odds. The change values
+  in log odds are ProteinMPNN −0.035 [−0.088, −0.008], ESM-IF +0.043
+  [+0.010, +0.073], ESMC +0.558 [+0.447, +0.724].
+- **ProteinMPNN's rows are not the same site set as the others** — 232 contrasts
+  against 262, and 216 retention pairs against 245. Sound within each model;
+  do not rank the models off it.
+
+**Panel C's missing ProteinMPNN marker is a genuine disagreement, not an
+oversight.** Its cluster-aware interval is [−0.004, +0.119] and includes zero,
+while Wilcoxon gives p=0.0033. The bootstrap respects protein and ortholog
+clustering; Wilcoxon does not. Significance is marked from the interval, which is
+the conservative and repository-standard reading. Note also that **129 of its 216
+pairs are tied** — both sites lose the sequon — so the effect rests on 87
+informative pairs; ESM-IF's rests on 93 of 245.
+
+CARBonAra is absent by design: with no motif-visible condition it has no
+within-model masking contrast, so it cannot appear in panel B at all.
+
+---
+
+## Figure 16 — What the models actually output
+
+![raw score distributions](../results/figures/fig_score_distributions.png)
+
+*Written 2026-08-27.*
+
+**What it shows:** the raw conditional sequon score — log odds, not standardised
+— for experimentally occupied sites against their matched partners with no
+annotated glycan. Dashed lines are medians. One panel per model.
+
+| Model | occupied median | no-annotation median | occupied sites below the other group's median |
+|---|---|---|---|
+| ProteinMPNN | −1.355 | −1.763 | 34.1% |
+| ESM-IF | −0.907 | −1.691 | 29.0% |
+| ESMC | −0.741 | −1.552 | 29.4% |
+
+**The point:** it is the same result as Figure 15A without the standardisation,
+and it makes the size of the effect legible in a way an SD cannot. If the two
+groups were identical, half of the occupied sites would fall below the
+no-annotation median. About 30% do. That is a real shift and a modest one.
+
+**The three panels must not be read against each other.** Raw log odds are
+comparable *within* a model and not between: ProteinMPNN averages eight decoding
+orders, ESM-IF runs a single causal pass, ESMC never sees the backbone. The
+x-axes differ deliberately, and the panels are three separate comparisons that
+happen to share a figure.
+
+**These are the matched pairs, not the populations.** Each case has exactly one
+control, so nothing is averaged and no spread is compressed. The unmatched
+version of this comparison is the one the archived context analysis showed
+collapsing once composition was controlled — occupancy was confounded with
+protein identity — so the matched form is the only one worth plotting.
+
+**"No annotated glycan" is not "unoccupied".** These sites are
+`control_secretory_eukaryotic_unannotated`: absence of annotation, not evidence
+of absence. A separate and much smaller group, `observed_unmodified` (31 sites),
+carries real evidence of absence and is not shown here. Reading the grey
+distribution as unglycosylated sites is the single easiest mistake to make with
+this figure.
+
+---
+
 ## What the results figures say together
 
 The dataset is sound and the measurement works — Figure 4 shows the score tracks
