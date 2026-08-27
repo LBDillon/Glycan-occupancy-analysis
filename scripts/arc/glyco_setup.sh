@@ -88,11 +88,26 @@ fi
 # src package, so the scoring and dataset modules' dependencies are needed even
 # though this integration calls none of them -- and adding four packages to a
 # working ESM-IF environment to save 2.5 GB is not a trade worth making.
-if [[ ! -d venv-carbonara ]]; then
+# Identified by a package it must have rather than by the directory existing: a
+# pip run killed partway through leaves a venv tree that looks complete and is
+# not, and a existence check would then skip repairing it forever.
+if ! ./venv-carbonara/bin/python -c "import torch, gemmi, blosum, sklearn, h5py" 2>/dev/null; then
+  rm -rf venv-carbonara
   python -m venv venv-carbonara
   ./venv-carbonara/bin/pip install -q --upgrade pip
-  ./venv-carbonara/bin/pip install -q torch numpy pandas scipy biopython \
-      gemmi blosum scikit-learn h5py tqdm
+  # One at a time, and --no-cache-dir. Login nodes cap address space at ~2 GB
+  # and resolving ten requirements at once -- torch alone unpacks to ~2.5 GB --
+  # dies with "OSError: [Errno 12] Cannot allocate memory". Installing serially
+  # keeps each step inside the cap at the cost of a slower run.
+  for pkg in torch numpy pandas scipy biopython gemmi blosum scikit-learn h5py tqdm; do
+    ./venv-carbonara/bin/pip install -q --no-cache-dir "${pkg}" \
+      || { echo "FAILED installing ${pkg} into venv-carbonara"; break; }
+  done
+fi
+if ./venv-carbonara/bin/python -c "import torch, gemmi, blosum, sklearn, h5py" 2>/dev/null; then
+  echo "venv-carbonara: ok"
+else
+  echo "WARNING: venv-carbonara incomplete; --model carbonara will not run"
 fi
 
 # --- structures -----------------------------------------------------------
