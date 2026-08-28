@@ -51,7 +51,13 @@ def parse_args(argv, default_manifest: str, default_out: str, *,
     parser.add_argument("--structure-dir", action="append", default=[],
                         help="extra directory of cached structures; repeatable")
     parser.add_argument("--mask-mode", default=None,
-                        help="ESMC only: 'single' (default) or 'joint'")
+                        help="ESMC, ESM-IF, ProteinMPNN, ESM3: 'single' "
+                             "(default) or 'joint'")
+    parser.add_argument("--structure-mode", default=None,
+                        help="ESM3 only: 'struct_cond' (default) keeps the "
+                             "structure track, 'seq_only' withholds it. Crossed "
+                             "with --mask-mode this is the 2x2 that tests "
+                             "structure within one model.")
     parser.add_argument("--max-batch", type=int, default=None,
                         help="cap designs decoded at once. Default: chosen from "
                              "chain length so memory stays bounded.")
