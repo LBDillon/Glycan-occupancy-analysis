@@ -193,7 +193,7 @@ cluster bootstrap, significance testing and the figures all work on tables keyed
 by `(accession, position)`. Adding ESM-IF, ESM3 or anything else means writing
 **one adapter** and touching nothing else.
 
-Five models are registered:
+Six models are registered:
 
 | Name | Conditions on | Implements | Notes |
 |---|---|---|---|
@@ -202,11 +202,20 @@ Five models are registered:
 | `esmc` | **sequence only** (masked LM) | scorer | [doc](docs/models.md) |
 | `carbonara` | backbone + all other native residues, one pass | scorer + designer | +0.288 SD; retention not cross-comparable, [doc](docs/models.md) |
 | `progen2` | **sequence only**, causal prefix | scorer | compares with `esm_if`, not `esmc`; [doc](docs/models.md) |
+| `esm3` | backbone **or not**, masked — the track is switchable | scorer | the only within-model structure test; [doc](docs/models.md) |
 
 **`esmc` cannot be installed alongside `esm_if`.** `fair-esm` and
 EvolutionaryScale's `esm` both claim the top-level import name `esm`. Use a
 separate environment for each; the registry lazy-imports, so the absent model is
 unavailable rather than breaking the package.
+
+**`esm3` is the only model that can withhold its own structure track.**
+`--structure-mode struct_cond|seq_only` crossed with `--mask-mode single|joint`
+gives a 2x2 inside one model, one tokeniser and one masking scheme. Every other
+structure-versus-sequence comparison here is between models and so confounds the
+question with architecture and training data. It needs EvolutionaryScale's
+`esm` — so it shares ESMC's environment split — and its checkpoint is gated on
+HuggingFace and must be accepted there first.
 
 **`progen2` needs `transformers`**, which this package does not install, and
 downloads its checkpoint from HuggingFace on first use. `hugohrban/progen2-base`

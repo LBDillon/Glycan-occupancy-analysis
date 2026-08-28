@@ -22,6 +22,10 @@ _REGISTRY = {
     # Needs `transformers`, which is not a core dependency.
     "progen2": ("experimental_glycosylation_sites.adapters.progen2",
                 "ProGen2Adapter"),
+    # The only model that can withhold its own structure track, so the
+    # structure-versus-sequence question can be asked without changing model.
+    # Needs EvolutionaryScale's `esm`, so it shares ESMC's environment problem.
+    "esm3": ("experimental_glycosylation_sites.adapters.esm3", "ESM3Adapter"),
 }
 
 
