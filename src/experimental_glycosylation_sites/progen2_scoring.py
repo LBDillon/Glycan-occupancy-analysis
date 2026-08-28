@@ -31,10 +31,14 @@ zero and `n_decoding_orders` is one, exactly as for ESM-IF.
 
 A consequence worth stating: the asparagine term is **already** motif-blind. The
 prefix for position i ends at i-1, so the model has not seen N-X-S/T when it
-predicts the N. Only the +2 term sees any of the motif — the N and the X. So a
-masking contrast for this model means hiding one upstream residue rather than
-three, which is far cheaper than the marginalisation ESM-IF needed. Not built
-yet; `mask_mode` is single only.
+predicts the N. Only the +1 and +2 terms see any of the motif, through the
+residue at the asparagine position.
+
+`mask_mode="joint"` therefore integrates that residue out of those two terms and
+leaves the asparagine row untouched — there is nothing to hide from it. **This is
+a smaller manipulation than ESMC's or ESM-IF's**, which hide all three positions.
+Two of three terms change here, and the first cannot. A near-zero change for this
+model means correspondingly less.
 
 ## Which sequence
 
@@ -78,6 +82,10 @@ class SequonMismatchError(ValueError):
 
 class InvalidProbabilityVector(ValueError):
     """A row that is not a probability distribution."""
+
+
+class ContextTooLongError(ValueError):
+    """The chain exceeds ProGen2's context window, so it cannot be scored."""
 
 
 class TokenisationError(RuntimeError):
@@ -169,6 +177,35 @@ def decodable_positions(structure_path, chain_id: str,
         return np.zeros(0, dtype=bool)
 
 
+def context_limit(model) -> "int | None":
+    """ProGen2's context window, from the config. None when it cannot be read."""
+    config = getattr(model, "config", None)
+    for attribute in ("n_positions", "max_position_embeddings", "n_ctx"):
+        value = getattr(config, attribute, None)
+        if isinstance(value, int) and value > 0:
+            return value
+    return None
+
+
+def check_context_length(sequence: str, model) -> None:
+    """Refuse a chain longer than the context window, with a legible reason.
+
+    Without this the failure is a raw tensor-size mismatch from inside the
+    model, which says nothing about which chain or why. ProGen2-base carries
+    2048 positions and the manifest contains chains beyond that -- 3JAV:A is
+    2328 residues -- so this is a real exclusion, not a defensive one.
+
+    Truncating the prefix instead was rejected: for a causal model the prefix
+    *is* the conditioning, so a truncated one answers a different question, and
+    silently answering a different question is worse than declining.
+    """
+    limit = context_limit(model)
+    if limit is not None and len(sequence) + 1 > limit:
+        raise ContextTooLongError(
+            f"chain is {len(sequence)} residues and needs {len(sequence) + 1} "
+            f"tokens with BOS, over ProGen2's {limit}-token context")
+
+
 def conditional_probabilities(sequence: str, model, tokenizer, bos: int,
                               device: str = "cpu") -> np.ndarray:
     """`[L, vocab]` of P(residue at i | residues 1..i-1), one forward pass.
@@ -185,6 +222,7 @@ def conditional_probabilities(sequence: str, model, tokenizer, bos: int,
     """
     import torch
 
+    check_context_length(sequence, model)
     ids = tokenizer(sequence, add_special_tokens=False)["input_ids"]
     tokens = torch.tensor([bos] + list(ids), device=device).unsqueeze(0)
 
@@ -254,3 +292,103 @@ def sequon_score(probabilities: np.ndarray, aa_index: "dict[str, int]",
         "probs_plus1": probabilities[plus1_index].tolist(),
         "probs_plus2": probabilities[plus2_index].tolist(),
     }
+
+
+# --------------------------------------------------------------------------
+# Joint masking, for the motif-hidden arm.
+# --------------------------------------------------------------------------
+
+MASK_MODES = ("single", "joint")
+DEFAULT_MASK_MODE = "single"
+
+# The same string ESM-IF uses for the same operation, so the two are pooled or
+# separated on the merits rather than by accident of naming.
+CONDITIONING_JOINT = "autoregressive_prefix_marginalised"
+
+# 20 variants of one chain is a small batch, but chains here run to 1287
+# residues and activation memory is batch x length. Capped, and halved on OOM,
+# for the reason recorded in esmif_scoring: a host OOM is delivered by the
+# kernel and cannot be caught, so the cap has to be conservative up front.
+DEFAULT_MARGINAL_BATCH = 8
+
+
+def conditioning(mask_mode: str) -> str:
+    if mask_mode not in MASK_MODES:
+        raise ValueError(f"mask_mode must be one of {MASK_MODES}, got {mask_mode!r}")
+    return CONDITIONING if mask_mode == "single" else CONDITIONING_JOINT
+
+
+def marginalised_probabilities(sequence: str, model, tokenizer, bos: int,
+                               aa_index: "dict[str, int]", indices,
+                               device: str = "cpu",
+                               max_batch: int = DEFAULT_MARGINAL_BATCH
+                               ) -> np.ndarray:
+    """`conditional_probabilities`, with the sequon asparagine integrated out.
+
+    What this hides, and what it cannot: a causal model's prefix for position i
+    ends at i-1, so **the asparagine term is already motif-blind** — there is
+    nothing to hide from it, and its row is returned unchanged. Only the +1 and
+    +2 terms see any of the motif, through the residue at the asparagine
+    position, and those are the rows this replaces with
+
+        P(x at j) = sum_a P(a at i | 1..i-1) * P(x at j | 1..i-1, a at i, ...)
+
+    weighting each substitution by the model's own predictive distribution at i
+    rather than uniformly, so the result is a genuine marginal rather than an
+    average over an arbitrary set.
+
+    That makes ProGen2's masking manipulation **smaller than ESMC's or
+    ESM-IF's**, which hide all three positions. Here two of the three terms
+    change and the first cannot. A near-zero change for this model therefore
+    means less than it would for them, and should not be read as "masking does
+    not matter".
+
+    The X position is left native in each variant. Marginalising it too would be
+    400 sequences rather than 20, and any residue but proline permits a sequon,
+    so it carries little of the motif to hide.
+    """
+    import torch
+
+    n_index, plus1_index, plus2_index = (int(i) for i in indices)
+    base = conditional_probabilities(sequence, model, tokenizer, bos, device=device)
+    if max(n_index, plus1_index, plus2_index) >= len(sequence):
+        return base
+
+    letters = list(STANDARD_AA)
+    weights = np.array([base[n_index, aa_index[aa]] for aa in letters], dtype=float)
+    total = weights.sum()
+    if total <= 0:
+        return base
+    weights /= total                      # renormalised over the twenty
+
+    variants = []
+    for aa in letters:
+        altered = sequence[:n_index] + aa + sequence[n_index + 1:]
+        variants.append([bos] + list(
+            tokenizer(altered, add_special_tokens=False)["input_ids"]))
+    tokens = torch.tensor(variants, device=device)
+
+    size = max(1, min(len(letters), int(max_batch)))
+    while True:
+        try:
+            pieces = []
+            with torch.no_grad():
+                for start in range(0, tokens.shape[0], size):
+                    logits = model(input_ids=tokens[start:start + size]).logits
+                    pieces.append(torch.softmax(logits[:, :-1].float(), dim=-1).cpu())
+            stacked = torch.cat(pieces, dim=0).numpy()
+            break
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
+            if size > 1 and "out of memory" in str(exc).lower():
+                if str(device).startswith("cuda"):
+                    torch.cuda.empty_cache()
+                size = max(1, size // 2)
+                print(f"    OOM in marginalisation; retrying with batch {size}",
+                      flush=True)
+                continue
+            raise
+
+    marginal = base.copy()
+    for index in (plus1_index, plus2_index):
+        marginal[index] = np.tensordot(weights, stacked[:, index, :], axes=(0, 0))
+    return marginal

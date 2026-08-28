@@ -54,12 +54,16 @@ class FakeModel:
         import torch
 
         self.seen = input_ids
-        length = input_ids.shape[1]
-        logits = torch.full((1, length, self.vocab_size), -10.0)
-        # row i predicts token i+1, so favour the residue at manifest index i
-        for i, aa in enumerate(self.favours):
-            if i < length:
-                logits[0, i, VOCAB.index(aa)] = 10.0
+        batch, length = input_ids.shape
+        logits = torch.full((batch, length, self.vocab_size), -10.0)
+        # row i predicts token i+1, so favour the residue at manifest index i.
+        # Built for every row of the batch: marginalisation sends twenty
+        # variants at once, and a fake that only filled row 0 would silently
+        # return the wrong shape.
+        for row in range(batch):
+            for i, aa in enumerate(self.favours):
+                if i < length:
+                    logits[row, i, VOCAB.index(aa)] = 10.0
         return type("Out", (), {"logits": logits})()
 
 
@@ -184,3 +188,135 @@ def test_the_conditioning_is_esm_ifs_string_not_esmcs():
     """Causal and prefix-only, so it must never be pooled with a masked LM."""
     from experimental_glycosylation_sites.esmif_scoring import CONDITIONING as ESMIF
     assert pg.CONDITIONING == ESMIF == "autoregressive_prefix"
+
+
+# --------------------------------------------------------------------------
+# Joint masking: marginalising the asparagine out of the downstream terms.
+# --------------------------------------------------------------------------
+
+def test_the_two_mask_modes_have_different_conditioning_strings():
+    assert pg.conditioning("single") == "autoregressive_prefix"
+    assert pg.conditioning("joint") == "autoregressive_prefix_marginalised"
+
+
+def test_an_unknown_mask_mode_is_refused():
+    with pytest.raises(ValueError, match="mask_mode"):
+        pg.conditioning("nonsense")
+
+
+def test_the_joint_conditioning_matches_esm_ifs_for_the_same_operation():
+    """Both integrate a hidden residue out of a causal prefix, so the string is
+    shared deliberately; the `model` column is what separates them."""
+    from experimental_glycosylation_sites.esmif_scoring import CONDITIONING_JOINT
+    assert pg.CONDITIONING_JOINT == CONDITIONING_JOINT
+
+
+def test_marginalising_leaves_the_asparagine_row_untouched():
+    """Its prefix ends before the motif, so there is nothing to hide from it.
+
+    Changing that row would be claiming a manipulation the model's causality
+    makes impossible.
+    """
+    sequence = "MANKSTV"
+    tokenizer = FakeTokenizer()
+    model = FakeModel(sequence)
+    index = {aa: VOCAB.index(aa) for aa in pg.STANDARD_AA}
+
+    base = pg.conditional_probabilities(sequence, model, tokenizer,
+                                        tokenizer.bos_token_id)
+    joint = pg.marginalised_probabilities(sequence, model, tokenizer,
+                                          tokenizer.bos_token_id, index, (2, 3, 4))
+    assert np.allclose(joint[2], base[2]), "the asparagine row was altered"
+
+
+def test_marginalising_replaces_the_downstream_rows():
+    """A model whose prediction depends on the residue at the N position must
+    give a different +2 row once that residue is integrated out."""
+    sequence = "MANKSTV"
+    tokenizer = FakeTokenizer()
+    index = {aa: VOCAB.index(aa) for aa in pg.STANDARD_AA}
+
+    class DependsOnN(FakeModel):
+        """Predicts at +2 whatever sits at the N position, and is uncertain
+        about the N position itself.
+
+        The uncertainty is the point. A model confident the N position holds
+        asparagine gives a marginal that collapses back onto the native value,
+        so it cannot demonstrate that marginalising does anything -- which is
+        itself the reason a confident model shows little masking effect.
+        """
+        def __call__(self, input_ids=None, **kwargs):
+            import torch
+            b, t = input_ids.shape
+            logits = torch.full((b, t, len(VOCAB)), -10.0)
+            for row in range(b):
+                at_n = int(input_ids[row, 2 + 1])       # BOS offset
+                logits[row, 4, at_n] = 10.0             # row 4 predicts index 4
+            return type("Out", (), {"logits": logits})()
+
+    model = DependsOnN(sequence)
+    base = pg.conditional_probabilities(sequence, model, tokenizer,
+                                        tokenizer.bos_token_id)
+    joint = pg.marginalised_probabilities(sequence, model, tokenizer,
+                                          tokenizer.bos_token_id, index, (2, 3, 4))
+    assert not np.allclose(joint[4], base[4]), "the +2 row did not change"
+    assert abs(joint[4].sum() - 1.0) < 1e-5, "the marginal is not a distribution"
+
+
+def test_the_marginal_weights_are_the_models_own_distribution():
+    """Weighted by P(a at the N position), not uniformly over the twenty.
+
+    A uniform average would be over an arbitrary set rather than a marginal.
+    """
+    sequence = "MANKSTV"
+    tokenizer = FakeTokenizer()
+    index = {aa: VOCAB.index(aa) for aa in pg.STANDARD_AA}
+
+    class Peaked(FakeModel):
+        """Certain the N position is Trp, and echoes it at +2."""
+        def __call__(self, input_ids=None, **kwargs):
+            import torch
+            b, t = input_ids.shape
+            logits = torch.full((b, t, len(VOCAB)), -20.0)
+            for row in range(b):
+                logits[row, 2, VOCAB.index("W")] = 20.0
+                logits[row, 4, int(input_ids[row, 3])] = 20.0
+            return type("Out", (), {"logits": logits})()
+
+    joint = pg.marginalised_probabilities(sequence, tokenizer=tokenizer,
+                                          model=Peaked(sequence),
+                                          bos=tokenizer.bos_token_id,
+                                          aa_index=index, indices=(2, 3, 4))
+    # all the weight sits on W, so the +2 marginal should too
+    assert joint[4].argmax() == VOCAB.index("W")
+    assert joint[4][VOCAB.index("W")] > 0.9
+
+
+def test_a_chain_over_the_context_window_is_refused_legibly():
+    """3JAV:A is 2328 residues against ProGen2-base's 2048-token context.
+
+    Without this the failure is a tensor-size mismatch from inside the model,
+    naming neither the chain nor the cause.
+    """
+    class Config:
+        n_positions = 2048
+
+    class Sized(FakeModel):
+        config = Config()
+
+    with pytest.raises(pg.ContextTooLongError, match="2048-token context"):
+        pg.check_context_length("A" * 2328, Sized("A"))
+
+
+def test_a_chain_inside_the_window_is_accepted():
+    class Config:
+        n_positions = 2048
+
+    class Sized(FakeModel):
+        config = Config()
+
+    pg.check_context_length("A" * 2047, Sized("A"))
+
+
+def test_no_limit_is_enforced_when_the_config_does_not_state_one():
+    pg.check_context_length("A" * 5000, FakeModel("A"))

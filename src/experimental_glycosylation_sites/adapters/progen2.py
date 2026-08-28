@@ -18,10 +18,12 @@ from pathlib import Path
 
 import numpy as np
 
-from ..progen2_scoring import (CONDITIONING, DEFAULT_MODEL, N_ORDERS,
-                               chain_sequence, check_triplet,
-                               conditional_probabilities, decodable_positions,
-                               load_model, sequon_score, verify_tokenisation)
+from ..progen2_scoring import (DEFAULT_MASK_MODE, DEFAULT_MODEL, MASK_MODES,
+                               N_ORDERS, chain_sequence, check_triplet,
+                               conditional_probabilities, conditioning,
+                               decodable_positions, load_model,
+                               marginalised_probabilities, sequon_score,
+                               verify_tokenisation)
 
 
 class ProGen2Adapter:
@@ -30,7 +32,11 @@ class ProGen2Adapter:
     name = "progen2"
 
     def __init__(self, device: str = "cpu", model_name: str = DEFAULT_MODEL,
-                 seed: int = 0):
+                 mask_mode: str = DEFAULT_MASK_MODE, seed: int = 0):
+        if mask_mode not in MASK_MODES:
+            raise ValueError(f"mask_mode must be one of {MASK_MODES}, "
+                             f"got {mask_mode!r}")
+        self.mask_mode = mask_mode
         self.device = device
         self.model_name = model_name
         self.seed = seed
@@ -59,7 +65,8 @@ class ProGen2Adapter:
         prefix-only, so pooling it with a masked language model would average
         two different estimands.
         """
-        return {"model": self.model_name, "conditioning": CONDITIONING,
+        return {"model": self.model_name,
+                "conditioning": conditioning(self.mask_mode),
                 "n_orders": N_ORDERS, "seed": self.seed}
 
     # --- SequonScorer -------------------------------------------------------
@@ -78,9 +85,13 @@ class ProGen2Adapter:
         if key != self._cached_key:
             model, tokenizer, bos = self._load()
             sequence = chain_sequence(structure_path, chain_id)
-            probabilities = conditional_probabilities(
-                sequence, model, tokenizer, bos, device=self.device)
-            self._cached = (sequence, probabilities)
+            if self.mask_mode == "joint":
+                # Marginalising is per sequon -- each integrates out its own
+                # asparagine -- so there is nothing chain-level to share.
+                self._cached = (sequence, None)
+            else:
+                self._cached = (sequence, conditional_probabilities(
+                    sequence, model, tokenizer, bos, device=self.device))
             self._cached_key = key
         return self._cached
 
@@ -94,6 +105,11 @@ class ProGen2Adapter:
         sequence, probabilities = context
         if expected_triplet:
             check_triplet(sequence, indices, expected_triplet)
+        if probabilities is None:
+            model, tokenizer, bos = self._load()
+            probabilities = marginalised_probabilities(
+                sequence, model, tokenizer, bos, self._aa_index, indices,
+                device=self.device)
         return sequon_score(probabilities, self._aa_index, *indices)
 
     def score_site(self, structure_path: Path, chain_id: str, indices,

@@ -1,6 +1,6 @@
 # The models
 
-How the benchmark grew from one model to four, what each one is, and how to
+How the benchmark grew from one model to six, what each one is, and how to
 run it. Merges the former `adding_models_explainer.md`, `second_model_esm_if.md`
 and `third_model_esmc.md`.
 
@@ -653,6 +653,107 @@ retention panel nor the masking panel of [Figure 15](figures_and_captions.md) �
 with no motif-visible condition it has no within-model masking contrast at all.
 Matching was not rerun; it is model-independent and shared by every variant.
 
+### ProGen2 — causal, sequence-only
+
+*Added 2026-08-28, from `score_proteins_progen2_colab.ipynb`.*
+
+The notebook's forward pass is reused; its statistic is not. It reports
+`total_logp / L`, a whole-chain mean, which is the protein-level score this
+document already argues cannot resolve a three-residue question.
+
+Fills the empty cell in the conditioning grid:
+
+| | masked / bidirectional | causal |
+|---|---|---|
+| structure + sequence | ProteinMPNN, CARBonAra | ESM-IF |
+| sequence only | ESMC | **ProGen2** |
+
+so **ESM-IF is the like-for-like comparison, not ESMC**: both are causal and
+prefix-only, and the difference between them isolates what the backbone adds
+under identical conditioning. `conditioning` is ESM-IF's string.
+
+#### The result, and how to read it
+
+    secretory:  -0.004 SD  [-0.259, +0.327]   261 contrasts   inconclusive
+
+Essentially zero, against ESMC's +0.261 [+0.063, +0.598]. Both are
+sequence-only, so "sequence carries nothing" cannot be the explanation.
+
+The difference is causality, and it is mechanical. ProGen2's P(Asn at i)
+conditions on residues 1..i-1 and **has not seen the serine or threonine two
+positions downstream**. ESMC, masked and bidirectional, sees the whole rest of
+the chain including that hydroxyl, so its asparagine term can use the downstream
+motif as evidence. ProGen2's structurally cannot.
+
+Which places ProGen2 at about zero and ESMC's *motif-hidden* arm at -0.113 —
+two different routes to removing motif visibility, landing in the same place.
+ProGen2 arrives there by architecture rather than by masking. Stated carefully:
+its interval is wide and includes ESMC's +0.261, so this is a consistent picture
+rather than a demonstration.
+
+#### Joint masking is a smaller manipulation here
+
+`mask_mode="joint"` integrates the residue at the asparagine position out of the
++1 and +2 terms, weighted by the model's own distribution there rather than
+uniformly. The asparagine row is returned unchanged, because a causal prefix
+ending at i-1 has nothing of the motif to hide.
+
+So two of three terms change, against three of three for ESMC and ESM-IF. **A
+near-zero masking change for ProGen2 therefore means less than it would for
+them.** Recorded as `autoregressive_prefix_marginalised`, ESM-IF's string for
+the same operation.
+
+#### Two limits worth carrying
+
+**P(Asn) is 0.064-0.092** on the smoke chains, against 0.16-0.25 for every other
+model. A causal model predicting from a truncated crystal chain is off its
+training distribution: it expects a protein from the N-terminus and receives a
+fragment starting at residue 21 or 25. That is a sharper version of the caveat
+already noted for ESMC, because for a causal model the prefix *is* the
+conditioning.
+
+**A 2048-token context.** 3JAV:A is 2328 residues and cannot be scored; it fails
+closed with a named reason. Truncating the prefix was rejected — it would answer
+a different question silently.
+
+### ESM3 — the structure track, switched on and off
+
+*Added 2026-08-28, from `score_proteins_esm3_colab.ipynb`. Its masking scheme is
+kept, its whole-chain statistic is not.*
+
+Every other structure-versus-sequence comparison here is **between models** and
+so confounds the question with architecture, training data and tokenisation.
+ESM3 carries a structure track that can simply be withheld:
+
+    struct_cond   VQ-VAE structure tokens from the backbone, intact
+    seq_only      the same model, same tokeniser, same masking, no structure
+
+Crossed with `mask_mode`, that is a 2x2 inside one model — structure on/off by
+motif visible/hidden — and the four conditioning strings are distinct so no two
+arms can be pooled.
+
+Scoring is masked and bidirectional, as for ESMC. Only the three sequon
+positions are masked, not all L as the notebook does, so a site costs one or
+three forward passes rather than one per residue.
+
+#### The structure track functions
+
+Smoke test on the three chains `methods_sequon_indexing` verifies:
+
+| Chain | struct_cond | seq_only | difference |
+|---|---:|---:|---:|
+| 4EBY:A | -1.874 | -3.265 | 1.390 |
+| 5H5Y:A | -1.905 | -2.786 | 0.881 |
+| 9G3Q:A | -1.524 | -2.020 | 0.495 |
+
+Withholding structure lowers the score every time, and most of the loss is in
+P(Asn) — 0.089 to 0.009 on 4EBY. **Three occupied sites, no controls**: this
+shows the track works and can genuinely be switched off, and says nothing yet
+about occupancy discrimination.
+
+Its parse agrees exactly with the manifest on all three chains, unlike ESM-IF's,
+which disagreed on about 5%. Checked per chain regardless.
+
 ## The recurring bug, which is really one bug
 
 Three separate failures this week were the same failure wearing different
@@ -690,8 +791,8 @@ would have caught their defect on day one.
 
 ## Where the models genuinely differ, and why that is the point
 
-The four models are not four measurements of one quantity. They condition on
-different things:
+The six models are not six measurements of one quantity. They condition on
+different things, and the grid is now complete in both directions:
 
 | Model | Sees | Conditional |
 |---|---|---|
@@ -699,6 +800,16 @@ different things:
 | ESM-IF1 | backbone + native prefix | autoregressive, single pass |
 | ESMC | sequence only | masked position, single pass |
 | CARBonAra | backbone + all other residues | one-shot, single pass per position |
+| ProGen2 | **sequence only** | autoregressive, single pass |
+| ESM3 | backbone **or not**, switchable | masked position, single pass |
+
+|  | masked / bidirectional | causal | one-shot |
+|---|---|---|---|
+| structure + sequence | ProteinMPNN, ESM3 (struct) | ESM-IF | CARBonAra |
+| sequence only | ESMC, ESM3 (seq) | ProGen2 | — |
+
+ESM3 appears twice on purpose: it is the only model that can occupy both rows,
+which is what makes it the one within-model test of whether structure matters.
 
 That is a **conditioning spectrum**, and it is more informative than three
 attempts at the same number would be. Sequence-only versus structure-conditioned
@@ -737,7 +848,7 @@ whose score file is missing **stops** rather than falling back.
 `model` / `conditioning` / `n_orders` from the score file. A label restated by
 hand is a label that eventually lies.
 
-## Adding the fifth
+## Adding the seventh
 
 1. Write `adapters/<name>.py` implementing one or both protocols, plus
    `describe()` for the provenance columns.
