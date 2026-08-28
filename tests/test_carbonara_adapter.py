@@ -452,3 +452,84 @@ def test_a_nonpositive_temperature_is_refused(chain, fake_backend):
     adapter = carbonara_adapter.CARBonAraAdapter()
     with pytest.raises(ValueError, match="temperature"):
         adapter.design(chain, "A", n_designs=2, temperature=0.0, seed=0)
+
+
+# --------------------------------------------------------------------------
+# The exact analytic retention.
+# --------------------------------------------------------------------------
+
+def test_exact_retention_matches_a_hand_calculation(chain, monkeypatch):
+    """full = P(Asn) * [P(Ser)+P(Thr)] * [1 - P(Pro)], matching
+    `classify_retention`'s `asn and hydroxyl and not proline`."""
+    import numpy as np
+
+    raw = np.full((len(SEQUON_CHAIN), 20), 0.0)
+    # position 2 is the Asn, 3 the X, 4 the Ser/Thr
+    raw[2, cs.AA_INDEX["N"]] = 0.5
+    raw[2, cs.AA_INDEX["A"]] = 0.5
+    raw[3, cs.AA_INDEX["P"]] = 0.25
+    raw[3, cs.AA_INDEX["G"]] = 0.75
+    raw[4, cs.AA_INDEX["S"]] = 0.3
+    raw[4, cs.AA_INDEX["T"]] = 0.3
+    raw[4, cs.AA_INDEX["A"]] = 0.4
+    for i in (0, 1, 5, 6):
+        raw[i, :] = 1.0 / 20
+
+    model = FakeCARBonAra(raw=raw)
+    monkeypatch.setattr(cs, "_load_structure",
+                        lambda pdb_text, carbonara_dir=None: stub_structure(pdb_text))
+    monkeypatch.setattr(carbonara_adapter, "load_model", lambda *a, **k: model)
+
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    mapping = cs.chain_mapping(chain, "A")
+    sharpened, usable = cs.design_distribution(mapping, adapter.model, 1.0)
+    got = cs.expected_retention(sharpened, usable, mapping, (2, 3, 4))
+
+    # abs=1e-4 because the sharpening clips zeros to EPSILON before
+    # renormalising, which moves a row by ~2e-5. That clip is deliberate:
+    # 0 ** (1/T) is fine but a whole row of them is not.
+    close = lambda x: pytest.approx(x, abs=1e-4)
+    assert got["exact_p_asn"] == close(0.5)
+    assert got["exact_p_ser_or_thr"] == close(0.6)
+    assert got["exact_proline_introduced_at_x"] == close(0.25)
+    assert got["exact_full_sequon_retained"] == close(0.5 * 0.6 * 0.75)
+    assert got["exact_asn_retained_motif_lost"] == close(0.5 - 0.225)
+    assert got["exact_ser_thr_retained_motif_lost"] == close(0.6 - 0.225)
+    assert got["exact_complete_motif_loss"] == close(0.5 * 0.4)
+
+
+def test_exact_retention_agrees_with_many_samples(chain, fake_backend):
+    """The closed form is what sampling estimates, so enough draws converge."""
+    import numpy as np
+
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    mapping = cs.chain_mapping(chain, "A")
+    sharpened, usable = cs.design_distribution(mapping, adapter.model, 1.0)
+    exact = cs.expected_retention(sharpened, usable, mapping,
+                                  (2, 3, 4))["exact_full_sequon_retained"]
+
+    designs = adapter.design(chain, "A", n_designs=4000, temperature=1.0, seed=0)
+    from experimental_glycosylation_sites.retention import classify_retention
+    sampled = classify_retention(designs, 2, 3, 4)["frac_full_sequon_retained"]
+    assert sampled == pytest.approx(exact, abs=0.02)
+
+
+def test_exact_retention_refuses_a_position_it_cannot_address(tmp_path, fake_backend):
+    residues = [("ALA", 1, " ", BACKBONE, "ATOM  "),
+                ("SEP", 2, " ", BACKBONE, "ATOM  "),
+                ("ASN", 3, " ", BACKBONE, "ATOM  "),
+                ("LYS", 4, " ", BACKBONE, "ATOM  "),
+                ("SER", 5, " ", BACKBONE, "ATOM  ")]
+    path = write(tmp_path, build_pdb(residues))
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    mapping = cs.chain_mapping(path, "A")
+    sharpened, usable = cs.design_distribution(mapping, adapter.model, 0.1)
+    with pytest.raises(cs.IncompleteBackboneError):
+        cs.expected_retention(sharpened, usable, mapping, (1, 2, 3))
+
+
+def test_design_distribution_imprints_nothing(chain, fake_backend):
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    mapping = cs.chain_mapping(chain, "A")
+    cs.design_distribution(mapping, adapter.model, 0.1)
+    assert fake_backend.calls == [None]

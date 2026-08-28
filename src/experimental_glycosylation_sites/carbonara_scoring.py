@@ -570,8 +570,8 @@ def sequon_score(probabilities: "dict[int, np.ndarray]", n_index: int,
 # --------------------------------------------------------------------------
 
 def design_sequences(mapping: CarbonaraMapping, model, n_designs: int,
-                     temperature: float, seed: int = 0,
-                     carbonara_dir=None) -> "list[str]":
+                     temperature: float, seed: int = 0, carbonara_dir=None,
+                     distribution=None) -> "list[str]":
     """Unconstrained designs, returned in the manifest's index space.
 
     Nothing is imprinted: `yt` is left at zero everywhere, so the model is given
@@ -599,24 +599,12 @@ def design_sequences(mapping: CarbonaraMapping, model, n_designs: int,
     has to come from a design-time pass, which is what `design_distribution`
     exists for.
     """
-    structure = _load_structure(mapping.pdb_text, carbonara_dir)
-    X, qe, _, _, Mr, _, _, mr_aa = model.process_structure(structure)
-
-    raw = model.apply_model(X, qe, Mr, yt=None)
-    probabilities = np.asarray(
-        model.conf(np.asarray(raw.detach().cpu().numpy(), dtype=float)), dtype=float)
-
-    # Temperature is applied to the calibrated distribution, which is the only
-    # distribution this model has: there are no logits to divide, because the
-    # network emits independent sigmoids and `conf` maps them through an
-    # empirical CDF. Sharpening the calibrated probabilities is the closest
-    # honest analogue of the other models' temperature.
-    if temperature <= 0:
-        raise ValueError(f"temperature must be positive, got {temperature}")
-    sharpened = np.power(np.clip(probabilities, EPSILON, None), 1.0 / temperature)
-    sharpened /= sharpened.sum(axis=1, keepdims=True)
-
-    usable = np.asarray(mr_aa.detach().cpu().numpy(), dtype=bool)
+    # A caller that already holds the distribution -- the exact-retention stage
+    # does -- passes it in rather than paying for a second identical pass.
+    if distribution is None:
+        distribution = design_distribution(mapping, model, temperature,
+                                           carbonara_dir=carbonara_dir)
+    sharpened, usable = distribution
     rng = np.random.default_rng(seed)
     length = mapping.manifest_length
 
@@ -631,7 +619,83 @@ def design_sequences(mapping: CarbonaraMapping, model, n_designs: int,
             if model_index is None or not usable[model_index]:
                 letters.append("X")
                 continue
-            row = sharpened[model_index]
-            letters.append(ALPHABET[int(rng.choice(len(ALPHABET), p=row))])
+            letters.append(ALPHABET[int(rng.choice(len(ALPHABET),
+                                                   p=sharpened[model_index]))])
         designs.append("".join(letters))
     return designs
+
+
+def design_distribution(mapping: CarbonaraMapping, model, temperature: float,
+                        carbonara_dir=None) -> "tuple[np.ndarray, np.ndarray]":
+    """The distribution `design` samples from: `(sharpened, usable)`.
+
+    Separated from sampling because it is what an *exact* retention figure needs.
+    Sampling 32 designs estimates a rate near 0.1 to about +/-0.05; the closed
+    form under independence has no Monte Carlo error at all, and this model's
+    designs really are independent across positions, so the closed form is not
+    an approximation of the sampler -- it is what the sampler is estimating.
+
+    One unconditioned forward pass: `yt` is left None, so the model is given the
+    backbone and no residue identity. Note this is NOT the distribution
+    `07_score` stores, which conditions on every other native residue. Design
+    and scoring see different inputs, so their marginals differ and the scoring
+    ones cannot be used to predict retention.
+    """
+    if temperature <= 0:
+        raise ValueError(f"temperature must be positive, got {temperature}")
+
+    structure = _load_structure(mapping.pdb_text, carbonara_dir)
+    X, qe, _, _, Mr, _, _, mr_aa = model.process_structure(structure)
+
+    raw = model.apply_model(X, qe, Mr, yt=None)
+    probabilities = np.asarray(
+        model.conf(np.asarray(raw.detach().cpu().numpy(), dtype=float)), dtype=float)
+
+    # Temperature is applied to the calibrated distribution, which is the only
+    # distribution this model has: there are no logits to divide, because the
+    # network emits independent sigmoids and `conf` maps them through an
+    # empirical CDF. Sharpening the calibrated probabilities is the closest
+    # honest analogue of the other models' temperature.
+    sharpened = np.power(np.clip(probabilities, EPSILON, None), 1.0 / temperature)
+    sharpened /= sharpened.sum(axis=1, keepdims=True)
+    usable = np.asarray(mr_aa.detach().cpu().numpy(), dtype=bool)
+    return sharpened, usable
+
+
+def expected_retention(sharpened: np.ndarray, usable: np.ndarray,
+                       mapping: CarbonaraMapping, indices) -> dict:
+    """`classify_retention`'s five categories, in closed form.
+
+    Exact because this model samples positions independently. With
+    a = P(Asn at 1), h = P(Ser) + P(Thr) at 3 and p = P(Pro at 2):
+
+        full            = a * h * (1 - p)
+        asn only        = a - full
+        hydroxyl only   = h - full
+        proline at X    = p
+        complete loss   = (1 - a) * (1 - h)
+
+    matching `full = asn and hydroxyl and not proline` exactly. Raises for a
+    site whose positions the model cannot address, rather than returning a
+    number for residues it never evaluated.
+    """
+    mapped = mapping.map_indices(indices)
+    if not all(bool(usable[m]) for m in mapped):
+        raise IncompleteBackboneError(
+            f"CARBonAra reads a non-amino-acid at one of {mapped}")
+
+    n_row, plus1_row, plus2_row = (sharpened[m] for m in mapped)
+    a = float(n_row[AA_INDEX["N"]])
+    h = float(plus2_row[AA_INDEX["S"]] + plus2_row[AA_INDEX["T"]])
+    pro = float(plus1_row[AA_INDEX["P"]])
+    full = a * h * (1.0 - pro)
+
+    return {
+        "exact_full_sequon_retained": full,
+        "exact_asn_retained_motif_lost": a - full,
+        "exact_ser_thr_retained_motif_lost": h - full,
+        "exact_proline_introduced_at_x": pro,
+        "exact_complete_motif_loss": (1.0 - a) * (1.0 - h),
+        "exact_p_asn": a,
+        "exact_p_ser_or_thr": h,
+    }
