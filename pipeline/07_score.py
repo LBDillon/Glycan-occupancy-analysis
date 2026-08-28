@@ -61,7 +61,8 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
     path = paths.get(str(pdb_id).upper())
     if path is None:
         failures += [{"accession": r.accession, "position": r.position,
-                      "structure_pdb_id": pdb_id, "reason": "structure_not_cached"} for r in todo]
+                      "structure_pdb_id": pdb_id, "structure_chain_id": chain_id,
+                      "reason": "structure_not_cached"} for r in todo]
         continue
 
     # every sequon residue needed from this chain, prepared in one go
@@ -71,7 +72,7 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
         context = adapter.prepare_chain(path, chain_id, wanted)
     except Exception as exc:
         failures += [{"accession": r.accession, "position": r.position,
-                      "structure_pdb_id": pdb_id,
+                      "structure_pdb_id": pdb_id, "structure_chain_id": chain_id,
                       "reason": f"{type(exc).__name__}: {str(exc)[:80]}"} for r in todo]
         continue
 
@@ -110,7 +111,10 @@ if rows:
 frame = read_resumable_csv(OUT, empty_columns=KEY)
 frame = frame.drop_duplicates(KEY)
 frame.to_csv(OUT, index=False)
-pd.DataFrame(failures).to_csv(FAILURES, index=False)
+# Reindexed so the columns are the same whether there were failures, one
+# kind of failure, or several. A table whose schema depends on which errors
+# occurred cannot be joined against reliably.
+pd.DataFrame(failures, columns=KEY + ["reason"]).to_csv(FAILURES, index=False)
 
 print(f"\nscored {len(frame)} of {len(sites)} unique sites; {len(failures)} failures")
 if failures:
