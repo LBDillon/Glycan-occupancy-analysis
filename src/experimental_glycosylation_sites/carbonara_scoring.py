@@ -563,3 +563,69 @@ def sequon_score(probabilities: "dict[int, np.ndarray]", n_index: int,
         "probs_plus1": plus1_row.tolist(),
         "probs_plus2": plus2_row.tolist(),
     }
+
+
+# --------------------------------------------------------------------------
+# Generation, for the retention outcome.
+# --------------------------------------------------------------------------
+
+def design_sequences(mapping: CarbonaraMapping, model, n_designs: int,
+                     temperature: float, seed: int = 0,
+                     carbonara_dir=None) -> "list[str]":
+    """Unconstrained designs, returned in the manifest's index space.
+
+    Nothing is imprinted: `yt` is left at zero everywhere, so the model is given
+    the backbone and no residue identity at all. That is what the interface
+    requires -- fixing anything would measure the constraint rather than the
+    model -- and it also avoids `imprint_sampling` entirely, whose stochastic
+    `imprint_ratio` has no counterpart in the other models' protocols.
+
+    One forward pass per chain, not per position, because a single unconditioned
+    pass gives every position's distribution at once. Retention is therefore far
+    cheaper than scoring for this model, which is the reverse of ProteinMPNN.
+
+    **The resulting rate is not comparable to the other models' rates.**
+    CARBonAra is one-shot, so positions are sampled independently and the
+    sequence carries no correlation between them. Both autoregressive models
+    retain the sequon 1.4-1.8x more often than their own per-position marginals
+    predict, and that excess is precisely the correlation this model cannot
+    express. The paired difference between occupied sites and their matched
+    partners is the comparable quantity, because both arms lose the correlation
+    equally; the absolute rate is an architecture measurement.
+    """
+    structure = _load_structure(mapping.pdb_text, carbonara_dir)
+    X, qe, _, _, Mr, _, _, mr_aa = model.process_structure(structure)
+
+    raw = model.apply_model(X, qe, Mr, yt=None)
+    probabilities = np.asarray(
+        model.conf(np.asarray(raw.detach().cpu().numpy(), dtype=float)), dtype=float)
+
+    # Temperature is applied to the calibrated distribution, which is the only
+    # distribution this model has: there are no logits to divide, because the
+    # network emits independent sigmoids and `conf` maps them through an
+    # empirical CDF. Sharpening the calibrated probabilities is the closest
+    # honest analogue of the other models' temperature.
+    if temperature <= 0:
+        raise ValueError(f"temperature must be positive, got {temperature}")
+    sharpened = np.power(np.clip(probabilities, EPSILON, None), 1.0 / temperature)
+    sharpened /= sharpened.sum(axis=1, keepdims=True)
+
+    usable = np.asarray(mr_aa.detach().cpu().numpy(), dtype=bool)
+    rng = np.random.default_rng(seed)
+    length = mapping.manifest_length
+
+    designs = []
+    for _ in range(int(n_designs)):
+        letters = []
+        for manifest_index in range(length):
+            model_index = mapping.to_model.get(manifest_index)
+            # A position with no counterpart, or one CARBonAra reads as a
+            # non-amino-acid, has no honest residue to emit. X rather than a
+            # guess, matching what `to_manifest_space` does for ProteinMPNN.
+            if model_index is None or not usable[model_index]:
+                letters.append("X")
+                continue
+            row = sharpened[model_index]
+            letters.append(ALPHABET[int(rng.choice(len(ALPHABET), p=row))])
+        designs.append("".join(letters))
+    return designs

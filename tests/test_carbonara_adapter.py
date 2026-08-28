@@ -88,19 +88,16 @@ def test_constructing_the_adapter_does_not_need_a_checkout():
 # 2. Protocol conformance.
 # --------------------------------------------------------------------------
 
-def test_the_adapter_is_a_scorer_and_not_a_designer():
-    """Scorer only, by design: upstream generation samples stochastically from
-    raw confidences, so there is no retention number this benchmark can use."""
+def test_the_adapter_is_both_a_scorer_and_a_designer():
     adapter = carbonara_adapter.CARBonAraAdapter()
     assert isinstance(adapter, SequonScorer)
-    assert not isinstance(adapter, SequenceDesigner)
-    assert not hasattr(adapter, "design")
+    assert isinstance(adapter, SequenceDesigner)
 
 
 def test_the_adapter_implements_the_whole_scorer_protocol():
     adapter = carbonara_adapter.CARBonAraAdapter()
     for method in ("describe", "decodable_positions", "prepare_chain",
-                   "score_from", "score_site"):
+                   "score_from", "score_site", "design"):
         assert callable(getattr(adapter, method)), method
 
 
@@ -356,3 +353,102 @@ def test_an_incomplete_backbone_site_is_dropped_before_the_model_runs(
     assert 2 not in context[1]
     with pytest.raises(cs.IncompleteBackboneError):
         adapter.score_from(context, (2, 3, 4))
+
+
+# --------------------------------------------------------------------------
+# Generation, for retention.
+# --------------------------------------------------------------------------
+
+def test_designs_are_returned_in_manifest_index_space(chain, fake_backend):
+    """`classify_retention` reads the manifest's indices against these strings."""
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    designs = adapter.design(chain, "A", n_designs=4, temperature=0.1, seed=0)
+    assert len(designs) == 4
+    assert all(len(d) == len(SEQUON_SEQ) for d in designs)
+
+
+def test_generation_imprints_nothing(chain, fake_backend):
+    """Fixing any residue would measure the constraint rather than the model.
+
+    One pass per chain, with `yt` left as None -- not one pass per position as
+    scoring does, and no imprint at all.
+    """
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    adapter.design(chain, "A", n_designs=8, temperature=0.1, seed=0)
+    assert len(fake_backend.calls) == 1
+    assert fake_backend.calls[0] is None, "generation imprinted a residue"
+
+
+def test_generation_is_reproducible_for_a_seed(chain, fake_backend):
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    first = adapter.design(chain, "A", n_designs=4, temperature=0.5, seed=7)
+    second = adapter.design(chain, "A", n_designs=4, temperature=0.5, seed=7)
+    other = adapter.design(chain, "A", n_designs=4, temperature=0.5, seed=8)
+    assert first == second
+    assert first != other
+
+
+def test_lower_temperature_concentrates_each_position(chain, fake_backend):
+    """The frozen condition is T=0.1, which is near-greedy.
+
+    Measured per position rather than by counting distinct whole sequences:
+    with twenty options and several positions, every sequence comes out unique
+    at any temperature, so whole-sequence uniqueness saturates and tests
+    nothing. How often a position takes its modal letter does not.
+    """
+    adapter = carbonara_adapter.CARBonAraAdapter()
+
+    def concentration(temperature):
+        designs = adapter.design(chain, "A", n_designs=40,
+                                 temperature=temperature, seed=0)
+        columns = zip(*designs)
+        return np.mean([max(col.count(c) for c in set(col)) / len(col)
+                        for col in columns])
+
+    assert concentration(0.01) > concentration(5.0)
+
+
+def test_a_sharp_distribution_is_decoded_at_its_argmax(chain, monkeypatch):
+    """With a peaked distribution and a cold temperature, the design is the
+    per-position argmax read through CARBonAra's own alphabet."""
+    import numpy as np
+
+    wanted = "MKTWGDA"
+    raw = np.full((len(wanted), 20), 0.01)
+    for i, aa in enumerate(wanted):
+        raw[i, cs.AA_INDEX[aa]] = 0.99
+
+    model = FakeCARBonAra(raw=raw)
+    monkeypatch.setattr(cs, "_load_structure",
+                        lambda pdb_text, carbonara_dir=None: stub_structure(pdb_text))
+    monkeypatch.setattr(carbonara_adapter, "load_model", lambda *a, **k: model)
+
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    designs = adapter.design(chain, "A", n_designs=3, temperature=0.01, seed=0)
+    assert set(designs) == {wanted}
+
+
+def test_a_high_temperature_produces_variety(chain, fake_backend):
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    designs = adapter.design(chain, "A", n_designs=24, temperature=5.0, seed=0)
+    assert len(set(designs)) > 1
+
+
+def test_a_noncanonical_residue_is_emitted_as_x_not_guessed(tmp_path, fake_backend):
+    """It has no amino-acid identity, so there is nothing honest to write."""
+    residues = [("ALA", 1, " ", BACKBONE, "ATOM  "),
+                ("SEP", 2, " ", BACKBONE, "ATOM  "),
+                ("ASN", 3, " ", BACKBONE, "ATOM  "),
+                ("LYS", 4, " ", BACKBONE, "ATOM  "),
+                ("SER", 5, " ", BACKBONE, "ATOM  ")]
+    path = write(tmp_path, build_pdb(residues))
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    designs = adapter.design(path, "A", n_designs=3, temperature=0.1, seed=0)
+    assert all(d[1] == "X" for d in designs)
+    assert all(d[0] != "X" for d in designs)
+
+
+def test_a_nonpositive_temperature_is_refused(chain, fake_backend):
+    adapter = carbonara_adapter.CARBonAraAdapter()
+    with pytest.raises(ValueError, match="temperature"):
+        adapter.design(chain, "A", n_designs=2, temperature=0.0, seed=0)

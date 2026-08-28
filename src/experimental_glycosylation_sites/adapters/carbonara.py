@@ -1,10 +1,15 @@
-"""CARBonAra adapter — a scorer only.
+"""CARBonAra adapter — scorer and designer.
 
-Implements `SequonScorer` and deliberately not `SequenceDesigner`. Sequence
-generation upstream goes through `imprint_sampling`, which samples stochastically
-from raw confidences; neither belongs in this benchmark, and a `design` method
-here would let stage 08 produce retention numbers that look like ProteinMPNN's
-without meaning the same thing.
+Implements both protocols. `design` deliberately does NOT use upstream's
+`imprint_sampling`, which samples stochastically from raw confidences at a
+tunable imprint ratio with no counterpart in the other models' protocols; it
+samples from the calibrated per-position distribution with nothing imprinted.
+
+**Its retention rate is not comparable to ProteinMPNN's or ESM-IF's.** Being
+one-shot, CARBonAra samples positions independently, and the two autoregressive
+models retain the sequon 1.4-1.8x more often than their own marginals predict --
+an excess that is exactly the positional correlation this model cannot express.
+The paired occupied-minus-control difference is the comparable quantity.
 
 All of the substance lives in `carbonara_scoring`. Read its module docstring
 before putting these numbers beside another model's: the conditional is
@@ -21,11 +26,12 @@ import numpy as np
 
 from ..carbonara_scoring import (CONDITIONING, DEFAULT_MODEL, N_ORDERS,
                                  chain_mapping, conditional_probabilities,
-                                 decodable_positions, load_model, sequon_score)
+                                 decodable_positions, design_sequences,
+                                 load_model, sequon_score)
 
 
 class CARBonAraAdapter:
-    """Implements SequonScorer. Not a SequenceDesigner."""
+    """Implements both SequonScorer and SequenceDesigner."""
 
     name = "carbonara"
 
@@ -122,3 +128,16 @@ class CARBonAraAdapter:
         """Score one sequon. Raises if the model did not evaluate all three."""
         context = self.prepare_chain(structure_path, chain_id, list(indices))
         return self.score_from(context, indices, expected_triplet)
+
+    # --- SequenceDesigner ---------------------------------------------------
+    def design(self, structure_path: Path, chain_id: str, n_designs: int,
+               temperature: float, seed: int = 0) -> "list[str]":
+        """Unconstrained designs, returned in the manifest's index space.
+
+        One forward pass per chain rather than per position, so retention costs
+        far less than scoring here -- the reverse of ProteinMPNN.
+        """
+        mapping = self._mapping(structure_path, chain_id)
+        return design_sequences(mapping, self.model, n_designs=n_designs,
+                                temperature=temperature, seed=seed,
+                                carbonara_dir=self.dir)

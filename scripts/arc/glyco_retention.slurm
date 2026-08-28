@@ -4,6 +4,12 @@
 #
 #   sbatch scripts/arc/glyco_retention.slurm esm_if
 #   sbatch scripts/arc/glyco_retention.slurm proteinmpnn
+#   sbatch scripts/arc/glyco_retention.slurm carbonara
+#
+# CARBonAra is the CHEAP one here, unlike scoring: one unconditioned forward pass
+# per chain gives every position's distribution at once, so 32 designs cost one
+# pass rather than 32. Its memory is the risk instead -- extract_topology builds
+# an atom-by-atom distance matrix, which killed a scoring shard at 32G.
 #
 # The array splits chains across tasks, so wall time is roughly the serial cost
 # divided by the array width. Each task writes its own shard; merge afterwards
@@ -21,7 +27,7 @@
 #SBATCH --job-name=glyco-ret
 #SBATCH --partition=medium
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64G
+#SBATCH --mem=64G          # carbonara wants more: see the note above
 #SBATCH --time=12:00:00
 #SBATCH --array=0-63
 #SBATCH --output=/data/chem-proteindesign/sjoh5764/glyco_occupancy/logs/%x-%A_%a.out
@@ -35,8 +41,13 @@ source "${PROJECT_ROOT}/env.sh"
 # allocation is the unit, so let torch use the cores it was given.
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 
-MODEL="${1:?usage: sbatch glyco_retention.slurm <esm_if|proteinmpnn>}"
-VENV="${PROJECT_ROOT}/venv-if"     # both live here; ESMC does not do retention
+MODEL="${1:?usage: sbatch glyco_retention.slurm <esm_if|proteinmpnn|carbonara>}"
+# ESM-IF and ProteinMPNN share venv-if; CARBonAra needs gemmi, blosum,
+# scikit-learn and h5py. ESMC does no retention -- it has no SequenceDesigner.
+case "${MODEL}" in
+  carbonara) VENV="${PROJECT_ROOT}/venv-carbonara" ;;
+  *)         VENV="${PROJECT_ROOT}/venv-if" ;;
+esac
 # The denominator is FIXED, not SLURM_ARRAY_TASK_COUNT. Resubmitting a few
 # failed indices (--array=36,41) would otherwise set the count to 2 and compute
 # "shard 36/2", which is invalid -- and silently a different partition of the
