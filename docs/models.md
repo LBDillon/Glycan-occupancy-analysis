@@ -490,16 +490,40 @@ retention**, and nothing stronger. It does not license claiming the architecture
 difference cancels in the paired contrast: that would require the correlation
 loss to be equal in both arms, which has not been shown.
 
-**Scoring marginals do not predict design retention, for any model.** An earlier
-draft claimed the autoregressive models retain the sequon 1.4–1.8× more often
-than their own marginals imply and attributed the excess to decoding
-correlation. That was an artefact of comparing marginals at T = 1 against
-retention measured at T = 0.1. Recomputed at the sampling temperature the sign
-reverses — ProteinMPNN 0.141 implied against 0.121 measured, ESM-IF 0.192
-against 0.151 — because scoring conditions on native context and design on
-generated context. For CARBonAra the gap is wider still: scoring imprints every
-other native residue, design imprints nothing. Any expected-retention figure has
-to come from a design-time pass.
+**The control arm, run 2026-08-28.** 262 of 262 matched secretory sites, zero
+failures, 36 minutes — against 244 for scoring, because generation needs one
+unconditioned pass per chain and scoring needs one per position.
+
+    exact (closed form)      0.0963      NXS 0.080   NXT 0.111
+    sampled, 32 designs      0.0949      mean |difference| 0.0090
+
+The two agree to 0.0014 in the mean, which is the compatibility check passing:
+the closed form is what sampling estimates, so a gap between them would mean the
+two paths had diverged. **The occupied arm has not been run**, so there is no
+paired result yet and the figure below is a control-arm rate, not an effect.
+
+**Whether scoring marginals predict design retention depends on the model.**
+An earlier draft claimed flatly that they do not, for any model, and that the
+autoregressive models retain the sequon 1.4–1.8× more often than their own
+marginals imply. Both statements were built on comparing marginals at T = 1
+against retention measured at T = 0.1. Corrected, the picture splits:
+
+| Model | independence-implied at T = 0.1 | measured |
+|---|---:|---:|
+| ProteinMPNN | 0.141 | 0.121 |
+| ESM-IF | 0.192 | 0.151 |
+| CARBonAra (control arm) | 0.103 | **0.096** |
+
+For the autoregressive models the prediction overshoots by 15–20%, because
+scoring conditions on native context and generation conditions on the model's
+own output — different distributions, so one does not substitute for the other.
+
+For CARBonAra the prediction lands within 7%, and its two distributions agree
+closely in the mean at T = 0.1 (P(Asn) 0.248 design against 0.250 scoring,
+P(Ser|Thr) 0.400 against 0.419). That is not a licence to skip the design pass:
+the per-site correlation between the two P(Asn) estimates is only 0.667, so the
+agreement is in aggregate and not site by site, and `expected_retention` is
+computed from a design-time pass for that reason.
 
 #### Environment and running it
 
