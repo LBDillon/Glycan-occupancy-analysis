@@ -193,7 +193,7 @@ cluster bootstrap, significance testing and the figures all work on tables keyed
 by `(accession, position)`. Adding ESM-IF, ESM3 or anything else means writing
 **one adapter** and touching nothing else.
 
-Four models are registered:
+Five models are registered:
 
 | Name | Conditions on | Implements | Notes |
 |---|---|---|---|
@@ -201,11 +201,20 @@ Four models are registered:
 | `esm_if` | backbone + native prefix (autoregressive) | scorer + designer | [doc](docs/models.md) |
 | `esmc` | **sequence only** (masked LM) | scorer | [doc](docs/models.md) |
 | `carbonara` | backbone + all other native residues, one pass | scorer + designer | +0.288 SD; retention not cross-comparable, [doc](docs/models.md) |
+| `progen2` | **sequence only**, causal prefix | scorer | compares with `esm_if`, not `esmc`; [doc](docs/models.md) |
 
 **`esmc` cannot be installed alongside `esm_if`.** `fair-esm` and
 EvolutionaryScale's `esm` both claim the top-level import name `esm`. Use a
 separate environment for each; the registry lazy-imports, so the absent model is
 unavailable rather than breaking the package.
+
+**`progen2` needs `transformers`**, which this package does not install, and
+downloads its checkpoint from HuggingFace on first use. `hugohrban/progen2-base`
+is 764M and runs on CPU; `progen2-xlarge` is 6.4B and needs a GPU. Its
+conditioning is `autoregressive_prefix` — the same string ESM-IF uses — so the
+like-for-like comparison is with ESM-IF, isolating what the backbone adds under
+identical conditioning. Pooling it with ESMC would average two different
+estimands.
 
 **`carbonara` needs a checkout, not a package.** Clone
 [CARBonAra](https://github.com/LBM-EPFL/CARBonAra) — it ships its own weights

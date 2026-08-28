@@ -11,11 +11,17 @@ _REGISTRY = {
     # Sequence-only. Needs EvolutionaryScale's `esm`, which cannot be installed
     # alongside `fair-esm` -- both claim the import name `esm`.
     "esmc": ("experimental_glycosylation_sites.adapters.esmc", "ESMCAdapter"),
-    # Scorer only, by design: upstream generation samples stochastically from
-    # raw confidences, so there is no retention number to report. Needs a
-    # CARBonAra checkout plus gemmi and blosum, none of them core dependencies.
+    # Scorer and designer, though design() uses a custom
+    # independent_calibrated_sampling path rather than upstream's stochastic
+    # imprint_sampling. Needs a CARBonAra checkout plus gemmi, blosum,
+    # scikit-learn and h5py, none of them core dependencies.
     "carbonara": ("experimental_glycosylation_sites.adapters.carbonara",
                   "CARBonAraAdapter"),
+    # Causal and sequence-only. Scorer only: generation is unconditioned by any
+    # backbone, so there is no redesign of a chain to measure retention on.
+    # Needs `transformers`, which is not a core dependency.
+    "progen2": ("experimental_glycosylation_sites.adapters.progen2",
+                "ProGen2Adapter"),
 }
 
 
