@@ -205,16 +205,36 @@ def conditional_probabilities(context, model, tokenizer, indices,
 
 
 def _forward(model, sequence_batch, structure_tokens, device) -> np.ndarray:
-    """One forward pass; returns softmaxed logits as `[batch, tokens, vocab]`."""
+    """One forward pass; returns softmaxed logits as `[batch, tokens, vocab]`.
+
+    Autocast on CUDA, as the reference notebook does. ESM3 loads bfloat16
+    weights on a GPU, and running it without autocast raises "mat1 and mat2
+    must have the same dtype, but got Float and BFloat16" the moment an fp32
+    activation meets a bf16 Linear. Omitting it to keep GPU and CPU numerically
+    identical does not work: it does not run at all.
+
+    So a GPU run and a CPU run of this model will differ numerically. That is
+    the same situation CARBonAra is in for a different reason, and the same rule
+    applies -- every arm of a comparison must come from one environment. The
+    softmax is taken in fp32 either way, which keeps the difference well below
+    the effects being measured, but it is not zero.
+    """
     import torch
 
     structure_batch = None
     if structure_tokens is not None:
         structure_batch = structure_tokens.unsqueeze(0).repeat(
             sequence_batch.shape[0], 1)
+
+    on_cuda = str(device).startswith("cuda")
     with torch.no_grad():
-        out = model.forward(sequence_tokens=sequence_batch,
-                            structure_tokens=structure_batch)
+        if on_cuda:
+            with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                out = model.forward(sequence_tokens=sequence_batch,
+                                    structure_tokens=structure_batch)
+        else:
+            out = model.forward(sequence_tokens=sequence_batch,
+                                structure_tokens=structure_batch)
         probabilities = torch.softmax(out.sequence_logits.float(), dim=-1)
     return np.asarray(probabilities.cpu().numpy(), dtype=float)
 

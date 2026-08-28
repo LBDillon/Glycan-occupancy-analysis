@@ -237,9 +237,15 @@ Regenerate with `python pipeline/24_figures_schematics.py`.
 
 ---
 
-## Figure 15 — Three models, two measurements
+## Figure 15 — Six models, three measurements
 
-![model comparison](../results/figures/fig_model_comparison.png)
+*Split 2026-08-28 into three figures — scoring, masking and retention answer
+different questions and are read at different times. `fig_model_comparison.png`
+no longer exists.*
+
+![scoring](../results/figures/fig_scoring.png)
+![masking](../results/figures/fig_masking.png)
+![retention](../results/figures/fig_retention.png)
 
 *Written 2026-08-27. **Unlike most of Part 1, every number here is post-correction**
 — ProteinMPNN index-corrected, ESM-IF index-corrected, ESMC as run.*
