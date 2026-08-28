@@ -674,31 +674,61 @@ training data, scale and tokenisation differ — so ESM3's within-model track
 ablation remains the only clean structure test. `conditioning` is ESM-IF's
 string so the shared conditional is explicit, not so the models are pooled.
 
+#### The corrected result
+
+*Run on ARC 2026-08-28 under `progen2_direction1` and
+`progen2_joint_direction1`, after the sequence-start token was fixed.*
+
+    motif visible:  +0.028 SD  [-0.217, +0.324]   261 contrasts   inconclusive
+    motif hidden :  -0.034 SD  [-0.288, +0.256]   261 contrasts   inconclusive
+
+**ProGen2 shows no occupancy-associated preference either way.** Both intervals
+straddle zero comfortably, and occupied sites score higher in 139 of 261
+contrasts visible and 132 of 261 hidden — near the 130.5 a coin would give.
+
+Ten sites are excluded, all `ContextTooLongError`: chains from 2327 to 4349
+residues against a 2048-token context. They fail closed with a named reason
+rather than being truncated, because for a causal model the prefix *is* the
+conditioning and a shortened one answers a different question.
+
 #### First run superseded: wrong sequence-start token
 
-The 2026-08-28 first pass reported:
+The 2026-08-28 first pass reported −0.004 SD. That number is **withdrawn**. The
+Hugging Face GPT2 tokenizer reports `<|endoftext|>` (token 30) as its BOS token,
+but ProGen2's published likelihood code frames forward sequences with the
+literal direction marker `1` (token 3). The first pass used the former, so every
+chain was prefixed with an end-of-text token. Both return plausible
+probabilities, so only a source-level framing check exposed it.
 
-    secretory:  -0.004 SD  [-0.259, +0.327]   261 contrasts
-
-That number is **withdrawn**. The Hugging Face GPT2 tokenizer reports
-`<|endoftext|>` as its BOS token, but ProGen2's official likelihood code frames
-forward sequences with the literal direction marker `1`. The first pass used
-the former (token 30) instead of the latter (token 3). Both return plausible
-probabilities, so only a source-level framing check exposed the error.
-
-The corrected visible and hidden arms are being rerun under isolated variants;
-no ProGen2 effect should be quoted until those land.
+The corrected run reaches the same qualitative conclusion, which is worth
+stating precisely: that is not evidence the first pass was harmless, because a
+void measurement agreeing with a valid one is a coincidence, not a corroboration.
 
 #### Joint masking under a causal model
 
 `mask_mode="joint"` integrates N out of the +1 prefix and the joint (N, X) pair
 out of the +2 prefix, using 16 seeded ancestral draws from the model's own
 distribution. The asparagine row is returned unchanged, because a causal prefix
-ending at i-1 has nothing downstream to hide.
+ending at i-1 has nothing downstream to hide. Verified on the pilot: for a given
+site P(Asn) is identical between the two arms while the score differs.
 
 This is the same causal marginalisation used for ESM-IF: both leave N unchanged,
-marginalise N for +1, and marginalise (N, X) for +2. It is recorded as
-`autoregressive_prefix_marginalised`, with `marginal_samples=16` in every row.
+marginalise N for +1, and marginalise (N, X) for +2. Recorded as
+`autoregressive_prefix_marginalised` with `marginal_samples=16`.
+
+    visible +0.028  ->  hidden -0.034      change +0.133 [+0.089, +0.218], p=0.0001
+
+**Read that change carefully.** It is statistically distinguishable from zero
+while *both endpoints are not distinguishable from zero*, which is possible
+because the change is a paired per-site quantity and is estimated far more
+precisely than either arm. It says the marginalisation moved the estimate; it
+does not say ProGen2 has a preference that masking removed.
+
+Set beside ESMC — +0.404 to −0.155, a change of +0.558 — ProGen2's is about a
+quarter the size and starts from nothing rather than from a real effect. The
+manipulation is also structurally smaller: two of three terms change here
+against three of three for ESMC and ESM-IF, because a causal prefix cannot hide
+the motif from the asparagine term.
 
 #### Two limits worth carrying
 
