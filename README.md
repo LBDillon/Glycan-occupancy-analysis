@@ -200,7 +200,7 @@ Four models are registered:
 | `proteinmpnn` | backbone + all other native residues, 8 decoding orders | scorer + designer | [correction](docs/correction_2026-08-20_alphabet.md) |
 | `esm_if` | backbone + native prefix (autoregressive) | scorer + designer | [doc](docs/models.md) |
 | `esmc` | **sequence only** (masked LM) | scorer | [doc](docs/models.md) |
-| `carbonara` | backbone + all other native residues, one pass | **scorer only** | [doc](docs/models.md) |
+| `carbonara` | backbone + all other native residues, one pass | **scorer only** | +0.288 SD; [doc](docs/models.md) |
 
 **`esmc` cannot be installed alongside `esm_if`.** `fair-esm` and
 EvolutionaryScale's `esm` both claim the top-level import name `esm`. Use a

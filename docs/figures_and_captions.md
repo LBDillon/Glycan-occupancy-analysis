@@ -248,8 +248,9 @@ Regenerate with `python pipeline/24_figures_schematics.py`.
 
 **A — the scoring effect.** Occupied minus matched control, in each model's own
 reference SD. ProteinMPNN +0.282 [+0.114, +0.426]; ESM-IF +0.431 [+0.267, +0.726];
-ESMC +0.261 [+0.063, +0.598]. All three intervals exclude zero, which is why all
-three carry a marker.
+ESMC +0.261 [+0.063, +0.598]; CARBonAra +0.288 [+0.130, +0.543]. All four
+intervals exclude zero, which is why all four carry a marker. Only ESM-IF's
+point estimate clears the ±0.2 SD equivalence margin.
 
 **B — what survives hiding the motif.** Filled dot is the motif visible, open dot
 hidden, arrow is the change. ESMC falls +0.261 → −0.113 and crosses zero: its
@@ -295,8 +296,9 @@ the conservative and repository-standard reading. Note also that **129 of its 21
 pairs are tied** — both sites lose the sequon — so the effect rests on 87
 informative pairs; ESM-IF's rests on 93 of 245.
 
-CARBonAra is absent by design: with no motif-visible condition it has no
-within-model masking contrast, so it cannot appear in panel B at all.
+CARBonAra appears in panels A and D only. With no motif-visible condition it has
+no within-model masking contrast (panel B), and no `SequenceDesigner`, so no
+retention (panel C). Both absences are properties of the model, not gaps.
 
 ---
 
@@ -339,6 +341,91 @@ of absence. A separate and much smaller group, `observed_unmodified` (31 sites),
 carries real evidence of absence and is not shown here. Reading the grey
 distribution as unglycosylated sites is the single easiest mistake to make with
 this figure.
+
+---
+
+## Figure 17 — What the models predict at the sequon, residue by residue
+
+![sequon heatmap](../results/figures/fig_sequon_heatmap.png)
+
+*Written 2026-08-27. Interactive version with hover values alongside as
+`fig_sequon_heatmap.html`. All numbers post-correction.*
+
+**What it shows:** the score files already hold a full probability distribution
+over amino acids at each of the three sequon positions — that is what `probs_n`,
+`probs_plus1` and `probs_plus2` are. This draws them. Rows are models, the two
+columns are the two arms of the matched comparison, and each panel is three
+positions down by twenty amino acids across.
+
+Amino acids are grouped by side-chain chemistry rather than alphabetically:
+hydrophobic, aromatic, polar, special, basic, acidic. **N**, **S** and **T** are
+bold because they are the residues the score actually reads. That the three sit
+adjacent is a property of the polar-uncharged group, not an arrangement chosen to
+flatter the result.
+
+Rings mark an amino acid whose **paired** difference between the two arms clears
+zero on a bootstrap over resampling units — the same clustering the main analysis
+uses, not a site-level test. Pairing comes from `matched_pairs_secretory.csv`;
+taking two population means instead would be the confounded comparison the
+archived context analysis showed collapsing once composition was controlled.
+
+**The point:** it decomposes the scalar effect of Figure 15A into which residues
+carry it, and shows that the models put more mass on asparagine and on
+serine/threonine at occupied sites than at their matched partners.
+
+| Model | pairs | ΔP(Asn) at 1 | ΔP(Ser) at 3 | ΔP(Thr) at 3 | rings |
+|---|---:|---:|---:|---:|---:|
+| ProteinMPNN | 232 | +0.038 | +0.027 | +0.020 | 10 / 60 |
+| ESM-IF | 262 | +0.052 | +0.055 | +0.063 | 21 / 60 |
+| ESMC | 262 | +0.045 | +0.039 | +0.081 | 21 / 60 |
+| CARBonAra | 262 | +0.065 | +0.036 | +0.013 | 18 / 60 |
+
+### The aspartate column is the interesting part
+
+The scalar score cannot show this. Asparagine and aspartate are isosteric, and
+the two structure-conditioned models shift **both** between the arms:
+
+| Model | P(Asn) occupied → control | P(Asp) occupied → control |
+|---|---|---|
+| ProteinMPNN | 0.199 → 0.162 (**+0.038**) | 0.180 → 0.119 (**+0.061**) |
+| ESM-IF | 0.245 → 0.192 (**+0.052**) | 0.208 → 0.162 (**+0.046**) |
+| ESMC | 0.312 → 0.266 (**+0.045**) | 0.099 → 0.087 (**+0.012**) |
+| CARBonAra | 0.250 → 0.185 (**+0.065**) | 0.236 → 0.164 (**+0.072**) |
+
+For **ProteinMPNN and CARBonAra the aspartate shift is larger than the asparagine
+shift**, and for ESM-IF they are comparable. So what the structure models register at occupied
+sites is not specifically a preference for asparagine — it is a preference for an
+amide-shaped residue, of which asparagine is one and aspartate the other.
+
+**ESMC behaves differently, and consistently with everything else known about
+it.** Its asparagine mass is much higher (0.312) and its aspartate shift almost
+vanishes (+0.012). A sequence-only model reads the motif in context and can name
+the residue; a structure-only model sees a shape. That is the same split Figure
+15B shows under masking, visible here without masking anything.
+
+This does not undermine the score. The paired design subtracts whatever is common
+to both arms, and the diagnostic behind Figure 16 found that pooling Asn with Asp
+barely changes which sites rank highly (Spearman 0.88–0.95). It does mean the
+asparagine term should be described as *amide-shape preference* rather than
+*asparagine recognition* when a structure model is the subject.
+
+**What it does not show, and three cautions:**
+
+- **Sixty cells per model, uncorrected.** At 5% roughly three rings per model
+  would be expected by chance, so ProteinMPNN's ten is not far above noise.
+  Individual rings on low-probability cells — several sit in the hydrophobic
+  block at position 3, where no mechanism is obvious — are not findings. This is
+  a decomposition of an effect established elsewhere, not a screen.
+- **Nothing is confidently predicted anywhere.** The darkest cell in the figure
+  is about 0.31 and most are near 0.05, which is chance for twenty residues. The
+  models express mild preferences, not calls.
+- **ProteinMPNN is 232 pairs against 262** for the other two, so the rows are not
+  the same site set. Sound within each model; do not rank the models off it.
+
+**Note the ordering is not explained by how much sequence each model sees.**
+ProteinMPNN conditions on every other native residue and has the largest
+aspartate excess; CARBonAra, which sees no side chains at all, is close behind.
+That is unexplained and should not be narrated into a story.
 
 ---
 

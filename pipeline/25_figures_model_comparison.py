@@ -45,6 +45,9 @@ MODELS = [
     ("ESM-IF", "esm_if_index_corrected",
      "esm_if_joint_index_corrected", "esm_if", CTL),
     ("ESMC", "esmc_single", "esmc_joint", None, "#5b8c5a"),
+    # Scorer only, and one-shot: no motif-visible condition, so no within-model
+    # masking contrast and no retention. Panel B necessarily omits it.
+    ("CARBonAra", "carbonara", "carbonara", None, "#8a6fa8"),
 ]
 SECRETORY = "eukaryotic secretory"
 

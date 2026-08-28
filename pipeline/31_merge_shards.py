@@ -59,6 +59,25 @@ if before != len(merged):
     print(f"  WARNING: {before - len(merged)} duplicate sites across shards. Shards "
           "should partition the chains, so this means two tasks ran the same one.")
 
+# A shard writes its failures side-file only after its final flush, so a shard
+# whose data file exists without that sibling is one that died partway through.
+# Its output looks like any other shard's: shorter, and in no way marked.
+truncated = [Path(f).name for f in files
+             if not Path(f.replace(".csv", "_failures.csv")).exists()]
+if truncated:
+    message = (f"{truncated} have no _failures.csv beside them, which means "
+               "those shards were killed before finishing. Their rows are a "
+               "partial run, not a short one.")
+    if not args.allow_incomplete:
+        raise SystemExit(f"MERGE REFUSED: {message}\n"
+                         "Pass --allow-incomplete to write it anyway.")
+    print(f"  WARNING: {message}")
+
+failure_files = sorted(glob.glob(args.pattern.replace(".csv", "_failures.csv")))
+failure_rows = [pd.read_csv(f, low_memory=False) for f in failure_files
+                if Path(f).stat().st_size > 50]
+fail = pd.concat(failure_rows, ignore_index=True) if failure_rows else None
+
 if args.shards:
     seen = {int(m.group(1)) for p in files
             for m in [re.search(r"shard(\d+)", Path(p).name)] if m}
@@ -86,20 +105,34 @@ if args.expect_manifest and Path(args.expect_manifest).exists():
         man = man[man.scoreable.astype(bool)]
     expected = len(man.drop_duplicates(KEY))
     pct = 100 * len(merged) / expected if expected else 0
-    print(f"coverage          : {len(merged)} of {expected} manifest sites ({pct:.1f}%)")
-    if pct < 95:
-        print("  WARNING: under 95% coverage. Check the *_failures.csv files "
-              "before treating this as a complete run.")
+    n_failed = 0 if fail is None else len(fail.drop_duplicates(
+        [c for c in KEY if c in fail.columns]))
+    print(f"coverage          : {len(merged)} of {expected} manifest sites "
+          f"({pct:.1f}%), {n_failed} recorded as failures")
+
+    # Every manifest site must be either scored or recorded as having failed.
+    # A site that is neither was never attempted, which means a shard stopped
+    # early -- and a percentage threshold cannot see that: the run this check
+    # was written for sat at 97.1%, comfortably above any threshold worth
+    # setting, while sixteen sites had simply never been tried.
+    unaccounted = expected - len(merged) - n_failed
+    if unaccounted > 0:
+        message = (f"{unaccounted} manifest sites are neither scored nor "
+                   "recorded as failures, so they were never attempted. The "
+                   "merged table is INCOMPLETE.")
+        if not args.allow_incomplete:
+            raise SystemExit(f"MERGE REFUSED: {message}\n"
+                             "Pass --allow-incomplete to write it anyway.")
+        print(f"  WARNING: {message}")
+    elif unaccounted < 0:
+        print(f"  WARNING: {-unaccounted} more sites than the manifest lists; "
+              "the manifest and the run may not correspond.")
 
 Path(args.out).parent.mkdir(parents=True, exist_ok=True)
 merged.to_csv(args.out, index=False)
 print(f"wrote {args.out}")
 
-failures = sorted(glob.glob(args.pattern.replace(".csv", "_failures.csv")))
-rows = [pd.read_csv(f, low_memory=False) for f in failures
-        if Path(f).stat().st_size > 50]
-if rows:
-    fail = pd.concat(rows, ignore_index=True)
+if fail is not None:
     out = Path(args.out).with_name(Path(args.out).stem + "_failures.csv")
     fail.to_csv(out, index=False)
     print(f"\n{len(fail)} failures -> {out}")

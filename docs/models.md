@@ -519,30 +519,81 @@ about 5%. This settles the alphabet against the model's own behaviour rather tha
 against a constant transcribed from a source file — the check the 2026-08-20
 defect went a month without.
 
-#### The Asn/Asp ambiguity, which is a real limit on this score
+#### The Asn/Asp ambiguity, and what it actually turned out to be
 
-At two of the three sites the model's most likely residue at the sequon
-asparagine was **aspartate**, not asparagine, and across the three chains a
-native Asn was called Asp in 13 of 56 cases. This is not an indexing artefact —
-recovery above rules that out, and 4EBY calls its Asn correctly. It is chemistry:
-Asn and Asp are isosteric, differing by an oxygen where an amide sits, and
-CARBonAra is shown neither side chain. From a stripped backbone the two are close
-to indistinguishable.
+*Revised 2026-08-28, after the diagnostic. The first version of this section said
+the confusion was CARBonAra-specific and would compress its effect relative to
+the other models. Both halves were wrong.*
 
-The consequence matters for interpretation. Half of `conditional_sequon_score` is
-the log odds of asparagine, so for CARBonAra that half rests on the single
-hardest discrimination in backbone-only inverse folding. Expect the asparagine
-term to be compressed relative to the hydroxyl term, and do not read a small
-CARBonAra effect as evidence of a small biological one without checking whether
-P(Asn) + P(Asp) behaves differently from P(Asn) alone.
+At two of three smoke-test sites CARBonAra's most likely residue at the sequon
+asparagine was aspartate. The two are isosteric — an oxygen where an amide sits —
+and CARBonAra is shown no side chains, so the worry was that half of
+`conditional_sequon_score` was a coin flip for this model in particular.
+
+Measured across all four models on the same 262 sequons, it is not
+CARBonAra-specific. Asparagine beats aspartate at 55% of sites for CARBonAra and
+ESM-IF and 64% for ProteinMPNN, against 50% for a coin flip, and asparagine
+recovery is roughly half of X-position recovery in **every** model, including the
+two that see side chains elsewhere in the chain. It is an intrinsically hard call
+from a backbone, not a defect of one architecture.
+
+Nor is the term noise. The two halves of the score are near-uncorrelated
+(r = −0.02 to 0.14) and both track the total, and pooling Asn with Asp barely
+changes which sites rank highly (Spearman 0.88–0.95). The analysis is a paired
+difference, so the near-constant shift pooling produces cancels.
+
+What the diagnostic did establish is worth more than what it ruled out. The
+paired heatmap ([Figure 17](figures_and_captions.md)) shows aspartate shifting
+between the arms alongside asparagine:
+
+| Model | ΔP(Asn) at position 1 | ΔP(Asp) at position 1 |
+|---|---:|---:|
+| ProteinMPNN | +0.038 | **+0.061** |
+| ESM-IF | +0.052 | +0.046 |
+| ESMC | **+0.045** | +0.012 |
+| CARBonAra | +0.065 | **+0.072** |
+
+For ProteinMPNN and CARBonAra the aspartate shift is the larger of the two. So
+what a structure-conditioned model registers at an occupied site is better
+described as a preference for an **amide-shaped residue** than as recognition of
+asparagine. ESMC is the exception — large asparagine shift, negligible aspartate
+shift — which is what a model reading the motif in the sequence rather than
+inferring a shape should look like.
+
+The ordering among the three structure models is not explained by how much
+sequence each sees: ProteinMPNN conditions on every other native residue and has
+the largest aspartate excess. That is unexplained, and should not be narrated
+into a story.
+
+#### The result
+
+*Run on ARC 2026-08-27/28. All three sets, 100% coverage, zero failures.*
+
+    occupied vs matched control, secretory:  +0.288 SD  [+0.130, +0.543]
+    262 contrasts, 72 resampling units       directional, magnitude undetermined
+
+That places it beside ProteinMPNN (+0.282) rather than ESM-IF (+0.431). Its
+interval excludes zero but crosses the ±0.2 SD equivalence margin, which is the
+same verdict ProteinMPNN and ESMC receive.
+
+**Scores are not bit-reproducible across machines.** The same 262 secretory sites
+run on a laptop and on ARC agree to a mean |Δ| of 0.009 and a maximum of 0.076
+log-odds, and *no* site reproduces exactly. The cause is `extract_topology`,
+which takes a hard `topk(D, 64)` nearest-neighbour cut: near-ties at that
+boundary resolve differently across architectures, so the message-passing graph
+itself differs. Being a discrete change, it moves the output by ~1e-2 rather than
+the ~1e-6 float accumulation alone would give. Against a reference SD of 1.28
+that is about 0.01 SD, negligible beside effects of 0.3 SD — but every arm of a
+comparison must come from one environment, and CARBonAra numbers should not be
+quoted beyond two decimal places.
 
 #### Not done
 
 No context-conditioned scoring: no glycan-present arm, no ligands, ions or water.
-No generation, retention or stage 08. No matching, contrast, statistic or figure
-has been rerun — this adds a scorer and nothing downstream of it. The smoke test
-above establishes that the plumbing is correct on three chains; it is **not** a
-result, and no manifest has been scored.
+No generation, retention or stage 08, so CARBonAra appears in neither the
+retention panel nor the masking panel of [Figure 15](figures_and_captions.md) —
+with no motif-visible condition it has no within-model masking contrast at all.
+Matching was not rerun; it is model-independent and shared by every variant.
 
 ## The recurring bug, which is really one bug
 
