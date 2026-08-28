@@ -39,24 +39,41 @@ OUT.mkdir(parents=True, exist_ok=True)
 # pre-index-correction esm_if) are deliberately absent: a figure that quietly
 # mixed corrected and uncorrected numbers is how the last two corrections
 # stayed invisible for a month.
+# Ordered so ESM3's two arms sit adjacent: the difference between them is the
+# only within-model measurement of what the structure track contributes, and it
+# should be readable by eye rather than by comparing two ends of a panel.
+#
+# The fourth field is the retention variant; None where a model has no designer.
+# The third is the motif-hidden variant; None where the model has no masked
+# condition at all, which is not the same thing as one that has not been run.
 MODELS = [
     ("ProteinMPNN", "proteinmpnn_index_corrected",
      "proteinmpnn_joint_index_corrected", "proteinmpnn_index_corrected", OCC),
     ("ESM-IF", "esm_if_index_corrected",
      "esm_if_joint_index_corrected", "esm_if", CTL),
-    ("ESMC", "esmc_single", "esmc_joint", None, "#5b8c5a"),
-    # Scorer only, and one-shot: no motif-visible condition, so no within-model
-    # masking contrast and no retention. Panel B necessarily omits it.
-    # hidden is None: one-shot, so there is no motif-visible condition and no
-    # masking contrast. Naming its own variant as the hidden arm would draw a
-    # zero-length arrow that reads as "masking changed nothing".
+    # One-shot: no motif-visible condition, so no masking contrast exists to
+    # draw. Naming its own variant as the hidden arm would produce a
+    # zero-length arrow reading as "masking changed nothing".
     ("CARBonAra", "carbonara", None, None, "#8a6fa8"),
+    ("ESM3 structure", "esm3_struct_single", "esm3_struct_joint", None, "#1f6f8b"),
+    ("ESM3 sequence", "esm3_seq_single", "esm3_seq_joint", None, "#7fb3c8"),
+    ("ESMC", "esmc_single", "esmc_joint", None, "#5b8c5a"),
+    ("ProGen2", "progen2", "progen2_joint", None, "#c58a3d"),
 ]
 SECRETORY = "eukaryotic secretory"
 
 
 def scoring(variant):
-    return json.loads((ANALYSIS / f"analysis_secretory_{variant}.json").read_text())
+    """The contrast for one variant, or None if it has not been run.
+
+    Returning None rather than raising: this benchmark now has six models and
+    several arms each, and they arrive at different times. A figure that refuses
+    to draw until every last one exists is a figure nobody sees.
+    """
+    if variant is None:
+        return None
+    path = ANALYSIS / f"analysis_secretory_{variant}.json"
+    return json.loads(path.read_text()) if path.exists() else None
 
 
 def retention(variant):
@@ -80,7 +97,11 @@ values = {}
 # =============================================================================
 # A — the scoring effect, motif visible
 # =============================================================================
-rows = [(name, scoring(vis), colour) for name, vis, _, _, colour in MODELS]
+rows = [(name, scoring(vis), colour) for name, vis, _, _, colour in MODELS
+        if scoring(vis) is not None]
+missing = [name for name, vis, _, _, _ in MODELS if scoring(vis) is None]
+if missing:
+    print(f"  not yet run, omitted from A/B/D: {missing}")
 for i, (name, stat, colour) in enumerate(rows):
     low, high = stat["ci95_sd"]
     mean = stat["mean_difference_sd"]
@@ -95,7 +116,7 @@ ax.set_ylim(-0.6, len(rows) - 0.4)
 ax.invert_yaxis()
 ax.tick_params(left=False)
 ax.set_xlabel("occupied − matched control  (reference SD)")
-ax.set_title("A   Scoring: every model separates occupied sequons", pad=10)
+ax.set_title("A   Scoring: every model but the causal sequence-only one\n     separates occupied sequons", pad=10)
 
 values["A_scoring_visible"] = {
     name: {"mean_sd": s["mean_difference_sd"], "ci95_sd": s["ci95_sd"],
@@ -105,8 +126,15 @@ values["A_scoring_visible"] = {
 # =============================================================================
 # B — what survives hiding the motif
 # =============================================================================
-maskable = [m for m in MODELS if m[2] is not None]
-unmaskable = [m[0] for m in MODELS if m[2] is None]
+drawn = {r[0] for r in rows}
+maskable = [m for m in MODELS if m[0] in drawn and scoring(m[2]) is not None]
+# Two different reasons a model has no arrow, and conflating them states
+# something false: CARBonAra has no motif-visible condition at all, while
+# ProGen2 has one that has simply not been run.
+NO_MASK = {m[0]: ("no masked condition — one-shot, so no motif-visible arm"
+                  if m[2] is None else "masked arm not yet run")
+           for m in MODELS if m[0] in drawn and scoring(m[2]) is None}
+unmaskable = [m[0] for m in MODELS if m[0] in NO_MASK]
 for i, (name, vis, hid, _, colour) in enumerate(maskable):
     v, h = scoring(vis)["mean_difference_sd"], scoring(hid)["mean_difference_sd"]
     bx.annotate("", xy=(h, i), xytext=(v, i),
@@ -123,11 +151,17 @@ for i, (name, vis, hid, _, colour) in enumerate(maskable):
     if change and change["p"] < 0.05:
         bx.text((v + h) / 2, i - 0.26, "*", va="center", ha="center",
                 fontsize=15, color=INK)
+# The rows drawn are `maskable` then `unmaskable`, so the labels must be that
+# same list. Labelling with MODELS put ESMC's arrow on CARBonAra's row.
+for j, name in enumerate(unmaskable):
+    bx.text(0.0, len(maskable) + j, "  " + NO_MASK[name], fontsize=9.5,
+            color=INK, alpha=0.6, style="italic", va="center")
 bx.axvline(0, color=INK, lw=1.0, zorder=1)
 bx.margins(x=0.09)
-bx.set_yticks(range(len(MODELS)))
-bx.set_yticklabels([m[0] for m in MODELS])
-bx.set_ylim(-0.85, len(MODELS) - 0.4)
+rows_b = len(maskable) + len(unmaskable)
+bx.set_yticks(range(rows_b))
+bx.set_yticklabels([m[0] for m in maskable] + unmaskable)
+bx.set_ylim(-0.85, rows_b - 0.4)
 bx.invert_yaxis()
 bx.tick_params(left=False)
 bx.set_xlabel("occupied − matched control  (reference SD)")
@@ -151,7 +185,13 @@ values["B_masking_absent"] = unmaskable
 # =============================================================================
 designers = [(name, retention(ret), colour)
              for name, _, _, ret, colour in MODELS if retention(ret) is not None]
-absent = [name for name, _, _, ret, _ in MODELS if retention(ret) is None]
+# Five italic "no designer" lines would be five rows of whitespace saying one
+# thing. Only a model that HAS a designer but no data yet earns its own row;
+# the rest are named once under the axis.
+HAS_DESIGNER = {"ProteinMPNN", "ESM-IF", "CARBonAra"}
+absent = [name for name, _, _, ret, _ in MODELS
+          if retention(ret) is None and name in HAS_DESIGNER]
+no_designer = [name for name, _, _, _, _ in MODELS if name not in HAS_DESIGNER]
 
 for i, (name, r, colour) in enumerate(designers):
     cx.plot([r["control_mean"], r["occupied_mean"]], [i, i],
@@ -166,7 +206,10 @@ for i, (name, r, colour) in enumerate(designers):
                 fontsize=15, color=INK)
 NO_RETENTION = {
     "ESMC": "no designer — a masked LM conditions on sequence, not backbone",
-    "CARBonAra": "designer added 2026-08-28; retention not yet run",
+    "ESM3 structure": "no designer — masked LM, as ESMC",
+    "ESM3 sequence": "no designer — masked LM, as ESMC",
+    "ProGen2": "no designer — generation is unconditioned by any backbone",
+    "CARBonAra": "designer added 2026-08-28; retention running on ARC",
 }
 for j, name in enumerate(absent):
     i = len(designers) + j
@@ -179,8 +222,10 @@ cx.set_ylim(-0.6, len(designers) + len(absent) - 0.4)
 cx.set_xlim(left=-0.005)
 cx.invert_yaxis()
 cx.tick_params(left=False)
-cx.set_xlabel("sequon retained in redesign  (proportion of sites)")
-cx.set_title("C   Design: the sequon is usually not kept, by either model", pad=10)
+cx.set_xlabel("sequon retained in redesign  (proportion of sites)"
+              + ("\n" + ", ".join(no_designer) + " have no designer"
+                 if no_designer else ""), fontsize=10)
+cx.set_title("C   Design: the sequon is usually not kept", pad=10)
 cx.legend(frameon=False, fontsize=9.5, loc="upper right")
 
 values["C_retention"] = {
@@ -196,6 +241,8 @@ values["C_retention_absent"] = absent
 # =============================================================================
 for name, vis, _, _, colour in MODELS:
     stat = scoring(vis)
+    if stat is None or not (ANALYSIS / f"contrasts_secretory_{vis}.csv").exists():
+        continue
     contrasts = pd.read_csv(ANALYSIS / f"contrasts_secretory_{vis}.csv")
     standardised = np.sort(contrasts.contrast.values / stat["reference_sd"])
     ecdf = np.arange(1, len(standardised) + 1) / len(standardised)
@@ -211,6 +258,8 @@ dx.legend(frameon=False, fontsize=9.5, loc="upper left")
 values["D_contrasts"] = {}
 for name, vis, _, _, _ in MODELS:
     stat = scoring(vis)
+    if stat is None or not (ANALYSIS / f"contrasts_secretory_{vis}.csv").exists():
+        continue
     c = pd.read_csv(ANALYSIS / f"contrasts_secretory_{vis}.csv")
     s = c.contrast.values / stat["reference_sd"]
     values["D_contrasts"][name] = {
@@ -241,9 +290,11 @@ print("wrote", values_path)
 # exactly one control, so nothing is averaged and no spread is compressed --
 # and matching is what stops this being the confounded comparison the archived
 # population analysis showed collapsing once composition was controlled.
-fig2, axes2 = plt.subplots(1, len(MODELS), figsize=(4.8 * len(MODELS), 4.6))
+_drawn = [m for m in MODELS if scoring(m[1]) is not None]
+fig2, axes2 = plt.subplots(1, len(_drawn), figsize=(4.4 * len(_drawn), 4.6))
 
-for panel, (name, vis, _, _, colour) in zip(np.atleast_1d(axes2), MODELS):
+drawn_models = [m for m in MODELS if scoring(m[1]) is not None]
+for panel, (name, vis, _, _, colour) in zip(np.atleast_1d(axes2), drawn_models):
     stat = scoring(vis)
     pairs = pd.read_csv(ANALYSIS / f"contrasts_secretory_{vis}.csv")
     occupied = pairs.case_score.values

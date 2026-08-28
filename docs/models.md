@@ -705,12 +705,24 @@ the same operation.
 
 #### Two limits worth carrying
 
-**P(Asn) is 0.064-0.092** on the smoke chains, against 0.16-0.25 for every other
-model. A causal model predicting from a truncated crystal chain is off its
-training distribution: it expects a protein from the N-terminus and receives a
-fragment starting at residue 21 or 25. That is a sharper version of the caveat
-already noted for ESMC, because for a causal model the prefix *is* the
-conditioning.
+**It is confident about sequons, and equally so in both arms.** An earlier draft
+of this section said P(Asn) was 0.064-0.092, "against 0.16-0.25 for every other
+model", and explained the null as a causal model being off-distribution on a
+truncated crystal chain. Those figures came from three smoke-test chains and are
+not representative. Across all 342 dataset sites:
+
+    mean P(Asn)  0.330      median 0.180      max 0.9986
+    mean P(Ser or Thr)  0.487
+
+which is **higher** than any other model here, not lower, and heavily skewed —
+at some sites the model is nearly certain. The paired difference in P(Asn)
+between the arms is -0.004.
+
+So the null is not low confidence. ProGen2 recognises sequons strongly and
+assigns them the same probability whether or not they are occupied. Its causal
+prefix at position i carries no information about whether *this* site is
+glycosylated, and unlike ESMC it cannot fall back on the downstream serine or
+threonine either.
 
 **A 2048-token context.** 3JAV:A is 2328 residues and cannot be scored; it fails
 closed with a named reason. Truncating the prefix was rejected — it would answer

@@ -87,10 +87,29 @@ def esmc_alphabet():
     return list(ESMC_TOKENS)
 
 
+# ProGen2's vocabulary, dumped from its tokeniser and verified: N at 17, S at
+# 22, T at 23, each reproducing the p_asn_at_n / p_ser_at_plus2 / p_thr_at_plus2
+# columns the scorer wrote. The assertion in `load` re-checks this every run, so
+# a change upstream stops the figure rather than shifting it.
+PROGEN2_TOKENS = ["<|pad|>", "<|bos|>", "<|eos|>", "1", "2", "A", "B", "C", "D",
+                  "E", "F", "G", "H", "I", "K", "L", "M", "N", "O", "P", "Q",
+                  "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "<|endoftext|>"]
+
+
+def progen2_alphabet():
+    return list(PROGEN2_TOKENS)
+
+
 MODELS = [("ProteinMPNN", "proteinmpnn_index_corrected", mpnn_alphabet),
           ("ESM-IF", "esm_if_index_corrected", esmif_alphabet),
+          ("CARBonAra", "carbonara", carbonara_alphabet),
+          # ESM3 shares ESMC's sequence tokeniser, so the same token list serves
+          # both. Its two arms are the same model with the structure track on
+          # and off, which is why they appear as separate rows.
+          ("ESM3 structure", "esm3_struct_single", esmc_alphabet),
+          ("ESM3 sequence", "esm3_seq_single", esmc_alphabet),
           ("ESMC", "esmc_single", esmc_alphabet),
-          ("CARBonAra", "carbonara", carbonara_alphabet)]
+          ("ProGen2", "progen2", progen2_alphabet)]
 
 
 def load(variant, alphabet):
