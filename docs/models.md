@@ -668,61 +668,52 @@ Fills the empty cell in the conditioning grid:
 | structure + sequence | ProteinMPNN, CARBonAra | ESM-IF |
 | sequence only | ESMC | **ProGen2** |
 
-so **ESM-IF is the like-for-like comparison, not ESMC**: both are causal and
-prefix-only, and the difference between them isolates what the backbone adds
-under identical conditioning. `conditioning` is ESM-IF's string.
+so **ESM-IF is the closest conditioning-matched comparison, not ESMC**: both are
+causal and prefix-only. It still does not isolate the backbone — architecture,
+training data, scale and tokenisation differ — so ESM3's within-model track
+ablation remains the only clean structure test. `conditioning` is ESM-IF's
+string so the shared conditional is explicit, not so the models are pooled.
 
-#### The result, and how to read it
+#### First run superseded: wrong sequence-start token
 
-    secretory:  -0.004 SD  [-0.259, +0.327]   261 contrasts   inconclusive
+The 2026-08-28 first pass reported:
 
-Essentially zero, against ESMC's +0.261 [+0.063, +0.598]. Both are
-sequence-only, so "sequence carries nothing" cannot be the explanation.
+    secretory:  -0.004 SD  [-0.259, +0.327]   261 contrasts
 
-The difference is causality, and it is mechanical. ProGen2's P(Asn at i)
-conditions on residues 1..i-1 and **has not seen the serine or threonine two
-positions downstream**. ESMC, masked and bidirectional, sees the whole rest of
-the chain including that hydroxyl, so its asparagine term can use the downstream
-motif as evidence. ProGen2's structurally cannot.
+That number is **withdrawn**. The Hugging Face GPT2 tokenizer reports
+`<|endoftext|>` as its BOS token, but ProGen2's official likelihood code frames
+forward sequences with the literal direction marker `1`. The first pass used
+the former (token 30) instead of the latter (token 3). Both return plausible
+probabilities, so only a source-level framing check exposed the error.
 
-Which places ProGen2 at about zero and ESMC's *motif-hidden* arm at -0.113 —
-two different routes to removing motif visibility, landing in the same place.
-ProGen2 arrives there by architecture rather than by masking. Stated carefully:
-its interval is wide and includes ESMC's +0.261, so this is a consistent picture
-rather than a demonstration.
+The corrected visible and hidden arms are being rerun under isolated variants;
+no ProGen2 effect should be quoted until those land.
 
-#### Joint masking is a smaller manipulation here
+#### Joint masking under a causal model
 
-`mask_mode="joint"` integrates the residue at the asparagine position out of the
-+1 and +2 terms, weighted by the model's own distribution there rather than
-uniformly. The asparagine row is returned unchanged, because a causal prefix
-ending at i-1 has nothing of the motif to hide.
+`mask_mode="joint"` integrates N out of the +1 prefix and the joint (N, X) pair
+out of the +2 prefix, using 16 seeded ancestral draws from the model's own
+distribution. The asparagine row is returned unchanged, because a causal prefix
+ending at i-1 has nothing downstream to hide.
 
-So two of three terms change, against three of three for ESMC and ESM-IF. **A
-near-zero masking change for ProGen2 therefore means less than it would for
-them.** Recorded as `autoregressive_prefix_marginalised`, ESM-IF's string for
-the same operation.
+This is the same causal marginalisation used for ESM-IF: both leave N unchanged,
+marginalise N for +1, and marginalise (N, X) for +2. It is recorded as
+`autoregressive_prefix_marginalised`, with `marginal_samples=16` in every row.
 
 #### Two limits worth carrying
 
-**It is confident about sequons, and equally so in both arms.** An earlier draft
+**The first-pass confidence summary is also superseded.** An earlier draft
 of this section said P(Asn) was 0.064-0.092, "against 0.16-0.25 for every other
 model", and explained the null as a causal model being off-distribution on a
 truncated crystal chain. Those figures came from three smoke-test chains and are
-not representative. Across all 342 dataset sites:
+not representative. Using the wrong start token, all 342 dataset sites gave:
 
     mean P(Asn)  0.330      median 0.180      max 0.9986
     mean P(Ser or Thr)  0.487
 
-which is **higher** than any other model here, not lower, and heavily skewed —
-at some sites the model is nearly certain. The paired difference in P(Asn)
-between the arms is -0.004.
-
-So the null is not low confidence. ProGen2 recognises sequons strongly and
-assigns them the same probability whether or not they are occupied. Its causal
-prefix at position i carries no information about whether *this* site is
-glycosylated, and unlike ESMC it cannot fall back on the downstream serine or
-threonine either.
+These values are retained only to identify the superseded run, not as model
+results. The corrected run must establish both confidence and the paired
+occupied-minus-control contrast afresh.
 
 **A 2048-token context.** 3JAV:A is 2328 residues and cannot be scored; it fails
 closed with a named reason. Truncating the prefix was rejected — it would answer

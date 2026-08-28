@@ -34,6 +34,27 @@ def structure_paths(extra_dirs: "tuple[str, ...] | None" = None) -> "dict[str, P
     return paths
 
 
+def read_resumable_csv(path: Path, empty_columns=None):
+    """Read a checkpoint table, treating a headerless failed run as empty.
+
+    A scorer that fails before producing its first row still creates its output
+    path during finalisation. Pandas serialises that empty, columnless frame as
+    a lone newline, which is not itself readable as CSV. Such a file records no
+    completed work, so resuming it is equivalent to starting from an empty
+    frame. Other parser errors remain visible.
+    """
+    import pandas as pd
+
+    path = Path(path)
+    empty = lambda: pd.DataFrame(columns=list(empty_columns or ()))
+    if not path.exists():
+        return empty()
+    try:
+        return pd.read_csv(path, low_memory=False)
+    except pd.errors.EmptyDataError:
+        return empty()
+
+
 def parse_args(argv, default_manifest: str, default_out: str, *,
                description: str = "") -> argparse.Namespace:
     """Positional manifest and output, plus the model/device flags.

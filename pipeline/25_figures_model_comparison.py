@@ -55,7 +55,7 @@ MODELS = [
     ("ESM3 structure", "esm3_struct_single", "esm3_struct_joint", None, "#1f6f8b"),
     ("ESM3 sequence", "esm3_seq_single", "esm3_seq_joint", None, "#7fb3c8"),
     ("ESMC", "esmc_single", "esmc_joint", None, "#5b8c5a"),
-    ("ProGen2", "progen2", "progen2_joint", None, "#c58a3d"),
+    ("ProGen2", "progen2_direction1", "progen2_joint_direction1", None, "#c58a3d"),
 ]
 
 # Why a model can never have a retention row, as opposed to not having one yet.
@@ -122,8 +122,8 @@ ax.set_ylim(-0.7, len(scored) + len(unscored) - 0.3)
 ax.invert_yaxis()
 ax.tick_params(left=False)
 ax.set_xlabel("occupied - matched control  (reference SD)")
-ax.set_title("A   Occupied sequons score higher, except under the causal\n"
-             "     sequence-only model", pad=10)
+ax.set_title("A   Occupancy-associated score shifts across model conditionals",
+             pad=10)
 
 for name, variant, _, _, colour in MODELS:
     stat = scoring(variant)
@@ -185,7 +185,7 @@ bx.set_ylim(-0.8, rows - 0.3)
 bx.invert_yaxis()
 bx.tick_params(left=False)
 bx.set_xlabel("occupied - matched control  (reference SD)")
-bx.set_title("Hiding the motif collapses only the sequence-only model", pad=10)
+bx.set_title("Effect of hiding native sequon identity", pad=10)
 bx.legend(frameon=False, fontsize=9.5, loc="upper left")
 fig.tight_layout(pad=1.6)
 fig.savefig(OUT / "fig_masking.png", dpi=200, bbox_inches="tight")

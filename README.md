@@ -221,9 +221,15 @@ HuggingFace and must be accepted there first.
 downloads its checkpoint from HuggingFace on first use. `hugohrban/progen2-base`
 is 764M and runs on CPU; `progen2-xlarge` is 6.4B and needs a GPU. Its
 conditioning is `autoregressive_prefix` — the same string ESM-IF uses — so the
-like-for-like comparison is with ESM-IF, isolating what the backbone adds under
-identical conditioning. Pooling it with ESMC would average two different
-estimands.
+closest conditioning-matched comparison is ESM-IF. It does not isolate the
+backbone because architecture, training data, scale and tokenisation still
+differ; ESM3's within-model track ablation is the clean structure test. Pooling
+ProGen2 with ESMC would average two different estimands.
+
+The forward sequence starts with ProGen2's literal direction token `1`, not the
+GPT2 wrapper's reported BOS token. Joint mode uses 16 seeded ancestral draws to
+marginalise N from +1 and the pair (N, X) from +2; it never inserts a mask token
+into a causal prefix.
 
 **`carbonara` needs a checkout, not a package.** Clone
 [CARBonAra](https://github.com/LBM-EPFL/CARBonAra) — it ships its own weights

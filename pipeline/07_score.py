@@ -13,7 +13,8 @@ import numpy as np, pandas as pd
 from pathlib import Path
 sys.path.insert(0, "src")
 from experimental_glycosylation_sites.runner_support import (
-    apply_shard, build_adapter, parse_args, resolve_device, structure_paths)
+    apply_shard, build_adapter, parse_args, read_resumable_csv, resolve_device,
+    structure_paths)
 
 args = parse_args(sys.argv[1:],
                   "results/manifests/scoring_manifest.csv",
@@ -36,7 +37,7 @@ paths = structure_paths(tuple(args.structure_dir))
 
 done = set()
 if OUT.exists():                       # resumable
-    prev = pd.read_csv(OUT, low_memory=False)
+    prev = read_resumable_csv(OUT, empty_columns=KEY)
     done = set(map(tuple, prev[KEY].astype(str).values))
     print(f"resuming: {len(done)} sites already scored", flush=True)
 
@@ -106,7 +107,7 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
 
 if rows:
     pd.DataFrame(rows).to_csv(OUT, mode="a", header=not OUT.exists(), index=False)
-frame = pd.read_csv(OUT, low_memory=False) if OUT.exists() else pd.DataFrame()
+frame = read_resumable_csv(OUT, empty_columns=KEY)
 frame = frame.drop_duplicates(KEY)
 frame.to_csv(OUT, index=False)
 pd.DataFrame(failures).to_csv(FAILURES, index=False)

@@ -16,11 +16,13 @@ conditioning grid:
     structure+sequence  ProteinMPNN, CARBonAra        ESM-IF
     sequence only       ESMC                          ProGen2
 
-That makes ESM-IF the sharp comparison rather than ESMC: both are causal and
-prefix-only, so the difference between them isolates what the backbone adds under
-identical conditioning. Against ESMC the conditioning also changes, so the two
-must never be pooled — `conditioning` is recorded as `autoregressive_prefix`,
-the same string ESM-IF uses and deliberately not ESMC's.
+That makes ESM-IF the closest conditioning-matched comparison rather than ESMC:
+both are causal and prefix-only. It does not isolate what the backbone adds,
+because architecture, training data, scale and tokenisation still differ. ESM3's
+within-model track ablation is the clean structure test. Against ESMC the
+conditioning also changes, so the two must never be pooled — `conditioning` is
+recorded as `autoregressive_prefix`, the same string ESM-IF uses and deliberately
+not ESMC's.
 
 ## What the conditional is
 
@@ -34,11 +36,11 @@ prefix for position i ends at i-1, so the model has not seen N-X-S/T when it
 predicts the N. Only the +1 and +2 terms see any of the motif, through the
 residue at the asparagine position.
 
-`mask_mode="joint"` therefore integrates that residue out of those two terms and
-leaves the asparagine row untouched — there is nothing to hide from it. **This is
-a smaller manipulation than ESMC's or ESM-IF's**, which hide all three positions.
-Two of three terms change here, and the first cannot. A near-zero change for this
-model means correspondingly less.
+`mask_mode="joint"` therefore integrates N out of the +1 prefix and the joint
+(N, X) pair out of the +2 prefix, while leaving the asparagine row untouched —
+there is nothing downstream to hide from it. This is the same causal
+marginalisation ESM-IF uses; neither model can alter the N row without changing
+the question.
 
 ## Which sequence
 
@@ -122,8 +124,31 @@ def verify_tokenisation(tokenizer) -> "dict[str, int]":
     return index_of
 
 
+def direction_token_id(tokenizer) -> int:
+    """Return ProGen2's published forward marker, verified as one token.
+
+    ProGen2 frames N-to-C sequences with the literal token ``1``. The
+    Hugging Face port is backed by ``GPT2Tokenizer`` and may instead report
+    ``<|endoftext|>`` as ``bos_token_id``; that metadata token was not the
+    direction marker used to frame ProGen2's training sequences.
+    """
+    ids = tokenizer("1", add_special_tokens=False)["input_ids"]
+    if len(ids) != 1:
+        raise TokenisationError(
+            f"forward direction marker '1' tokenised to {len(ids)} tokens")
+    token_id = int(ids[0])
+    decoded = tokenizer.convert_ids_to_tokens([token_id])[0]
+    if decoded != "1":
+        raise TokenisationError(
+            f"forward direction token {token_id} decodes to {decoded!r}, not '1'")
+    return token_id
+
+
 def load_model(model_name: str = DEFAULT_MODEL, device: str = "cpu"):
-    """Load ProGen2 and verify its tokenisation. Returns `(model, tokenizer, bos)`.
+    """Load ProGen2 and verify its tokenisation.
+
+    Returns ``(model, tokenizer, direction_token)``. The third value is the
+    literal forward marker ``1``, not ``tokenizer.bos_token_id``.
 
     `trust_remote_code` is required: ProGen2's architecture ships with the
     checkpoint rather than living in `transformers`.
@@ -139,13 +164,8 @@ def load_model(model_name: str = DEFAULT_MODEL, device: str = "cpu"):
         model_name, trust_remote_code=True, torch_dtype=dtype)
     model = model.to(device).eval()
 
-    # ProGen2 uses '1' to mark N-to-C direction, which the published code and
-    # the notebook both prepend. Taken from the tokeniser when it exposes one,
-    # because the HuggingFace ports do not all agree with the original.
-    bos = tokenizer.bos_token_id
-    if bos is None:
-        bos = tokenizer(("1"), add_special_tokens=False)["input_ids"][0]
-    return model, tokenizer, int(bos)
+    start = direction_token_id(tokenizer)
+    return model, tokenizer, start
 
 
 def chain_sequence(structure_path, chain_id: str,
@@ -203,7 +223,7 @@ def check_context_length(sequence: str, model) -> None:
     if limit is not None and len(sequence) + 1 > limit:
         raise ContextTooLongError(
             f"chain is {len(sequence)} residues and needs {len(sequence) + 1} "
-            f"tokens with BOS, over ProGen2's {limit}-token context")
+            f"tokens with the direction marker, over ProGen2's {limit}-token context")
 
 
 def conditional_probabilities(sequence: str, model, tokenizer, bos: int,
@@ -212,13 +232,13 @@ def conditional_probabilities(sequence: str, model, tokenizer, bos: int,
 
     The alignment, which is the whole measurement:
 
-        tokens   [BOS, t_1, ..., t_L]        length L+1
+        tokens   [direction=1, t_1, ..., t_L]        length L+1
         logits[j] predicts token j+1
         logits[i] therefore predicts t_{i+1}, the residue at manifest index i
 
     so row `i` of the result is the distribution for manifest index `i` with no
-    further shift. Prepending BOS is what makes that hold; without it row 0 would
-    be undefined and everything after it off by one.
+    further shift. Prepending the direction marker is what makes that hold;
+    without it row 0 would be undefined and everything after it off by one.
     """
     import torch
 
@@ -305,11 +325,12 @@ DEFAULT_MASK_MODE = "single"
 # separated on the merits rather than by accident of naming.
 CONDITIONING_JOINT = "autoregressive_prefix_marginalised"
 
-# 20 variants of one chain is a small batch, but chains here run to 1287
-# residues and activation memory is batch x length. Capped, and halved on OOM,
-# for the reason recorded in esmif_scoring: a host OOM is delivered by the
+# Sixteen sampled variants of one chain is a small batch, but chains here run to
+# 1287 residues and activation memory is batch x length. Capped, and halved on
+# OOM, for the reason recorded in esmif_scoring: a host OOM is delivered by the
 # kernel and cannot be caught, so the cap has to be conservative up front.
 DEFAULT_MARGINAL_BATCH = 8
+DEFAULT_MARGINAL_SAMPLES = 16
 
 
 def conditioning(mask_mode: str) -> str:
@@ -321,31 +342,23 @@ def conditioning(mask_mode: str) -> str:
 def marginalised_probabilities(sequence: str, model, tokenizer, bos: int,
                                aa_index: "dict[str, int]", indices,
                                device: str = "cpu",
+                               n_samples: int = DEFAULT_MARGINAL_SAMPLES,
+                               seed: int = 0,
                                max_batch: int = DEFAULT_MARGINAL_BATCH
                                ) -> np.ndarray:
-    """`conditional_probabilities`, with the sequon asparagine integrated out.
+    """Native-prefix probabilities with N and X integrated out downstream.
 
     What this hides, and what it cannot: a causal model's prefix for position i
     ends at i-1, so **the asparagine term is already motif-blind** — there is
-    nothing to hide from it, and its row is returned unchanged. Only the +1 and
-    +2 terms see any of the motif, through the residue at the asparagine
-    position, and those are the rows this replaces with
+    nothing to hide from it, and its row is returned unchanged. The +1 row is
+    averaged over the model's belief at N. The +2 row is averaged over the
+    model's joint belief at N and X:
 
-        P(x at j) = sum_a P(a at i | 1..i-1) * P(x at j | 1..i-1, a at i, ...)
+        P(x at +2) = sum_ab P(a,b | prefix<N) P(x at +2 | prefix<N,a,b)
 
-    weighting each substitution by the model's own predictive distribution at i
-    rather than uniformly, so the result is a genuine marginal rather than an
-    average over an arbitrary set.
-
-    That makes ProGen2's masking manipulation **smaller than ESMC's or
-    ESM-IF's**, which hide all three positions. Here two of the three terms
-    change and the first cannot. A near-zero change for this model therefore
-    means less than it would for them, and should not be read as "masking does
-    not matter".
-
-    The X position is left native in each variant. Marginalising it too would be
-    400 sequences rather than 20, and any residue but proline permits a sequon,
-    so it carries little of the motif to hide.
+    As in ESM-IF, the joint is estimated with seeded ancestral samples rather
+    than an exact 400-sequence sum. Every input remains an ordinary amino-acid
+    prefix; no off-distribution mask token is inserted.
     """
     import torch
 
@@ -354,41 +367,54 @@ def marginalised_probabilities(sequence: str, model, tokenizer, bos: int,
     if max(n_index, plus1_index, plus2_index) >= len(sequence):
         return base
 
-    letters = list(STANDARD_AA)
-    weights = np.array([base[n_index, aa_index[aa]] for aa in letters], dtype=float)
-    total = weights.sum()
-    if total <= 0:
-        return base
-    weights /= total                      # renormalised over the twenty
+    if int(n_samples) <= 0:
+        raise ValueError(f"n_samples must be positive, got {n_samples}")
 
-    variants = []
-    for aa in letters:
-        altered = sequence[:n_index] + aa + sequence[n_index + 1:]
-        variants.append([bos] + list(
-            tokenizer(altered, add_special_tokens=False)["input_ids"]))
-    tokens = torch.tensor(variants, device=device)
+    allowed = torch.tensor([aa_index[aa] for aa in STANDARD_AA], dtype=torch.long)
+    generator = torch.Generator(device="cpu").manual_seed(int(seed))
 
-    size = max(1, min(len(letters), int(max_batch)))
-    while True:
-        try:
-            pieces = []
-            with torch.no_grad():
-                for start in range(0, tokens.shape[0], size):
-                    logits = model(input_ids=tokens[start:start + size]).logits
-                    pieces.append(torch.softmax(logits[:, :-1].float(), dim=-1).cpu())
-            stacked = torch.cat(pieces, dim=0).numpy()
-            break
-        except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
-            if size > 1 and "out of memory" in str(exc).lower():
-                if str(device).startswith("cuda"):
-                    torch.cuda.empty_cache()
-                size = max(1, size // 2)
-                print(f"    OOM in marginalisation; retrying with batch {size}",
-                      flush=True)
-                continue
-            raise
+    def draw(distribution_rows):
+        restricted = distribution_rows[:, allowed]
+        restricted = restricted / restricted.sum(dim=-1, keepdim=True)
+        choice = torch.multinomial(restricted, 1, generator=generator)
+        return allowed[choice.squeeze(-1)].to(device)
+
+    def forward(token_batch):
+        total = token_batch.shape[0]
+        size = max(1, min(total, int(max_batch)))
+        while True:
+            try:
+                pieces = []
+                with torch.no_grad():
+                    for start in range(0, total, size):
+                        logits = model(input_ids=token_batch[start:start + size]).logits
+                        pieces.append(torch.softmax(
+                            logits[:, :-1].float(), dim=-1).cpu())
+                return torch.cat(pieces, dim=0)
+            except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
+                if size > 1 and "out of memory" in str(exc).lower():
+                    if str(device).startswith("cuda"):
+                        torch.cuda.empty_cache()
+                    size = max(1, size // 2)
+                    print(f"    OOM in marginalisation; retrying with batch {size}",
+                          flush=True)
+                    continue
+                raise
+
+    native = [bos] + list(tokenizer(
+        sequence, add_special_tokens=False)["input_ids"])
+    batch = torch.tensor([native] * int(n_samples), device=device)
+
+    base_rows = torch.from_numpy(base)
+    a_tokens = draw(base_rows[n_index].unsqueeze(0).expand(int(n_samples), -1))
+    batch[:, n_index + 1] = a_tokens
+    with_a = forward(batch)
+
+    b_tokens = draw(with_a[:, plus1_index, :])
+    batch[:, plus1_index + 1] = b_tokens
+    with_ab = forward(batch)
 
     marginal = base.copy()
-    for index in (plus1_index, plus2_index):
-        marginal[index] = np.tensordot(weights, stacked[:, index, :], axes=(0, 0))
+    marginal[plus1_index] = with_a[:, plus1_index, :].mean(dim=0).numpy()
+    marginal[plus2_index] = with_ab[:, plus2_index, :].mean(dim=0).numpy()
     return marginal

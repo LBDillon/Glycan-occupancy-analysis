@@ -83,6 +83,22 @@ if [[ ! -d venv-esmc ]]; then
       tqdm filelock pyyaml requests packaging
 fi
 
+# ProGen2 is a Hugging Face remote-code checkpoint. Keep it separate from both
+# `esm` environments and pin the Transformers range exercised by the model port;
+# Transformers 5 currently fails while finalising this older architecture.
+if ! ./venv-progen2/bin/python -c "import torch, transformers, pandas, Bio" 2>/dev/null; then
+  rm -rf venv-progen2
+  python -m venv venv-progen2
+  ./venv-progen2/bin/pip install -q --upgrade pip
+  ./venv-progen2/bin/pip install -q --no-cache-dir torch numpy pandas scipy biopython \
+      "transformers>=4.40,<4.49" "huggingface_hub<1.0" accelerate safetensors
+fi
+if ./venv-progen2/bin/python -c "import torch, transformers, pandas, Bio" 2>/dev/null; then
+  echo "venv-progen2: ok"
+else
+  echo "WARNING: venv-progen2 incomplete; --model progen2 will not run"
+fi
+
 # A third environment for CARBonAra. Not merged into venv-if: it needs gemmi,
 # blosum, scikit-learn and h5py -- upstream's src/__init__.py imports its whole
 # src package, so the scoring and dataset modules' dependencies are needed even
@@ -150,6 +166,13 @@ if [[ ! -d "${HF_HOME}/hub/models--EvolutionaryScale--esmc-300m-2024-12" ]]; the
       >/dev/null 2>&1 || echo "WARNING: could not fetch ESMC weights"
 fi
 [[ -d "${HF_HOME}/hub/models--EvolutionaryScale--esmc-300m-2024-12" ]] && echo "ESMC weights cached"
+
+if [[ ! -d "${HF_HOME}/hub/models--hugohrban--progen2-base" ]]; then
+  echo "fetching ProGen2-base weights and remote architecture code..."
+  ./venv-progen2/bin/huggingface-cli download hugohrban/progen2-base \
+      >/dev/null 2>&1 || echo "WARNING: could not fetch ProGen2-base weights"
+fi
+[[ -d "${HF_HOME}/hub/models--hugohrban--progen2-base" ]] && echo "ProGen2-base weights cached"
 
 cat > "${PROJECT_ROOT}/env.sh" <<ENVEOF
 export PROJECT_ROOT="${PROJECT_ROOT}"

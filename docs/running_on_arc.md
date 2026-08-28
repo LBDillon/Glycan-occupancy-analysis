@@ -34,13 +34,15 @@ It creates `/data/chem-proteindesign/sjoh5764/glyco_occupancy/` containing:
 | `ProteinMPNN/` | checkpoints ship inside the repo |
 | `venv-if/` | torch, fair-esm, torch-geometric, torch-scatter |
 | `venv-esmc/` | torch, EvolutionaryScale `esm` |
+| `venv-progen2/` | torch, Transformers 4.x, ProGen2 remote architecture |
 | `cache/torch`, `cache/hf` | pre-fetched weights |
 | `module/data/cache/pdb/` | 1,824 structures from the release bundle |
 | `env.sh` | sourced by every job |
 
-**Two environments, and it is not optional.** `fair-esm` (ESM-IF) and
+**Separate environments, and it is not optional.** `fair-esm` (ESM-IF) and
 EvolutionaryScale's `esm` (ESMC) both install a top-level package named `esm`.
-Installing one shadows the other.
+Installing one shadows the other; ProGen2 is isolated so its remote-code
+Transformers pin cannot destabilise either environment.
 
 `env.sh` sets `HF_HUB_OFFLINE=1` and `TORCH_HOME`, so a compute node never tries
 to reach the network and fail halfway through a chain.
@@ -51,6 +53,8 @@ to reach the network and fail halfway through a chain.
 sbatch scripts/arc/glyco_score.slurm     esm_if
 sbatch scripts/arc/glyco_score.slurm     esmc single
 sbatch scripts/arc/glyco_score.slurm     esmc joint
+sbatch scripts/arc/glyco_score.slurm     progen2 single
+sbatch scripts/arc/glyco_score.slurm     progen2 joint
 sbatch scripts/arc/glyco_score.slurm     proteinmpnn
 
 sbatch scripts/arc/glyco_retention.slurm esm_if

@@ -5,6 +5,7 @@
 #
 #   sbatch scripts/arc/glyco_score.slurm esm_if
 #   sbatch scripts/arc/glyco_score.slurm esmc single
+#   sbatch scripts/arc/glyco_score.slurm progen2 joint
 #   sbatch scripts/arc/glyco_score.slurm proteinmpnn
 #
 # CARBonAra is the expensive one: it is not autoregressive, so each position
@@ -40,7 +41,7 @@ source "${PROJECT_ROOT}/env.sh"
 # allocation is the unit, so let torch use the cores it was given.
 export OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-1}"
 
-MODEL="${1:?usage: sbatch glyco_score.slurm <proteinmpnn|esm_if|esmc|carbonara> [mask_mode]}"
+MODEL="${1:?usage: sbatch glyco_score.slurm <proteinmpnn|esm_if|esmc|carbonara|progen2> [mask_mode]}"
 MASK_MODE="${2:-}"
 # The denominator is FIXED, not SLURM_ARRAY_TASK_COUNT. Resubmitting a few
 # failed indices (--array=36,41) would otherwise set the count to 2 and compute
@@ -50,11 +51,12 @@ SHARDS="${SHARDS:-8}"
 SHARD="${SLURM_ARRAY_TASK_ID}/${SHARDS}"
 
 # ESMC needs its own environment: fair-esm and EvolutionaryScale's esm both claim
-# the import name `esm` and cannot be installed together. CARBonAra needs a third
-# for gemmi, blosum, scikit-learn and h5py.
+# the import name `esm` and cannot be installed together. CARBonAra and ProGen2
+# have their own dependency sets as well, so each keeps a dedicated environment.
 case "${MODEL}" in
   esmc)      VENV="${PROJECT_ROOT}/venv-esmc" ;;
   carbonara) VENV="${PROJECT_ROOT}/venv-carbonara" ;;
+  progen2)   VENV="${PROJECT_ROOT}/venv-progen2" ;;
   *)         VENV="${PROJECT_ROOT}/venv-if" ;;
 esac
 

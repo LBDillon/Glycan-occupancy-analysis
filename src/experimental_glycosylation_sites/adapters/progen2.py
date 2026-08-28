@@ -7,10 +7,10 @@ retention would measure nothing about the site. `isinstance(adapter,
 SequenceDesigner)` is False, as it is for ESMC and for the same reason.
 
 Read `progen2_scoring`'s module docstring before comparing its numbers. In
-short: the conditional is prefix-only, so ESM-IF is the like-for-like comparison
-and ESMC is not — the two differ in conditioning as well as in input, and
-`conditioning` is recorded as `autoregressive_prefix` so they can never be
-pooled.
+short: the conditional is prefix-only, so ESM-IF is the closest conditioning-
+matched comparison and ESMC is not. Architecture and training still differ, so
+this is not a clean backbone ablation. `conditioning` is recorded as
+`autoregressive_prefix` so unlike conditionals can never be pooled.
 """
 from __future__ import annotations
 
@@ -18,8 +18,9 @@ from pathlib import Path
 
 import numpy as np
 
-from ..progen2_scoring import (DEFAULT_MASK_MODE, DEFAULT_MODEL, MASK_MODES,
-                               N_ORDERS, chain_sequence, check_triplet,
+from ..progen2_scoring import (DEFAULT_MARGINAL_SAMPLES, DEFAULT_MASK_MODE,
+                               DEFAULT_MODEL, MASK_MODES, N_ORDERS,
+                               chain_sequence, check_triplet,
                                conditional_probabilities, conditioning,
                                decodable_positions, load_model,
                                marginalised_probabilities, sequon_score,
@@ -32,7 +33,8 @@ class ProGen2Adapter:
     name = "progen2"
 
     def __init__(self, device: str = "cpu", model_name: str = DEFAULT_MODEL,
-                 mask_mode: str = DEFAULT_MASK_MODE, seed: int = 0):
+                 mask_mode: str = DEFAULT_MASK_MODE, seed: int = 0,
+                 marginal_samples: int = DEFAULT_MARGINAL_SAMPLES):
         if mask_mode not in MASK_MODES:
             raise ValueError(f"mask_mode must be one of {MASK_MODES}, "
                              f"got {mask_mode!r}")
@@ -40,6 +42,7 @@ class ProGen2Adapter:
         self.device = device
         self.model_name = model_name
         self.seed = seed
+        self.marginal_samples = marginal_samples
         self._model = None
         self._tokenizer = None
         self._bos = None
@@ -65,9 +68,12 @@ class ProGen2Adapter:
         prefix-only, so pooling it with a masked language model would average
         two different estimands.
         """
-        return {"model": self.model_name,
-                "conditioning": conditioning(self.mask_mode),
-                "n_orders": N_ORDERS, "seed": self.seed}
+        out = {"model": self.model_name,
+               "conditioning": conditioning(self.mask_mode),
+               "n_orders": N_ORDERS, "seed": self.seed}
+        if self.mask_mode == "joint":
+            out["marginal_samples"] = self.marginal_samples
+        return out
 
     # --- SequonScorer -------------------------------------------------------
     def decodable_positions(self, structure_path: Path, chain_id: str) -> np.ndarray:
@@ -109,7 +115,8 @@ class ProGen2Adapter:
             model, tokenizer, bos = self._load()
             probabilities = marginalised_probabilities(
                 sequence, model, tokenizer, bos, self._aa_index, indices,
-                device=self.device)
+                device=self.device, n_samples=self.marginal_samples,
+                seed=self.seed)
         return sequon_score(probabilities, self._aa_index, *indices)
 
     def score_site(self, structure_path: Path, chain_id: str, indices,

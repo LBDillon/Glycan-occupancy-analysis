@@ -101,6 +101,18 @@ def test_a_tokeniser_whose_ids_do_not_decode_back_is_refused():
         pg.verify_tokenisation(scrambled)
 
 
+def test_direction_token_is_used_when_gpt2_bos_is_different():
+    """The Hugging Face port reports ``<|endoftext|>`` as tokenizer BOS.
+
+    ProGen2's published forward framing starts with the literal direction
+    marker ``1``.  Reading ``tokenizer.bos_token_id`` therefore selects a
+    different token while still producing perfectly plausible scores.
+    """
+    tokenizer = FakeTokenizer()
+    tokenizer.bos_token_id = VOCAB.index("<|eos|>")
+    assert pg.direction_token_id(tokenizer) == VOCAB.index("1")
+
+
 # --------------------------------------------------------------------------
 # Alignment.
 # --------------------------------------------------------------------------
@@ -290,6 +302,35 @@ def test_the_marginal_weights_are_the_models_own_distribution():
     # all the weight sits on W, so the +2 marginal should too
     assert joint[4].argmax() == VOCAB.index("W")
     assert joint[4][VOCAB.index("W")] > 0.9
+
+
+def test_joint_marginalisation_integrates_out_x_position():
+    """Whole-sequon hiding must remove native X from the +2 prefix.
+
+    The model predicts W at X after the sampled N and echoes whichever X token
+    it sees when predicting +2.  Leaving the native K in place therefore makes
+    +2 favour K; a genuine joint marginal makes it favour W.
+    """
+    sequence = "MANKSTV"
+    tokenizer = FakeTokenizer()
+    index = {aa: VOCAB.index(aa) for aa in pg.STANDARD_AA}
+
+    class EchoesX(FakeModel):
+        def __call__(self, input_ids=None, **kwargs):
+            import torch
+
+            batch, length = input_ids.shape
+            logits = torch.full((batch, length, len(VOCAB)), -20.0)
+            logits[:, 2, VOCAB.index("N")] = 20.0   # predict N at index 2
+            logits[:, 3, VOCAB.index("W")] = 20.0   # predict W at X/index 3
+            for row in range(batch):
+                logits[row, 4, int(input_ids[row, 4])] = 20.0  # echo X at +2
+            return type("Out", (), {"logits": logits})()
+
+    joint = pg.marginalised_probabilities(
+        sequence, model=EchoesX(sequence), tokenizer=tokenizer,
+        bos=VOCAB.index("1"), aa_index=index, indices=(2, 3, 4))
+    assert joint[4].argmax() == VOCAB.index("W")
 
 
 def test_a_chain_over_the_context_window_is_refused_legibly():
