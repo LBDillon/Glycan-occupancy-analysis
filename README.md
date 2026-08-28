@@ -200,7 +200,7 @@ Four models are registered:
 | `proteinmpnn` | backbone + all other native residues, 8 decoding orders | scorer + designer | [correction](docs/correction_2026-08-20_alphabet.md) |
 | `esm_if` | backbone + native prefix (autoregressive) | scorer + designer | [doc](docs/models.md) |
 | `esmc` | **sequence only** (masked LM) | scorer | [doc](docs/models.md) |
-| `carbonara` | backbone + all other native residues, one pass | **scorer only** | +0.288 SD; [doc](docs/models.md) |
+| `carbonara` | backbone + all other native residues, one pass | scorer + designer | +0.288 SD; retention not cross-comparable, [doc](docs/models.md) |
 
 **`esmc` cannot be installed alongside `esm_if`.** `fair-esm` and
 EvolutionaryScale's `esm` both claim the top-level import name `esm`. Use a
@@ -225,8 +225,11 @@ python pipeline/07_score.py results/manifests/scoring_manifest_secretory.csv \
 ```
 
 CARBonAra needs its own scoreability pass: its parser is gemmi, not Biopython,
-so which sites it can address is a different question again. It implements no
-`design()`, so there is **no stage 08 and no retention number** for it.
+so which sites it can address is a different question again. It implements `design()`, but by a
+custom `independent_calibrated_sampling` procedure rather than upstream's
+`imprint_sampling` — and because it is one-shot, its retention **rate is not
+comparable** to ProteinMPNN's or ESM-IF's. Only the within-model
+occupied-minus-control difference is interpretable.
 
 `src/experimental_glycosylation_sites/adapters/` defines two protocols. A model
 may implement either or both:

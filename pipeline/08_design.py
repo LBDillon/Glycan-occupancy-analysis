@@ -27,6 +27,9 @@ KEY = ["accession", "position", "structure_pdb_id", "structure_chain_id"]
 N_STD, N_PRE = STANDARD_CONDITION["n_designs"], PREPRINT_CONDITION["n_designs"]
 TEMP, SEED = 0.1, 0
 
+# How the designs were produced. Autoregressive sampling for the models that
+# decode a residue at a time; an adapter whose procedure differs says so itself,
+# so a retention table always records what generated it.
 MANIFEST, OUT = Path(args.manifest), Path(args.out)
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
@@ -44,6 +47,9 @@ if OUT.exists():
 device = resolve_device(args.device)
 adapter = build_adapter(args.model, device, max_batch=args.max_batch)
 provenance = adapter.describe()
+GENERATION = (adapter.describe_generation()
+              if hasattr(adapter, "describe_generation")
+              else {"generation": "autoregressive_sampling"})
 print(f"model {args.model} ({provenance['model']}) on {device}", flush=True)
 
 groups = list(sites.groupby(["structure_pdb_id", "structure_chain_id"]))
@@ -74,7 +80,7 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
         pre = classify_retention(designs[:N_PRE], *idx)
         rows.append({**{k: getattr(r, k) for k in KEY}, "triplet": r.triplet,
                      "subtype": r.subtype, "temperature": TEMP, "seed": SEED,
-                     "model": provenance["model"],
+                     "model": provenance["model"], **GENERATION,
                      **{f"std_{k}": v for k, v in std.items()},
                      **{f"pre_{k}": v for k, v in pre.items()}})
     if gi % 25 == 0:

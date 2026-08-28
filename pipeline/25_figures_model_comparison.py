@@ -47,7 +47,10 @@ MODELS = [
     ("ESMC", "esmc_single", "esmc_joint", None, "#5b8c5a"),
     # Scorer only, and one-shot: no motif-visible condition, so no within-model
     # masking contrast and no retention. Panel B necessarily omits it.
-    ("CARBonAra", "carbonara", "carbonara", None, "#8a6fa8"),
+    # hidden is None: one-shot, so there is no motif-visible condition and no
+    # masking contrast. Naming its own variant as the hidden arm would draw a
+    # zero-length arrow that reads as "masking changed nothing".
+    ("CARBonAra", "carbonara", None, None, "#8a6fa8"),
 ]
 SECRETORY = "eukaryotic secretory"
 
@@ -92,7 +95,7 @@ ax.set_ylim(-0.6, len(rows) - 0.4)
 ax.invert_yaxis()
 ax.tick_params(left=False)
 ax.set_xlabel("occupied − matched control  (reference SD)")
-ax.set_title("A   Scoring: all three models separate occupied sequons", pad=10)
+ax.set_title("A   Scoring: every model separates occupied sequons", pad=10)
 
 values["A_scoring_visible"] = {
     name: {"mean_sd": s["mean_difference_sd"], "ci95_sd": s["ci95_sd"],
@@ -102,7 +105,9 @@ values["A_scoring_visible"] = {
 # =============================================================================
 # B — what survives hiding the motif
 # =============================================================================
-for i, (name, vis, hid, _, colour) in enumerate(MODELS):
+maskable = [m for m in MODELS if m[2] is not None]
+unmaskable = [m[0] for m in MODELS if m[2] is None]
+for i, (name, vis, hid, _, colour) in enumerate(maskable):
     v, h = scoring(vis)["mean_difference_sd"], scoring(hid)["mean_difference_sd"]
     bx.annotate("", xy=(h, i), xytext=(v, i),
                 arrowprops=dict(arrowstyle="-|>", color=colour, lw=3.0,
@@ -130,7 +135,7 @@ bx.set_title("B   Hiding the motif collapses only the sequence-only model", pad=
 bx.legend(frameon=False, fontsize=9.5, loc="upper left")
 
 values["B_masking"] = {}
-for name, vis, hid, _, _ in MODELS:
+for name, vis, hid, _, _ in maskable:
     change = masking(vis, hid)
     values["B_masking"][name] = {
         "visible_sd": scoring(vis)["mean_difference_sd"],
@@ -138,6 +143,8 @@ for name, vis, hid, _, _ in MODELS:
         "change_logodds": None if not change else change["mean"],
         "ci95_logodds": None if not change else [change["ci_low"], change["ci_high"]],
         "p": None if not change else change["p"]}
+
+values["B_masking_absent"] = unmaskable
 
 # =============================================================================
 # C — the design result: sequon retention
@@ -157,10 +164,14 @@ for i, (name, r, colour) in enumerate(designers):
     if r["excludes_zero"]:
         cx.text(r["occupied_mean"] + 0.012, i, "*", va="center",
                 fontsize=15, color=INK)
+NO_RETENTION = {
+    "ESMC": "no designer — a masked LM conditions on sequence, not backbone",
+    "CARBonAra": "designer added 2026-08-28; retention not yet run",
+}
 for j, name in enumerate(absent):
     i = len(designers) + j
-    cx.text(0.004, i, "no designer — scorer only", va="center", fontsize=9.5,
-            color=DIM, style="italic")
+    cx.text(0.004, i, NO_RETENTION.get(name, "not run"), va="center",
+            fontsize=9.5, color=DIM, style="italic")
 
 cx.set_yticks(range(len(designers) + len(absent)))
 cx.set_yticklabels([d[0] for d in designers] + absent)
@@ -230,9 +241,9 @@ print("wrote", values_path)
 # exactly one control, so nothing is averaged and no spread is compressed --
 # and matching is what stops this being the confounded comparison the archived
 # population analysis showed collapsing once composition was controlled.
-fig2, axes2 = plt.subplots(1, 3, figsize=(14.4, 4.6))
+fig2, axes2 = plt.subplots(1, len(MODELS), figsize=(4.8 * len(MODELS), 4.6))
 
-for panel, (name, vis, _, _, colour) in zip(axes2, MODELS):
+for panel, (name, vis, _, _, colour) in zip(np.atleast_1d(axes2), MODELS):
     stat = scoring(vis)
     pairs = pd.read_csv(ANALYSIS / f"contrasts_secretory_{vis}.csv")
     occupied = pairs.case_score.values

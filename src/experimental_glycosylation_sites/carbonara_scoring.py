@@ -586,12 +586,18 @@ def design_sequences(mapping: CarbonaraMapping, model, n_designs: int,
 
     **The resulting rate is not comparable to the other models' rates.**
     CARBonAra is one-shot, so positions are sampled independently and the
-    sequence carries no correlation between them. Both autoregressive models
-    retain the sequon 1.4-1.8x more often than their own per-position marginals
-    predict, and that excess is precisely the correlation this model cannot
-    express. The paired difference between occupied sites and their matched
-    partners is the comparable quantity, because both arms lose the correlation
-    equally; the absolute rate is an architecture measurement.
+    sequence carries no correlation between them. What this licenses is a
+    *within-CARBonAra* comparison of occupancy-associated independent-marginal
+    retention. It does NOT license claiming the architecture difference cancels
+    in the paired contrast: that would require the correlation loss to be equal
+    in both arms, which has not been shown.
+
+    A related trap, found the hard way: the marginals `07_score` stores do not
+    predict retention for any model. Scoring conditions on native context and
+    design on generated context, and for this model scoring imprints every other
+    native residue while design imprints nothing. Any expected-retention figure
+    has to come from a design-time pass, which is what `design_distribution`
+    exists for.
     """
     structure = _load_structure(mapping.pdb_text, carbonara_dir)
     X, qe, _, _, Mr, _, _, mr_aa = model.process_structure(structure)

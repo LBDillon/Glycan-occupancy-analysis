@@ -6,10 +6,11 @@ tunable imprint ratio with no counterpart in the other models' protocols; it
 samples from the calibrated per-position distribution with nothing imprinted.
 
 **Its retention rate is not comparable to ProteinMPNN's or ESM-IF's.** Being
-one-shot, CARBonAra samples positions independently, and the two autoregressive
-models retain the sequon 1.4-1.8x more often than their own marginals predict --
-an excess that is exactly the positional correlation this model cannot express.
-The paired occupied-minus-control difference is the comparable quantity.
+one-shot, CARBonAra samples positions independently. What its retention supports
+is a within-CARBonAra occupancy-associated difference in independent-marginal
+retention -- not a claim that the architecture difference cancels in the paired
+contrast, which would need the correlation loss to be equal in both arms and has
+not been shown.
 
 All of the substance lives in `carbonara_scoring`. Read its module docstring
 before putting these numbers beside another model's: the conditional is
@@ -66,6 +67,18 @@ class CARBonAraAdapter:
         """
         return {"model": self.model_name, "conditioning": CONDITIONING,
                 "n_orders": N_ORDERS, "seed": self.seed}
+
+    def describe_generation(self) -> dict:
+        """Provenance for the design rows, which is not the scoring provenance.
+
+        Named so that no reader can mistake it for upstream's own procedure:
+        `imprint_sampling` samples from RAW confidences at a chosen imprint
+        ratio, whereas this imprints nothing and samples the calibrated
+        distribution after a p**(1/T) sharpening.
+        """
+        return {"generation": "independent_calibrated_sampling",
+                "imprint_ratio": 0.0, "sharpening": "p**(1/T)",
+                "native_procedure": False}
 
     def _mapping(self, structure_path: Path, chain_id: str):
         key = (str(structure_path), str(chain_id))

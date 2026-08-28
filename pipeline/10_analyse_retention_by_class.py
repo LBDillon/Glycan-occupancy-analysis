@@ -54,9 +54,17 @@ data = pd.concat(frames, ignore_index=True).drop_duplicates(KEY)
 
 # Sites the model cannot decode are excluded: sample() writes their native
 # residue back unchanged, so their retention describes the parser, not the model.
-able = pd.concat([pd.read_csv(p, low_memory=False)
-                  for p in ("results/manifests/scoreability.csv", "results/manifests/scoreability_secretory.csv")
-                  if Path(p).exists()], ignore_index=True)
+# Which sites those are is model-specific, so the variant's own scoreability
+# pass is used when it exists -- the unsuffixed files are ProteinMPNN's, and
+# filtering ESM-IF or CARBonAra by them would apply another model's exclusions.
+sources = paths.scoreability_sources(VARIANT)
+if VARIANT:
+    borrowed = [s.name for s in sources if paths.suffix(VARIANT) not in s.stem]
+    if borrowed:
+        print(f"  NOTE: {borrowed} have no pass for variant {VARIANT!r}, so those "
+              "exclusions are ProteinMPNN's rather than this model's")
+able = pd.concat([pd.read_csv(p, low_memory=False) for p in sources],
+                 ignore_index=True)
 for key in KEY:
     able[key] = able[key].astype(str)
 able = able.drop_duplicates(KEY)

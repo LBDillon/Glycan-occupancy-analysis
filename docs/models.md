@@ -389,7 +389,7 @@ inverse-folding model.
 - ESM-2, which occupies the same position in the benchmark as ESMC.
 - The full-UniProt-sequence sensitivity described above.
 
-### CARBonAra — a fourth parser, and a scorer only
+### CARBonAra — a fourth parser, scorer and designer
 
 *Added 2026-08-27.* CARBonAra (Krapp et al., Nat Commun 2024) is a geometric
 transformer over atomic coordinates and element names, built on PeSTo. It has no
@@ -458,14 +458,48 @@ parsed rather than assumed, residue by residue, and a chain that disagrees is
 dropped. An unverified identity mapping is precisely what the 25.3% ProteinMPNN
 misindexing looked like before anyone checked.
 
-#### Why there is no SequenceDesigner
+#### Generation, and why it is not upstream's procedure
 
-Upstream generation goes through `imprint_sampling`, which samples stochastically
-from raw confidences at a chosen imprint ratio. Neither the sampling nor the
-uncalibrated values belong in this benchmark, and a `design()` here would let
-stage 08 produce a retention number that looked like ProteinMPNN's without
-meaning the same thing. `isinstance(adapter, SequenceDesigner)` is False, and
-there is no stage 08 for CARBonAra.
+*Added 2026-08-28, reversing the earlier decision to omit generation entirely.*
+
+Upstream's `imprint_sampling` samples from RAW confidences at a chosen
+`imprint_ratio`, injecting a sampled sequence back as a prior. Neither the
+uncalibrated values nor that free parameter has a counterpart in the other
+models' protocols, so `design()` does not use it. Instead:
+
+- nothing is imprinted (`yt = 0`), so the model sees the backbone and no residue
+  identity at all — the interface requires this, since fixing anything would
+  measure the constraint rather than the model;
+- the calibrated distribution is sharpened by `p**(1/T)` at the frozen T = 0.1
+  and sampled independently per position.
+
+Design rows record `generation = independent_calibrated_sampling` with
+`native_procedure = False`, so a retention table can never be mistaken for one
+produced by CARBonAra's own sampler.
+
+**One forward pass per chain, not per position** — the reverse of scoring. All 32
+designs come from a single unconditioned pass, so retention is the cheap stage
+here and the expensive one for ProteinMPNN.
+
+#### What its retention rate does and does not support
+
+CARBonAra is one-shot, so positions are sampled independently and the sequence
+carries no correlation between them. Its retention therefore supports a
+**within-CARBonAra occupancy-associated difference in independent-marginal
+retention**, and nothing stronger. It does not license claiming the architecture
+difference cancels in the paired contrast: that would require the correlation
+loss to be equal in both arms, which has not been shown.
+
+**Scoring marginals do not predict design retention, for any model.** An earlier
+draft claimed the autoregressive models retain the sequon 1.4–1.8× more often
+than their own marginals imply and attributed the excess to decoding
+correlation. That was an artefact of comparing marginals at T = 1 against
+retention measured at T = 0.1. Recomputed at the sampling temperature the sign
+reverses — ProteinMPNN 0.141 implied against 0.121 measured, ESM-IF 0.192
+against 0.151 — because scoring conditions on native context and design on
+generated context. For CARBonAra the gap is wider still: scoring imprints every
+other native residue, design imprints nothing. Any expected-retention figure has
+to come from a design-time pass.
 
 #### Environment and running it
 

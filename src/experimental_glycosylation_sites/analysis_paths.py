@@ -70,6 +70,26 @@ def retention_sources(variant: "str | None" = None) -> "list[tuple[Path, Path]]"
     return pairs
 
 
+def scoreability_sources(variant: "str | None" = None) -> "list[Path]":
+    """Scoreability tables for this variant, falling back to the shared ones.
+
+    Which sites a model can decode is a property of THAT model's parser, so a
+    variant with its own scoreability pass must be filtered by it. Stage 10 used
+    to hard-code the unsuffixed files, which are ProteinMPNN's -- so ESM-IF and
+    CARBonAra retention were filtered by a different model's exclusions.
+    """
+    tag_suffix = suffix(variant)
+    chosen = []
+    for stem in ("scoreability", "scoreability_secretory"):
+        specific = Path(f"results/manifests/{stem}{tag_suffix}.csv")
+        shared = Path(f"results/manifests/{stem}.csv")
+        if tag_suffix and specific.exists():
+            chosen.append(specific)
+        elif shared.exists():
+            chosen.append(shared)
+    return chosen
+
+
 def retention_all_classes(variant: "str | None" = None) -> Path:
     return Path(f"results/designs/retention_all_classes{suffix(variant)}.csv")
 
