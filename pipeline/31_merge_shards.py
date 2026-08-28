@@ -64,6 +64,14 @@ if before != len(merged):
 # Its output looks like any other shard's: shorter, and in no way marked.
 truncated = [Path(f).name for f in files
              if not Path(f.replace(".csv", "_failures.csv")).exists()]
+# Only meaningful when the stage writes that sibling unconditionally. Retention
+# runs before 2026-08-28 wrote one only when there were failures, so a complete
+# set of shards has none at all -- and refusing those would be a false alarm.
+# The coverage check below is the guard that does not depend on this.
+if truncated and len(truncated) == len(files):
+    print(f"  NOTE: no shard has a _failures.csv sibling, so this stage did not "
+          f"write them unconditionally; relying on the coverage check instead")
+    truncated = []
 if truncated:
     message = (f"{truncated} have no _failures.csv beside them, which means "
                "those shards were killed before finishing. Their rows are a "

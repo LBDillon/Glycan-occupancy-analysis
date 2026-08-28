@@ -95,7 +95,9 @@ if rows:
     pd.DataFrame(rows).to_csv(OUT, mode="a", header=not OUT.exists(), index=False)
 frame = pd.read_csv(OUT, low_memory=False).drop_duplicates(KEY)
 frame.to_csv(OUT, index=False)
-if failures:
-    pd.DataFrame(failures).to_csv(OUT.with_name(OUT.stem + "_failures.csv"), index=False)
+# Written even when empty, as 07_score does. An absent failures file is how
+# `31_merge_shards` recognises a shard that died before its final flush, and a
+# stage that writes one only on failure makes that signal unreadable.
+pd.DataFrame(failures).to_csv(OUT.with_name(OUT.stem + "_failures.csv"), index=False)
 print(f"\nretention recorded for {len(frame)} sites; {len(failures)} chain failures; "
       f"elapsed {(time.time()-t0)/60:.0f} min")
