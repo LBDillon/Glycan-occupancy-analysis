@@ -41,7 +41,7 @@ class ESM3Adapter:
                  structure_mode: str = DEFAULT_STRUCTURE_MODE,
                  mask_mode: str = DEFAULT_MASK_MODE, seed: int = 0,
                  num_steps: "int | None" = None,
-                 max_batch: "int | None" = None):
+                 max_batch: "int | None" = None, use_batch: bool = True):
         from ..esm3_scoring import _check
 
         _check(structure_mode, mask_mode)
@@ -51,12 +51,14 @@ class ESM3Adapter:
         self.mask_mode = mask_mode
         self.seed = seed
         self.num_steps = num_steps
-        # Accepted because stage 08 passes it to every adapter, and ignored
-        # because ESM3 generates one design at a time: the batch-times-length
-        # activation blow-up that the slot budget exists to prevent cannot
-        # arise here, and silently accepting a batch size we do not use would
-        # be worse than saying so.
+        # Designs are generated in batches, so the batch-times-length blow-up
+        # that the slot budget exists to prevent applies here exactly as it does
+        # to ProteinMPNN's decoding, and max_batch caps it as it does there.
         self.max_batch = max_batch
+        # An escape hatch to the one-at-a-time path, which is slower by roughly
+        # the batch size but needs only `generate`. Kept because the batched
+        # path depends on `batch_generate` existing on the loaded model.
+        self.use_batch = use_batch
         self._model = None
         self._tokenizer = None
         self._cached_key = None
@@ -137,6 +139,7 @@ class ESM3Adapter:
                 "num_steps": self.num_steps or "scaled_by_length",
                 "step_divisor": DESIGN_STEP_DIVISOR,
                 "step_bounds": [DESIGN_MIN_STEPS, DESIGN_MAX_STEPS],
+                "batched": bool(self.use_batch),
                 "native_procedure": True}
 
     # --- SequenceDesigner ---------------------------------------------------
@@ -160,7 +163,8 @@ class ESM3Adapter:
             structure_path, chain_id, model, n_designs=n_designs,
             temperature=temperature,
             seed=self.seed if seed is None else seed,
-            device=self.device, num_steps=self.num_steps)
+            device=self.device, num_steps=self.num_steps,
+            max_batch=self.max_batch, use_batch=self.use_batch)
 
     def design_steps_for(self, length: int) -> int:
         """Unmasking passes this adapter would use for a chain of this length."""

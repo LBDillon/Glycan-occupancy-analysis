@@ -392,3 +392,111 @@ def test_the_adapter_accepts_max_batch_without_claiming_to_use_it():
 
     assert adapter.max_batch == 8
     assert "max_batch" not in adapter.describe_generation()
+
+
+# --- batched design -------------------------------------------------------
+# One design at a time left the GPU idle: a pilot measured ~13 unmasking steps
+# per second whatever the chain length, so cost was steps x designs and barely
+# touched by length. These check the batching without needing a real model.
+
+class FakeBatchGenerator(FakeGenerator):
+    """Exposes batch_generate, and records the size of every batch it is given."""
+
+    def __init__(self, length, sequence=None, short_by=0):
+        super().__init__(length, sequence)
+        self.batches, self.short_by = [], short_by
+
+    def batch_generate(self, proteins, configs):
+        assert len(proteins) == len(configs), "one config per protein"
+        self.batches.append(len(proteins))
+        outs = [self.generate(p, c) for p, c in zip(proteins, configs)]
+        return outs[:len(outs) - self.short_by] if self.short_by else outs
+
+
+def test_batching_is_used_when_the_model_offers_it(monkeypatch, fake_esm):
+    sequence = "MANKSTVQW"
+    _patch_chain(monkeypatch, sequence)
+    model = FakeBatchGenerator(len(sequence))
+
+    designs = e3.design_sequences("x.pdb", "A", model, n_designs=32,
+                                  temperature=0.1)
+
+    assert len(designs) == 32
+    assert model.batches, "batch_generate was never called"
+    assert sum(model.batches) == 32
+
+
+def test_a_long_chain_is_batched_within_the_slot_budget(monkeypatch, fake_esm):
+    """The same bound that stopped ProteinMPNN exhausting memory on long chains."""
+    from experimental_glycosylation_sites.retention import (DESIGN_SLOT_BUDGET,
+                                                            batch_for_length)
+
+    long_sequence = "A" * 1200
+    _patch_chain(monkeypatch, long_sequence)
+    model = FakeBatchGenerator(len(long_sequence))
+
+    e3.design_sequences("x.pdb", "A", model, n_designs=32, temperature=0.1)
+
+    expected = batch_for_length(len(long_sequence), 32)
+    assert expected < 32, "a 1200-residue chain should not run 32 at once"
+    assert max(model.batches) <= expected
+    assert max(model.batches) * len(long_sequence) <= DESIGN_SLOT_BUDGET
+
+
+def test_a_short_chain_uses_one_batch(monkeypatch, fake_esm):
+    _patch_chain(monkeypatch, "MANKSTVQW")
+    model = FakeBatchGenerator(9)
+
+    e3.design_sequences("x.pdb", "A", model, n_designs=32, temperature=0.1)
+
+    assert model.batches == [32]
+
+
+def test_max_batch_caps_the_batch(monkeypatch, fake_esm):
+    _patch_chain(monkeypatch, "MANKSTVQW")
+    model = FakeBatchGenerator(9)
+
+    e3.design_sequences("x.pdb", "A", model, n_designs=32, temperature=0.1,
+                        max_batch=8)
+
+    assert max(model.batches) <= 8
+    assert sum(model.batches) == 32
+
+
+def test_a_batch_returning_too_few_designs_is_refused(monkeypatch, fake_esm):
+    """Silently accepting it would score retention over fewer designs than 32."""
+    _patch_chain(monkeypatch, "MANKSTVQW")
+    model = FakeBatchGenerator(9, short_by=1)
+
+    with pytest.raises(e3.DesignFailedError, match="designs for a batch"):
+        e3.design_sequences("x.pdb", "A", model, n_designs=4, temperature=0.1)
+
+
+def test_batching_can_be_turned_off(monkeypatch, fake_esm):
+    """The sequential path must stay reachable: it needs only `generate`."""
+    _patch_chain(monkeypatch, "MANKSTVQW")
+    model = FakeBatchGenerator(9)
+
+    designs = e3.design_sequences("x.pdb", "A", model, n_designs=4,
+                                  temperature=0.1, use_batch=False)
+
+    assert len(designs) == 4
+    assert model.batches == [], "batch_generate was used despite use_batch=False"
+
+
+def test_a_model_without_batch_generate_still_works(monkeypatch, fake_esm):
+    _patch_chain(monkeypatch, "MANKSTVQW")
+
+    designs = e3.design_sequences("x.pdb", "A", FakeGenerator(9),
+                                  n_designs=4, temperature=0.1)
+
+    assert len(designs) == 4
+
+
+def test_which_path_was_used_is_recorded(monkeypatch, fake_esm):
+    """The two paths draw the same distribution but consume randomness
+    differently, so a run is reproducible against itself and not across them."""
+    from experimental_glycosylation_sites.adapters.esm3 import ESM3Adapter
+
+    assert ESM3Adapter().describe_generation()["batched"] is True
+    assert ESM3Adapter(use_batch=False).describe_generation()["batched"] is False

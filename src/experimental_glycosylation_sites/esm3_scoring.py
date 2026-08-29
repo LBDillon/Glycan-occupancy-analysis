@@ -220,7 +220,9 @@ def design_steps(length: int, num_steps: "int | None" = None) -> int:
 def design_sequences(structure_path, chain_id: str, model, n_designs: int,
                      temperature: float, seed: int = 0, device: str = "cpu",
                      pdb_id: "str | None" = None,
-                     num_steps: "int | None" = None) -> "list[str]":
+                     num_steps: "int | None" = None,
+                     max_batch: "int | None" = None,
+                     use_batch: bool = True) -> "list[str]":
     """Unconstrained inverse-folding designs for one chain.
 
     The whole sequence track is masked and rewritten from the structure tokens.
@@ -239,33 +241,76 @@ def design_sequences(structure_path, chain_id: str, model, n_designs: int,
     import torch
     from esm.sdk.api import ESMProtein, GenerationConfig
 
+    from .retention import batch_for_length
+
     native_sequence, chain = checked_chain(structure_path, chain_id, pdb_id)
     length = len(native_sequence)
     steps = design_steps(length, num_steps)
+    n_designs = int(n_designs)
 
-    designs: "list[str]" = []
-    for k in range(int(n_designs)):
-        # Seeded per design, so a design is reproducible individually and a
-        # rerun that resumes midway cannot silently draw a different sequence
-        # for a site it already has.
-        torch.manual_seed(int(seed) + k)
+    def masked():
+        """A fresh protein with the sequence track cleared."""
         protein = ESMProtein.from_protein_chain(chain)
         protein.sequence = None          # the whole track is rewritten
         protein.function_annotations = None
-        generated = model.generate(
-            protein, GenerationConfig(track="sequence", num_steps=steps,
-                                      temperature=float(temperature)))
-        sequence = getattr(generated, "sequence", None)
+        return protein
+
+    def config():
+        return GenerationConfig(track="sequence", num_steps=steps,
+                                temperature=float(temperature))
+
+    def checked(sequence, which):
         if not sequence:
             raise DesignFailedError(
                 f"ESM3 returned no sequence for chain {chain_id!r} of "
-                f"{Path(structure_path).name} on design {k}")
+                f"{Path(structure_path).name} on design {which}")
         if len(sequence) != length:
             raise DesignFailedError(
                 f"ESM3 returned {len(sequence)} residues for chain {chain_id!r} "
                 f"of {Path(structure_path).name} where the chain has {length}; "
                 "the manifest's indices would not address the same residues")
-        designs.append(str(sequence))
+        return str(sequence)
+
+    # One design at a time leaves an A100 almost idle: a pilot measured ~13
+    # unmasking steps per second whatever the chain length, so the cost was
+    # steps x designs and barely touched by length. Batching the designs fills
+    # the device, and the batch is bounded by the same residue-slot budget that
+    # stops long chains exhausting memory during ProteinMPNN's decoding.
+    #
+    # The batched and sequential paths draw from the same distribution under the
+    # same schedule, but consume randomness differently, so a run is
+    # reproducible against itself and not across the two. `describe_generation`
+    # records which was used.
+    batched = use_batch and hasattr(model, "batch_generate")
+    designs: "list[str]" = []
+
+    if batched:
+        size = batch_for_length(length, n_designs, max_batch)
+        for start in range(0, n_designs, size):
+            take = min(size, n_designs - start)
+            torch.manual_seed(int(seed) + start)
+            generated = model.batch_generate([masked() for _ in range(take)],
+                                             [config() for _ in range(take)])
+            if len(generated) != take:
+                raise DesignFailedError(
+                    f"ESM3 returned {len(generated)} designs for a batch of "
+                    f"{take} on chain {chain_id!r} of "
+                    f"{Path(structure_path).name}")
+            designs += [checked(getattr(g, "sequence", None), start + i)
+                        for i, g in enumerate(generated)]
+    else:
+        for k in range(n_designs):
+            # Seeded per design, so a design is reproducible individually and a
+            # rerun that resumes midway cannot silently draw a different
+            # sequence for a site it already has.
+            torch.manual_seed(int(seed) + k)
+            designs.append(checked(
+                getattr(model.generate(masked(), config()), "sequence", None), k))
+
+    if len(designs) != n_designs:
+        raise DesignFailedError(
+            f"{len(designs)} designs for a request of {n_designs} on chain "
+            f"{chain_id!r} of {Path(structure_path).name}")
     return designs
 
 
