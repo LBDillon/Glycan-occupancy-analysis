@@ -200,3 +200,195 @@ def test_a_triplet_mismatch_is_refused():
     e3.check_triplet("MANKSTV", (2, 3, 4), "NKS")
     with pytest.raises(e3.SequonMismatchError):
         e3.check_triplet("MANKSTV", (2, 3, 4), "NQT")
+
+
+# --- design ---------------------------------------------------------------
+# ESM3 can redesign a backbone, unlike ESMC. These check the plumbing that can
+# be checked without the gated checkpoint: the schedule, the refusals, and that
+# the sequence track really is cleared before generation rather than the model
+# being handed the native sequence back.
+
+class FakeChain:
+    def __init__(self, sequence):
+        self.sequence = sequence
+
+
+class FakeProtein:
+    """Stands in for ESMProtein, recording what generation was handed."""
+
+    def __init__(self, chain):
+        self.from_chain = chain
+        self.sequence = chain.sequence
+        self.coordinates = object()
+        self.function_annotations = object()
+
+    @classmethod
+    def from_protein_chain(cls, chain):
+        return cls(chain)
+
+
+class FakeGenerationConfig:
+    def __init__(self, track=None, num_steps=None, temperature=None):
+        self.track, self.num_steps, self.temperature = track, num_steps, temperature
+
+
+class FakeGenerator:
+    """Returns a sequence that depends on the torch seed, so draws are visible."""
+
+    def __init__(self, length, sequence=None):
+        self.length, self.forced, self.seen = length, sequence, []
+
+    def generate(self, protein, config):
+        import torch
+
+        self.seen.append({"sequence_in": protein.sequence,
+                          "num_steps": config.num_steps,
+                          "temperature": config.temperature,
+                          "track": config.track})
+        if self.forced is not None:
+            return type("Out", (), {"sequence": self.forced})()
+        letters = "ACDEFGHIKLMNPQRSTVWY"
+        draw = torch.randint(0, len(letters), (self.length,))
+        return type("Out", (), {"sequence": "".join(letters[i] for i in draw)})()
+
+
+@pytest.fixture
+def fake_esm(monkeypatch):
+    """Inject the two esm names design_sequences imports at call time."""
+    import sys
+    import types
+
+    api = types.ModuleType("esm.sdk.api")
+    api.ESMProtein = FakeProtein
+    api.GenerationConfig = FakeGenerationConfig
+    for name, module in (("esm", types.ModuleType("esm")),
+                         ("esm.sdk", types.ModuleType("esm.sdk")),
+                         ("esm.sdk.api", api)):
+        monkeypatch.setitem(sys.modules, name, module)
+    return api
+
+
+def _patch_chain(monkeypatch, sequence):
+    monkeypatch.setattr(e3, "checked_chain",
+                        lambda *a, **k: (sequence, FakeChain(sequence)))
+
+
+def test_design_steps_are_bounded_at_both_ends():
+    """One pass per residue is unaffordable; one pass total is not a joint draw."""
+    assert e3.design_steps(16) == e3.DESIGN_MIN_STEPS          # short chain
+    assert e3.design_steps(100_000) == e3.DESIGN_MAX_STEPS     # very long chain
+    assert e3.DESIGN_MIN_STEPS < e3.design_steps(400) < e3.DESIGN_MAX_STEPS
+
+
+def test_an_explicit_step_count_never_exceeds_the_chain():
+    assert e3.design_steps(30, num_steps=12) == 12
+    assert e3.design_steps(10, num_steps=999) == 10
+
+
+def test_design_clears_the_sequence_track_before_generating(monkeypatch, fake_esm):
+    """The native sequence must not be handed back to the model.
+
+    If it were, the model would be completing a sequence it can already see and
+    retention would measure copying rather than redesign.
+    """
+    sequence = "MANKSTVQW"
+    _patch_chain(monkeypatch, sequence)
+    model = FakeGenerator(len(sequence))
+
+    e3.design_sequences("x.pdb", "A", model, n_designs=2, temperature=0.1)
+
+    assert len(model.seen) == 2
+    assert all(call["sequence_in"] is None for call in model.seen)
+    assert all(call["track"] == "sequence" for call in model.seen)
+    assert all(call["temperature"] == 0.1 for call in model.seen)
+
+
+def test_designs_come_back_full_length_and_one_per_request(monkeypatch, fake_esm):
+    sequence = "MANKSTVQW"
+    _patch_chain(monkeypatch, sequence)
+
+    designs = e3.design_sequences("x.pdb", "A", FakeGenerator(len(sequence)),
+                                  n_designs=5, temperature=0.1)
+
+    assert len(designs) == 5
+    assert all(len(d) == len(sequence) for d in designs)
+
+
+def test_the_same_seed_reproduces_the_same_designs(monkeypatch, fake_esm):
+    """A resumed run must not silently redraw a site it already has."""
+    sequence = "MANKSTVQW"
+    _patch_chain(monkeypatch, sequence)
+    kwargs = dict(n_designs=4, temperature=0.5, seed=7)
+
+    first = e3.design_sequences("x.pdb", "A", FakeGenerator(len(sequence)), **kwargs)
+    again = e3.design_sequences("x.pdb", "A", FakeGenerator(len(sequence)), **kwargs)
+
+    assert first == again
+    assert len(set(first)) > 1, "every design identical: the seed is not advancing"
+
+
+def test_a_short_sequence_from_the_model_is_refused(monkeypatch, fake_esm):
+    """Silently accepting it would shift every index in the retention read-out."""
+    sequence = "MANKSTVQW"
+    _patch_chain(monkeypatch, sequence)
+    truncated = FakeGenerator(len(sequence), sequence="MANK")
+
+    with pytest.raises(e3.DesignFailedError, match="4 residues"):
+        e3.design_sequences("x.pdb", "A", truncated, n_designs=1, temperature=0.1)
+
+
+def test_an_empty_sequence_from_the_model_is_refused(monkeypatch, fake_esm):
+    _patch_chain(monkeypatch, "MANKSTVQW")
+
+    with pytest.raises(e3.DesignFailedError, match="no sequence"):
+        e3.design_sequences("x.pdb", "A", FakeGenerator(9, sequence=""),
+                            n_designs=1, temperature=0.1)
+
+
+def test_a_generation_failure_is_not_a_parse_failure():
+    """They are counted separately, so they must not share a type."""
+    assert not issubclass(e3.DesignFailedError, e3.ChainUnreadableError)
+    assert not issubclass(e3.ChainUnreadableError, e3.DesignFailedError)
+
+
+def test_the_adapter_refuses_to_design_without_the_structure_track():
+    """seq_only has no backbone, so a 'redesign' would be an unconditional draw."""
+    from experimental_glycosylation_sites.adapters.esm3 import ESM3Adapter
+
+    adapter = ESM3Adapter(structure_mode="seq_only")
+
+    with pytest.raises(ValueError, match="structure track"):
+        adapter.design("x.pdb", "A", n_designs=4, temperature=0.1)
+
+
+def test_the_adapter_records_a_non_default_schedule_in_its_provenance():
+    """Designs made under different schedules are not the same estimand."""
+    from experimental_glycosylation_sites.adapters.esm3 import ESM3Adapter
+
+    assert "design_num_steps" not in ESM3Adapter().describe()
+    assert ESM3Adapter(num_steps=12).describe()["design_num_steps"] == 12
+
+
+def test_designs_are_not_labelled_autoregressive():
+    """Stage 08's default label would be wrong for a masked diffusion model.
+
+    Retention measured by left-to-right decoding and by iterative unmasking are
+    different quantities; this column is what stops them being pooled.
+    """
+    from experimental_glycosylation_sites.adapters.esm3 import ESM3Adapter
+
+    generation = ESM3Adapter().describe_generation()
+
+    assert generation["generation"] == "masked_diffusion_unmasking"
+    assert "autoregressive" not in generation["generation"]
+    assert generation["native_procedure"] is True
+
+
+def test_the_adapter_accepts_max_batch_without_claiming_to_use_it():
+    """Stage 08 passes it to every adapter; ESM3 generates one design at a time."""
+    from experimental_glycosylation_sites.adapters.esm3 import ESM3Adapter
+
+    adapter = ESM3Adapter(max_batch=8)
+
+    assert adapter.max_batch == 8
+    assert "max_batch" not in adapter.describe_generation()

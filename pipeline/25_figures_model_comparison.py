@@ -59,10 +59,13 @@ MODELS = [
 ]
 
 # Why a model can never have a retention row, as opposed to not having one yet.
+# Why a model has no retention row. "ESM3 structure" was listed here as
+# conditioning on sequence not backbone, which is ESMC's reason and false for
+# it: the structure track IS a backbone conditioning, and it can redesign a
+# chain. It is absent from this figure only until its design arm has been run.
 NO_DESIGNER = {
     "ESMC": "masked LM, conditions on sequence not backbone",
-    "ESM3 structure": "masked LM, conditions on sequence not backbone",
-    "ESM3 sequence": "masked LM, conditions on sequence not backbone",
+    "ESM3 sequence": "structure track withheld, so no backbone to redesign",
     "ProGen2": "generation is unconditioned by any backbone",
 }
 SECRETORY = "eukaryotic secretory"

@@ -69,6 +69,16 @@ SCORE_SD = 0.0
 TOKEN_OFFSET = 1
 
 
+class DesignFailedError(RuntimeError):
+    """ESM3 produced no usable sequence for a chain it agreed to read.
+
+    Separate from ChainUnreadableError: that one means the chain was refused
+    before any model ran, this one means generation itself came back wrong.
+    Conflating them would hide a generation problem among the parse mismatches,
+    which are expected and numerous.
+    """
+
+
 class ChainUnreadableError(ValueError):
     """ESM3 could not be given a chain whose indices we can justify."""
 
@@ -130,15 +140,16 @@ def _assert_token_offset(tokenizer) -> None:
                 f"{probe!r} decodes to {token!r}, not {residue!r}")
 
 
-def chain_context(structure_path, chain_id: str, model,
-                  pdb_id: "str | None" = None, device: str = "cpu"):
-    """Encode one chain, checking ESM3's parse against the manifest's.
+def checked_chain(structure_path, chain_id: str,
+                  pdb_id: "str | None" = None):
+    """ESM3's own parse of one chain, checked against the manifest's.
 
-    Returns `(sequence, sequence_tokens, structure_tokens)`. A chain whose
-    sequence ESM3 reads differently is refused rather than scored at indices
-    that address a different residue.
+    Returns `(native_sequence, ProteinChain)`. Shared by scoring and design so
+    that a chain refused for one is refused for the other on identical grounds:
+    the whole point of the guard is that ESM3's indices and the manifest's
+    address the same residues, and design reads the sequon back out by index
+    exactly as scoring reads probabilities at it.
     """
-    from esm.sdk.api import ESMProtein
     from esm.utils.structure.protein_chain import ProteinChain
 
     from .structures import _parse_chains
@@ -161,12 +172,101 @@ def chain_context(structure_path, chain_id: str, model,
             f"ESM3 reads {len(chain.sequence)} residues where the manifest's "
             f"parse lists {len(native.sequence)}; the manifest's indices would "
             "not address the same residues")
+    return native.sequence, chain
 
+
+def chain_context(structure_path, chain_id: str, model,
+                  pdb_id: "str | None" = None, device: str = "cpu"):
+    """Encode one chain, checking ESM3's parse against the manifest's.
+
+    Returns `(sequence, sequence_tokens, structure_tokens)`. A chain whose
+    sequence ESM3 reads differently is refused rather than scored at indices
+    that address a different residue.
+    """
+    from esm.sdk.api import ESMProtein
+
+    native_sequence, chain = checked_chain(structure_path, chain_id, pdb_id)
     encoded = model.encode(ESMProtein.from_protein_chain(chain))
     sequence_tokens = encoded.sequence.to(device)
     structure_tokens = (encoded.structure.to(device)
                         if encoded.structure is not None else None)
-    return native.sequence, sequence_tokens, structure_tokens
+    return native_sequence, sequence_tokens, structure_tokens
+
+
+# How many unmasking steps ESM3 takes to write one sequence. ESM3 is a masked
+# diffusion model: it fills a fully masked track over several passes, each
+# conditioned on what the previous ones committed to. Sampling every position
+# from ONE pass would draw from independent marginals rather than the joint --
+# the same distinction `independent_calibrated_sampling` names for CARBonAra --
+# so the number of steps is a real parameter, not a speed knob.
+#
+# One step per residue is the highest-fidelity schedule and costs L forward
+# passes per design, which at 32 designs a chain is not affordable here. This
+# scales with length and is bounded at both ends, and is recorded in the
+# provenance of every row so a run made under a different schedule cannot be
+# pooled with one made under this.
+DESIGN_STEP_DIVISOR = 8
+DESIGN_MIN_STEPS, DESIGN_MAX_STEPS = 8, 64
+
+
+def design_steps(length: int, num_steps: "int | None" = None) -> int:
+    """Unmasking passes for a chain of this length."""
+    if num_steps:
+        return max(1, min(int(num_steps), int(length)))
+    scaled = int(length) // DESIGN_STEP_DIVISOR
+    return max(DESIGN_MIN_STEPS, min(DESIGN_MAX_STEPS, max(scaled, 1)))
+
+
+def design_sequences(structure_path, chain_id: str, model, n_designs: int,
+                     temperature: float, seed: int = 0, device: str = "cpu",
+                     pdb_id: "str | None" = None,
+                     num_steps: "int | None" = None) -> "list[str]":
+    """Unconstrained inverse-folding designs for one chain.
+
+    The whole sequence track is masked and rewritten from the structure tokens.
+    Nothing is fixed and nothing is biased, so the sequon is free to disappear
+    -- otherwise retention would measure the constraint rather than the model.
+
+    Generation goes through ESM3's own `generate` rather than a decoding loop
+    written here. That is the vendor's schedule for its own masked-diffusion
+    model, and getting it subtly wrong would change every design while still
+    producing plausible sequences.
+
+    Designs come back in the manifest's index space, because `checked_chain`
+    has already refused any chain whose parse disagrees with it -- so position i
+    of a returned string is position i of the manifest.
+    """
+    import torch
+    from esm.sdk.api import ESMProtein, GenerationConfig
+
+    native_sequence, chain = checked_chain(structure_path, chain_id, pdb_id)
+    length = len(native_sequence)
+    steps = design_steps(length, num_steps)
+
+    designs: "list[str]" = []
+    for k in range(int(n_designs)):
+        # Seeded per design, so a design is reproducible individually and a
+        # rerun that resumes midway cannot silently draw a different sequence
+        # for a site it already has.
+        torch.manual_seed(int(seed) + k)
+        protein = ESMProtein.from_protein_chain(chain)
+        protein.sequence = None          # the whole track is rewritten
+        protein.function_annotations = None
+        generated = model.generate(
+            protein, GenerationConfig(track="sequence", num_steps=steps,
+                                      temperature=float(temperature)))
+        sequence = getattr(generated, "sequence", None)
+        if not sequence:
+            raise DesignFailedError(
+                f"ESM3 returned no sequence for chain {chain_id!r} of "
+                f"{Path(structure_path).name} on design {k}")
+        if len(sequence) != length:
+            raise DesignFailedError(
+                f"ESM3 returned {len(sequence)} residues for chain {chain_id!r} "
+                f"of {Path(structure_path).name} where the chain has {length}; "
+                "the manifest's indices would not address the same residues")
+        designs.append(str(sequence))
+    return designs
 
 
 def conditional_probabilities(context, model, tokenizer, indices,

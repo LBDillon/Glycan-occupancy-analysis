@@ -1,8 +1,10 @@
 """ESM3 adapter — the model that can withhold its own structure track.
 
-Scorer only, for ESMC's reason: generation from a masked language model would
-condition on sequence rather than on a backbone, so "retention" would not mean
-what it means for the inverse-folding models.
+Scorer and designer. Design is available only under `struct_cond`: retention
+asks what a model writes when it redesigns a BACKBONE, and with the structure
+track withheld there is no backbone to redesign against -- generation would be
+unconditional, which is why ProGen2 has no retention row either. So the 2x2
+belongs to scoring; design is one arm of it.
 
 Two knobs, and the first is what makes this model worth having:
 
@@ -24,18 +26,22 @@ import numpy as np
 from ..esm3_scoring import (DEFAULT_MASK_MODE, DEFAULT_MODEL,
                             DEFAULT_STRUCTURE_MODE, N_ORDERS, chain_context,
                             check_triplet, conditional_probabilities,
-                            conditioning, decodable_positions, load_model,
-                            sequon_score)
+                            DESIGN_MAX_STEPS, DESIGN_MIN_STEPS,
+                            DESIGN_STEP_DIVISOR, conditioning,
+                            decodable_positions, design_sequences, design_steps,
+                            load_model, sequon_score)
 
 
 class ESM3Adapter:
-    """Implements SequonScorer. Not a SequenceDesigner."""
+    """Implements SequonScorer, and SequenceDesigner under struct_cond."""
 
     name = "esm3"
 
     def __init__(self, device: str = "cpu", model_name: str = DEFAULT_MODEL,
                  structure_mode: str = DEFAULT_STRUCTURE_MODE,
-                 mask_mode: str = DEFAULT_MASK_MODE, seed: int = 0):
+                 mask_mode: str = DEFAULT_MASK_MODE, seed: int = 0,
+                 num_steps: "int | None" = None,
+                 max_batch: "int | None" = None):
         from ..esm3_scoring import _check
 
         _check(structure_mode, mask_mode)
@@ -44,6 +50,13 @@ class ESM3Adapter:
         self.structure_mode = structure_mode
         self.mask_mode = mask_mode
         self.seed = seed
+        self.num_steps = num_steps
+        # Accepted because stage 08 passes it to every adapter, and ignored
+        # because ESM3 generates one design at a time: the batch-times-length
+        # activation blow-up that the slot budget exists to prevent cannot
+        # arise here, and silently accepting a batch size we do not use would
+        # be worse than saying so.
+        self.max_batch = max_batch
         self._model = None
         self._tokenizer = None
         self._cached_key = None
@@ -65,9 +78,13 @@ class ESM3Adapter:
         structure-conditioned run and a sequence-only run of the SAME model can
         never be pooled -- which is the one confusion this model exists to avoid.
         """
-        return {"model": f"{self.model_name}/{self.structure_mode}",
-                "conditioning": conditioning(self.structure_mode, self.mask_mode),
-                "n_orders": N_ORDERS, "seed": self.seed}
+        described = {"model": f"{self.model_name}/{self.structure_mode}",
+                     "conditioning": conditioning(self.structure_mode,
+                                                  self.mask_mode),
+                     "n_orders": N_ORDERS, "seed": self.seed}
+        if self.num_steps:
+            described["design_num_steps"] = self.num_steps
+        return described
 
     # --- SequonScorer -------------------------------------------------------
     def decodable_positions(self, structure_path: Path, chain_id: str) -> np.ndarray:
@@ -105,3 +122,46 @@ class ESM3Adapter:
                    expected_triplet: "str | None" = None):
         context = self.prepare_chain(structure_path, chain_id, list(indices))
         return self.score_from(context, indices, expected_triplet)
+
+    def describe_generation(self) -> dict:
+        """Provenance for the design rows, which is not the scoring provenance.
+
+        Stage 08 labels designs `autoregressive_sampling` unless an adapter
+        says otherwise, and that label would be wrong here: ESM3 is a masked
+        diffusion model that fills a fully masked track over several passes,
+        not a left-to-right decoder. Retention measured under this procedure
+        and under an autoregressive one are not the same quantity, and the
+        column is what keeps them from being pooled.
+        """
+        return {"generation": "masked_diffusion_unmasking",
+                "num_steps": self.num_steps or "scaled_by_length",
+                "step_divisor": DESIGN_STEP_DIVISOR,
+                "step_bounds": [DESIGN_MIN_STEPS, DESIGN_MAX_STEPS],
+                "native_procedure": True}
+
+    # --- SequenceDesigner ---------------------------------------------------
+    def design(self, structure_path: Path, chain_id: str, n_designs: int,
+               temperature: float, seed: "int | None" = None) -> "list[str]":
+        """Unconstrained designs, in the manifest's index space.
+
+        Refuses under `seq_only` rather than quietly generating without a
+        backbone. A sequence produced with the structure track withheld is not
+        a redesign of this chain, and scoring retention on it would compare an
+        unconditional sample against the inverse-folding models.
+        """
+        if self.structure_mode != "struct_cond":
+            raise ValueError(
+                f"design needs the structure track, but structure_mode is "
+                f"{self.structure_mode!r}. Retention measures what the model "
+                "writes for a given backbone; with no backbone there is "
+                "nothing to redesign.")
+        model, _ = self._load()
+        return design_sequences(
+            structure_path, chain_id, model, n_designs=n_designs,
+            temperature=temperature,
+            seed=self.seed if seed is None else seed,
+            device=self.device, num_steps=self.num_steps)
+
+    def design_steps_for(self, length: int) -> int:
+        """Unmasking passes this adapter would use for a chain of this length."""
+        return design_steps(length, self.num_steps)
