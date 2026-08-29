@@ -254,8 +254,20 @@ values["retention_not_run"] = pending
 # therefore cannot share an axis and must not be read against one another.
 drawn = [m for m in MODELS if scoring(m[1])
          and (ANALYSIS / f"contrasts_secretory_{m[1]}.csv").exists()]
-fig, axes = plt.subplots(1, len(drawn), figsize=(4.4 * len(drawn), 4.6))
-for panel, (name, variant, _, _, colour) in zip(np.atleast_1d(axes), drawn):
+# Laid out as a grid rather than one row: at seven models a single row is
+# thirty inches wide and cannot be printed or read. The panels never shared an
+# axis anyway -- each model emits its own scale, which is the whole point of
+# this figure -- so wrapping them costs no comparability.
+COLS = 4
+n_panels = len(drawn)
+cols = min(COLS, n_panels)
+rows = -(-n_panels // cols)
+fig, axes = plt.subplots(rows, cols, figsize=(4.1 * cols, 3.6 * rows),
+                         squeeze=False)
+flat = axes.ravel()
+for spare in flat[n_panels:]:
+    spare.set_visible(False)
+for i, (panel, (name, variant, _, _, colour)) in enumerate(zip(flat, drawn)):
     pairs = pd.read_csv(ANALYSIS / f"contrasts_secretory_{variant}.csv")
     occupied, unknown = pairs.case_score.values, pairs.control_mean_score.values
     edges = np.histogram_bin_edges(np.concatenate([occupied, unknown]), bins=26)
@@ -269,7 +281,12 @@ for panel, (name, variant, _, _, colour) in zip(np.atleast_1d(axes), drawn):
         panel.text(0.97, 0.97, "*", transform=panel.transAxes, ha="right",
                    va="top", fontsize=17, color=INK)
     panel.set_title(name, pad=8)
-    panel.set_xlabel("conditional sequon score  (log odds)")
+    # Axis labels only on the edges of the grid: an x label under every panel
+    # repeats the same string seven times and crowds out the ticks.
+    if i + cols >= n_panels:
+        panel.set_xlabel("conditional sequon score  (log odds)")
+    if i % cols == 0:
+        panel.set_ylabel("density of sites")
     panel.set_yticks([])
     panel.spines["left"].set_visible(False)
     values.setdefault("raw_distributions", {})[name] = {
@@ -278,9 +295,8 @@ for panel, (name, variant, _, _, colour) in zip(np.atleast_1d(axes), drawn):
         "unknown_median": float(np.median(unknown)),
         "occupied_below_unknown_median":
             float((occupied < np.median(unknown)).mean())}
-np.atleast_1d(axes)[0].set_ylabel("density of sites")
-np.atleast_1d(axes)[0].legend(frameon=False, fontsize=9, loc="upper left")
-fig.tight_layout(pad=1.8)
+flat[0].legend(frameon=False, fontsize=9, loc="upper left")
+fig.tight_layout(pad=1.6)
 fig.savefig(OUT / "fig_score_distributions.png", dpi=200, bbox_inches="tight")
 print("wrote", OUT / "fig_score_distributions.png")
 

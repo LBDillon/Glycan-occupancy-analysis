@@ -109,7 +109,11 @@ MODELS = [("ProteinMPNN", "proteinmpnn_index_corrected", mpnn_alphabet),
           ("ESM3 structure", "esm3_struct_single", esmc_alphabet),
           ("ESM3 sequence", "esm3_seq_single", esmc_alphabet),
           ("ESMC", "esmc_single", esmc_alphabet),
-          ("ProGen2", "progen2", progen2_alphabet)]
+          # progen2_direction1, NOT progen2: the first pass prepended
+          # bos_token_id (30, <|endoftext|>) instead of the literal direction
+          # marker "1", and its results are void. The old files are still on
+          # disk, so naming the wrong variant here silently drew them.
+          ("ProGen2", "progen2_direction1", progen2_alphabet)]
 
 
 def load(variant, alphabet):
@@ -217,7 +221,8 @@ def draw(panels, filename):
     titles = list(ARMS) + [""] * (2 * (rows - 1))
     fig = make_subplots(rows=rows, cols=2, shared_xaxes=True, shared_yaxes=True,
                         subplot_titles=titles,
-                        horizontal_spacing=0.055, vertical_spacing=0.075)
+                        horizontal_spacing=0.055,
+                        vertical_spacing=0.075 * 7 / max(rows, 7))
     limit = max(max(occ.max(), ctl.max()) for _, occ, ctl, _, _ in panels)
     ylabels = [c[1] for c in COLUMNS]
 
@@ -226,7 +231,8 @@ def draw(panels, filename):
             fig.add_trace(go.Heatmap(
                 z=grid, x=list(ORDER), y=ylabels, zmin=0, zmax=limit,
                 colorscale="Blues", showscale=(r == 1 and c == 2),
-                colorbar=dict(title="probability", thickness=14, len=0.5, y=0.8),
+                colorbar=dict(title="probability", thickness=14, len=0.42,
+                              y=0.5, yanchor="middle"),
                 hovertemplate="%{x} at position %{y}<br>%{z:.4f}<extra></extra>"),
                 row=r, col=c)
             for boundary in BOUNDARIES:
@@ -251,10 +257,64 @@ def draw(panels, filename):
         template="simple_white",
         title=dict(text="Predicted amino-acid distribution at the sequon",
                    x=0.02, xanchor="left"),
-        height=210 * rows + 130, width=1220,
-        margin=dict(t=105, l=110, r=90, b=70))
+        # Each panel is three cells tall and twenty wide, so height per model
+        # can be tight; at 210 with seven models the figure was a 1600px
+        # sliver that no page could hold.
+        height=138 * rows + 150, width=1220,
+        margin=dict(t=105, l=118, r=90, b=70))
     for annotation in fig.layout.annotations[:2]:
         annotation.update(font=dict(size=15))
+    fig.write_image(OUT / f"{filename}.png", scale=2)
+    fig.write_html(OUT / f"{filename}.html", include_plotlyjs="cdn")
+    print("wrote", OUT / f"{filename}.png", "and .html")
+
+
+def draw_difference(difference, filename):
+    """The paired difference, occupied minus its matched partner.
+
+    One column instead of two: the arms are near-identical by construction --
+    both contain a sequon -- so their difference is where the separation
+    actually lives, and showing it alone makes seven models legible on one
+    page. Diverging scale centred on zero, symmetric so equal shifts in either
+    direction read the same size.
+    """
+    rows = len(difference)
+    fig = make_subplots(rows=rows, cols=1, shared_xaxes=True,
+                        vertical_spacing=0.075 * 7 / max(rows, 7))
+    limit = max(np.abs(delta).max() for _, delta, _, _ in difference)
+    ylabels = [c[1] for c in COLUMNS]
+
+    for r, (name, delta, significant, n) in enumerate(difference, start=1):
+        fig.add_trace(go.Heatmap(
+            z=delta, x=list(ORDER), y=ylabels, zmin=-limit, zmax=limit,
+            zmid=0, colorscale="RdBu_r", showscale=(r == 1),
+            colorbar=dict(title="occupied minus<br>matched partner",
+                          thickness=14, len=0.42, y=0.5, yanchor="middle"),
+            hovertemplate="%{x} at position %{y}<br>%{z:+.4f}<extra></extra>"),
+            row=r, col=1)
+        for boundary in BOUNDARIES:
+            fig.add_vline(x=boundary, line=dict(color="white", width=2),
+                          row=r, col=1)
+        ys, xs = np.where(significant)
+        if len(ys):
+            fig.add_trace(go.Scatter(
+                x=[ORDER[i] for i in xs], y=[ylabels[i] for i in ys],
+                mode="markers",
+                marker=dict(symbol="circle-open", size=9, line=dict(width=2),
+                            color="rgba(20,20,20,0.9)"),
+                showlegend=False, hoverinfo="skip"), row=r, col=1)
+        fig.update_yaxes(autorange="reversed", row=r, col=1)
+        fig.update_xaxes(tickmode="array", tickvals=list(ORDER),
+                         ticktext=TICKS, row=r, col=1)
+        fig.update_yaxes(title_text=f"<b>{name}</b>", row=r, col=1)
+
+    fig.update_layout(
+        template="simple_white",
+        title=dict(text="What separates the arms: occupied minus matched "
+                        "partner, per sequon position",
+                   x=0.02, xanchor="left"),
+        height=138 * rows + 150, width=980,
+        margin=dict(t=105, l=118, r=90, b=70))
     fig.write_image(OUT / f"{filename}.png", scale=2)
     fig.write_html(OUT / f"{filename}.html", include_plotlyjs="cdn")
     print("wrote", OUT / f"{filename}.png", "and .html")
@@ -265,6 +325,7 @@ if panels:
     # Everything explanatory lives in docs/figures_and_captions.md, so the
     # figure carries only its title, axes, key and significance markers.
     draw(panels, "fig_sequon_heatmap")
+    draw_difference(difference, "fig_sequon_heatmap_diff")
     print(f"{n} matched pairs; caption in docs/figures_and_captions.md")
 
 summary = {name: {"n_pairs": int(n),

@@ -385,6 +385,21 @@ serine/threonine at occupied sites than at their matched partners.
 | ESM-IF | 262 | +0.052 | +0.055 | +0.063 | 21 / 60 |
 | ESMC | 262 | +0.045 | +0.039 | +0.081 | 21 / 60 |
 | CARBonAra | 262 | +0.065 | +0.036 | +0.013 | 18 / 60 |
+| ESM3 structure | 218 | **−0.001** | +0.032 | +0.010 | 10 / 60 |
+| ESM3 sequence | 218 | **−0.021** | +0.009 | −0.010 | 8 / 60 |
+| ProGen2 | 261 | +0.009 | +0.014 | +0.047 | 9 / 60 |
+
+**ESM3 is the exception, in both arms.** It is the only model that puts *less*
+asparagine mass at occupied sites than at their matched partners (−0.001 with
+the structure track, −0.021 without). What little separation it has comes from
+serine at position 3, not from asparagine at position 1 — which is consistent
+with its scalar score being inconclusive in all four conditions. ProGen2 is
+differently lopsided: almost all of its separation is threonine at position 3
+(+0.047) with asparagine contributing nearly nothing (+0.009).
+
+ProGen2's row is from `progen2_direction1`. Until 2026-08-29 this figure named
+the superseded `progen2` variant, whose files are still on disk, so it was
+silently drawing the run that used the wrong start token.
 
 ### The aspartate column is the interesting part
 
@@ -425,13 +440,42 @@ asparagine term should be described as *amide-shape preference* rather than
 - **Nothing is confidently predicted anywhere.** The darkest cell in the figure
   is about 0.31 and most are near 0.05, which is chance for twenty residues. The
   models express mild preferences, not calls.
-- **ProteinMPNN is 232 pairs against 262** for the other two, so the rows are not
-  the same site set. Sound within each model; do not rank the models off it.
+- **The rows are not all the same site set**: 262 pairs for ESM-IF, ESMC and
+  CARBonAra, 261 for ProGen2, 232 for ProteinMPNN, 218 for both ESM3 arms, which
+  refuse any chain whose parse disagrees with the manifest's. Sound within each
+  model; do not rank the models off it. The two ESM3 arms *are* the same 218
+  sites as one another, so those two rows may be compared directly.
 
 **Note the ordering is not explained by how much sequence each model sees.**
 ProteinMPNN conditions on every other native residue and has the largest
 aspartate excess; CARBonAra, which sees no side chains at all, is close behind.
 That is unexplained and should not be narrated into a story.
+
+---
+
+## Figure 18 — What separates the arms, on its own
+
+![sequon heatmap difference](../results/figures/fig_sequon_heatmap_diff.png)
+
+*Written 2026-08-29. Interactive version alongside as
+`fig_sequon_heatmap_diff.html`.*
+
+**What it shows:** the paired difference of Figure 17 — occupied minus its
+matched partner — plotted directly rather than left to the reader to subtract
+by eye. Both arms of Figure 17 contain a sequon by construction, so they look
+nearly identical side by side and the separation is invisible at that scale.
+This is the same data on a diverging scale centred on zero, symmetric so equal
+shifts in either direction read the same size. Rings are the same
+bootstrap-over-resampling-units test.
+
+**The point:** it makes the per-residue structure of each model's effect legible
+in one page for all seven models, and it is where the ESM3 and ProGen2 rows
+become interpretable — both are close to flat, which is what an inconclusive
+scalar score looks like decomposed.
+
+**Read it with Figure 17 open.** A difference of +0.06 means something different
+where the underlying probability is 0.25 than where it is 0.02, and this figure
+cannot show that. The absolute levels are in Figure 17.
 
 ---
 
