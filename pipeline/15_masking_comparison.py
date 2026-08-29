@@ -28,10 +28,24 @@ from experimental_glycosylation_sites import analysis_paths as paths
 from experimental_glycosylation_sites.masking import masking_change
 from experimental_glycosylation_sites.provenance import hash_file, _git_state
 
+# What the two arms mean, per comparison. `--visible`/`--hidden` keep their
+# names so existing invocations are untouched; they denote the first and second
+# arm, and these labels say what that difference actually is.
+ROLES = {"masking":   ("motif visible", "motif hidden"),
+         "structure": ("structure kept", "structure withheld")}
+
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--visible", required=True, help="variant scored with the motif visible")
 parser.add_argument("--hidden", required=True, help="variant scored with the motif hidden")
 parser.add_argument("--label", default="secretory")
+# The estimator is a paired change in contrast between two variants, which is
+# not specific to masking: withholding ESM3's structure track is the same shape
+# of question. Naming the comparison keeps the two off one another's filenames
+# and out of one another's provenance, which matters here because a structure
+# change and a masking change are not the same estimand.
+parser.add_argument("--comparison", default="masking",
+                    choices=sorted(ROLES),
+                    help="what the two arms differ in (default: masking)")
 parser.add_argument("--boot", type=int, default=20000)
 parser.add_argument("--out", default=None)
 args = parser.parse_args()
@@ -48,20 +62,30 @@ hidden_path = paths.contrasts(args.label, args.hidden)
 result = masking_change(pd.read_csv(visible_path), pd.read_csv(hidden_path),
                         n_boot=args.boot)
 
-print(f"masking comparison, {args.label}: {args.visible} against {args.hidden}")
+role_a, role_b = ROLES[args.comparison]
+print(f"{args.comparison} comparison, {args.label}: "
+      f"{args.visible} against {args.hidden}")
 print(f"  pairs {result['n_pairs']}   resample units {result['n_units']}\n")
-print(f"  contrast, motif visible : {result['mean_visible']:+.4f}")
-print(f"  contrast, motif hidden  : {result['mean_hidden']:+.4f}")
+print(f"  contrast, {role_a:16}: {result['mean_visible']:+.4f}")
+print(f"  contrast, {role_b:16}: {result['mean_hidden']:+.4f}")
 print(f"  change                  : {result['mean']:+.4f}"
       f"  [{result['ci_low']:+.4f}, {result['ci_high']:+.4f}]   p={result['p']:.4f}")
-print("\n  A large positive change means the preference depended on seeing the motif"
-      "\n  in context. A change near zero means it did not.")
+if args.comparison == "masking":
+    print("\n  A large positive change means the preference depended on seeing the"
+          "\n  motif in context. A change near zero means it did not.")
+else:
+    print("\n  A positive change means the occupied-minus-control contrast is higher"
+          "\n  with the structure track than without it, on the same sites.")
 
 out = Path(args.out) if args.out else Path(
-    f"results/analysis/masking_{args.label}_{args.visible}_vs_{args.hidden}.json")
+    f"results/analysis/{args.comparison}_{args.label}"
+    f"_{args.visible}_vs_{args.hidden}.json")
 out.parent.mkdir(parents=True, exist_ok=True)
 result.update({
-    "label": args.label, "visible": args.visible, "hidden": args.hidden,
+    "label": args.label, "comparison": args.comparison,
+    "visible": args.visible, "hidden": args.hidden,
+    "role_visible": ROLES[args.comparison][0],
+    "role_hidden": ROLES[args.comparison][1],
     "n_boot": args.boot,
     "inputs": {str(visible_path.resolve()): hash_file(visible_path),
                str(hidden_path.resolve()): hash_file(hidden_path)},
