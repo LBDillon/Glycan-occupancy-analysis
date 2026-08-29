@@ -13,8 +13,8 @@ import numpy as np, pandas as pd
 from pathlib import Path
 sys.path.insert(0, "src")
 from experimental_glycosylation_sites.runner_support import (
-    apply_shard, build_adapter, parse_args, read_resumable_csv, resolve_device,
-    structure_paths)
+    apply_shard, build_adapter, needs_header, parse_args, read_resumable_csv,
+    resolve_device, structure_paths)
 
 args = parse_args(sys.argv[1:],
                   "results/manifests/scoring_manifest.csv",
@@ -103,11 +103,11 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
             # append-only checkpoint: the run is genuinely resumable only if
             # completed work reaches disk before the end.
             pd.DataFrame(rows).to_csv(
-                OUT, mode="a", header=not OUT.exists(), index=False)
+                OUT, mode="a", header=needs_header(OUT), index=False)
             rows = []
 
 if rows:
-    pd.DataFrame(rows).to_csv(OUT, mode="a", header=not OUT.exists(), index=False)
+    pd.DataFrame(rows).to_csv(OUT, mode="a", header=needs_header(OUT), index=False)
 frame = read_resumable_csv(OUT, empty_columns=KEY)
 frame = frame.drop_duplicates(KEY)
 frame.to_csv(OUT, index=False)

@@ -34,6 +34,19 @@ def structure_paths(extra_dirs: "tuple[str, ...] | None" = None) -> "dict[str, P
     return paths
 
 
+def needs_header(path) -> bool:
+    """Whether a CSV append must write a header row.
+
+    `not path.exists()` is not enough. A run killed before its first flush
+    leaves a zero-byte file, and appending to that without a header makes the
+    first DATA row look like the header when it is read back. The failure then
+    surfaces as a KeyError naming the key columns, from `drop_duplicates` at the
+    end of a stage -- nowhere near the cause, and after the compute is spent.
+    """
+    path = Path(path)
+    return not path.exists() or path.stat().st_size == 0
+
+
 def read_resumable_csv(path: Path, empty_columns=None):
     """Read a checkpoint table, treating a headerless failed run as empty.
 
@@ -47,12 +60,24 @@ def read_resumable_csv(path: Path, empty_columns=None):
 
     path = Path(path)
     empty = lambda: pd.DataFrame(columns=list(empty_columns or ()))
-    if not path.exists():
+    if needs_header(path):
         return empty()
     try:
-        return pd.read_csv(path, low_memory=False)
+        frame = pd.read_csv(path, low_memory=False)
     except pd.errors.EmptyDataError:
         return empty()
+
+    # A file appended to WITHOUT a header parses cleanly and silently takes its
+    # first data row as the column names, so the expected columns are simply
+    # absent. That surfaced as a KeyError from drop_duplicates at the end of a
+    # stage, after the compute was spent and nowhere near the cause.
+    missing = [c for c in (empty_columns or ()) if c not in frame.columns]
+    if missing:
+        raise SystemExit(
+            f"{path} has no {missing} column(s). It was appended to without a "
+            "header, which happens when an earlier run left a zero-byte file. "
+            "Delete it and rerun -- the stage rebuilds it from scratch.")
+    return frame
 
 
 def parse_args(argv, default_manifest: str, default_out: str, *,

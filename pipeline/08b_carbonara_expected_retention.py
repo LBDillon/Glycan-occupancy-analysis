@@ -29,7 +29,8 @@ from experimental_glycosylation_sites.carbonara_scoring import (
 from experimental_glycosylation_sites.retention import (STANDARD_CONDITION,
                                                         classify_retention)
 from experimental_glycosylation_sites.runner_support import (
-    apply_shard, build_adapter, parse_args, resolve_device, structure_paths)
+    apply_shard, build_adapter, needs_header, parse_args,
+    read_resumable_csv, resolve_device, structure_paths)
 
 args = parse_args(sys.argv[1:],
                   "results/manifests/manifest_matched_secretory.csv",
@@ -113,13 +114,13 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
               f"({el/gi:.1f}s/chain, eta {(len(groups)-gi)*el/gi/60:.0f} min)",
               flush=True)
         if rows:
-            pd.DataFrame(rows).to_csv(OUT, mode="a", header=not OUT.exists(),
+            pd.DataFrame(rows).to_csv(OUT, mode="a", header=needs_header(OUT),
                                       index=False)
             rows = []
 
 if rows:
-    pd.DataFrame(rows).to_csv(OUT, mode="a", header=not OUT.exists(), index=False)
-frame = pd.read_csv(OUT, low_memory=False) if OUT.exists() else pd.DataFrame()
+    pd.DataFrame(rows).to_csv(OUT, mode="a", header=needs_header(OUT), index=False)
+frame = read_resumable_csv(OUT, empty_columns=KEY)
 frame = frame.drop_duplicates(KEY)
 frame.to_csv(OUT, index=False)
 pd.DataFrame(failures).to_csv(FAILURES, index=False)

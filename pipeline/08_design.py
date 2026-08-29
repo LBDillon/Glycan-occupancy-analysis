@@ -17,7 +17,8 @@ sys.path.insert(0, "src")
 from experimental_glycosylation_sites.retention import (
     PREPRINT_CONDITION, STANDARD_CONDITION, classify_retention)
 from experimental_glycosylation_sites.runner_support import (
-    apply_shard, build_adapter, parse_args, resolve_device, structure_paths)
+    apply_shard, build_adapter, needs_header, parse_args,
+    read_resumable_csv, resolve_device, structure_paths)
 
 args = parse_args(sys.argv[1:],
                   "results/manifests/scoring_manifest.csv",
@@ -88,12 +89,13 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
         print(f"  {gi}/{len(groups)} chains, {len(rows)} sites "
               f"({el/gi:.1f}s/chain, eta {(len(groups)-gi)*el/gi/60:.0f} min)", flush=True)
         if rows:
-            pd.DataFrame(rows).to_csv(OUT, mode="a", header=not OUT.exists(), index=False)
+            pd.DataFrame(rows).to_csv(OUT, mode="a", header=needs_header(OUT), index=False)
             rows = []
 
 if rows:
-    pd.DataFrame(rows).to_csv(OUT, mode="a", header=not OUT.exists(), index=False)
-frame = pd.read_csv(OUT, low_memory=False).drop_duplicates(KEY)
+    pd.DataFrame(rows).to_csv(OUT, mode="a", header=needs_header(OUT), index=False)
+frame = read_resumable_csv(OUT, empty_columns=KEY)
+frame = frame.drop_duplicates(KEY)
 frame.to_csv(OUT, index=False)
 # Written even when empty, as 07_score does. An absent failures file is how
 # `31_merge_shards` recognises a shard that died before its final flush, and a
