@@ -787,6 +787,100 @@ about occupancy discrimination.
 Its parse agrees exactly with the manifest on all three chains, unlike ESM-IF's,
 which disagreed on about 5%. Checked per chain regardless.
 
+#### What the 2x2 scored
+
+*Run 2026-08-29. Eukaryotic secretory, SD-standardised against each arm's own
+reference population.*
+
+| variant | effect | 95% CI | n | verdict |
+|---|---:|---|---:|---|
+| `esm3_struct_single` | +0.071 | [-0.178, +0.273] | 218 | inconclusive |
+| `esm3_struct_joint` | +0.093 | [-0.138, +0.302] | 220 | inconclusive |
+| `esm3_seq_single` | -0.060 | [-0.343, +0.150] | 218 | inconclusive |
+| `esm3_seq_joint` | -0.044 | [-0.317, +0.163] | 220 | inconclusive |
+
+**No arm establishes an occupancy preference.** Every interval spans zero and
+each is about 0.25 SD wide — wider than the +/-0.2 SD equivalence margin, so
+these are inconclusive rather than equivalent to zero.
+
+#### The structure contrast, which is not the difference of those intervals
+
+Computed as a paired change on the same sites (`15_masking_comparison.py
+--comparison structure`), in log odds:
+
+| comparison | pairs | difference | 95% CI | p |
+|---|---:|---:|---|---:|
+| structure, motif visible | 218 | **+0.149** | [+0.037, +0.292] | 0.012 |
+| structure, motif hidden | 220 | **+0.162** | [+0.056, +0.320] | 0.003 |
+| masking, structure on | 218 | -0.033 | [-0.096, +0.010] | 0.125 |
+| masking, structure off | 218 | -0.012 | [-0.062, +0.050] | 0.651 |
+
+Both structure intervals exclude zero; in SD units they are +0.131 and +0.140.
+The paired form is far more precise than the four separate arms because the same
+sites carry both measurements and the site-level variance cancels — which is why
+the four overlapping intervals above say nothing about their difference, and why
+the figure's adjacent ESM3 rows must not be read by eye.
+
+**What this establishes:** on the same matched sites, withholding the structure
+track lowers ESM3's occupied-minus-control score difference by about 0.15 log
+odds. Both masking conditions agree, and the two estimates are near-identical
+despite independent maskings.
+
+**What it does not:** that ESM3 prefers occupied sequons at all. Each arm alone
+is indistinguishable from zero, so this is a difference between two effects that
+are each inconclusive. The honest claim is about the structure track's
+contribution to the contrast, not about the model detecting occupancy. Note also
+that **+0.13-0.14 SD sits inside the pre-specified +/-0.2 SD equivalence
+margin**: detectable, and smaller than the margin declared in advance as not
+worth caring about.
+
+Four comparisons were run; the two structure ones were the primary question and
+both survive Bonferroni at two. At four, the visible arm (p=0.012) is marginal.
+
+#### Design retention
+
+*Run 2026-08-30.* ESM3 is the only masked model here that conditions on a
+backbone, so unlike ESMC it can be asked what it writes when it redesigns a
+chain. Only `struct_cond` can: with the structure track withheld there is no
+backbone to redesign against, and generation would be an unconditional draw —
+which is why ProGen2 has no retention row either.
+
+| | occupied | matched control | difference | 95% CI | pairs | tied |
+|---|---:|---:|---:|---|---:|---:|
+| ESM3 | 0.123 | 0.088 | **+0.035** | [-0.024, +0.090] | 206 | 116 |
+
+Inconclusive: the interval spans zero (Wilcoxon p=0.099, which the interval
+overrides here as elsewhere). Of 206 pairs **116 are tied** — both sites lose
+the sequon — so the estimate rests on 90 informative pairs.
+
+The interesting number is the control column. ESM3's occupied retention (0.123)
+is close to ProteinMPNN's (0.121), but its **control** retention is 0.088
+against ProteinMPNN's 0.051. It keeps sequons more often in general, and that
+higher floor is what makes its difference the smallest of the four designers.
+CARBonAra shows the same pattern less strongly. Whether a high baseline
+retention rate is a property worth having is a separate question from occupancy
+discrimination, and this table does not answer it.
+
+Generation goes through ESM3's own `generate`, recorded as
+`masked_diffusion_unmasking` rather than stage 08's default
+`autoregressive_sampling` label: ESM3 fills a fully masked track over several
+passes, and retention measured that way and by left-to-right decoding are not
+the same quantity.
+
+#### What the parse guard costs
+
+ESM3 refuses any chain whose parse disagrees with the manifest's, which excludes
+roughly a tenth of sites: 32 of 342 on the dataset arm, 17 of 262 on secretory.
+The excluded set is identical between the structure and sequence arms under the
+same masking, so the structure contrast is properly paired. It is **not**
+identical between `single` and `joint`: the single arms lost two further
+secretory chains to CUDA OOM, so those arms cover 243 sites against joint's 245.
+Each contrast above is computed within one masking condition, where the pairing
+holds exactly.
+
+Design excludes the same chains as scoring, by construction — `checked_chain` is
+shared — so the retention sites line up with the scoring sites.
+
 ## The recurring bug, which is really one bug
 
 Three separate failures this week were the same failure wearing different

@@ -52,7 +52,7 @@ MODELS = [
     ("ESM-IF", "esm_if_index_corrected",
      "esm_if_joint_index_corrected", "esm_if", CTL),
     ("CARBonAra", "carbonara", None, "carbonara", "#8a6fa8"),
-    ("ESM3 structure", "esm3_struct_single", "esm3_struct_joint", None, "#1f6f8b"),
+    ("ESM3 structure", "esm3_struct_single", "esm3_struct_joint", "esm3", "#1f6f8b"),
     ("ESM3 sequence", "esm3_seq_single", "esm3_seq_joint", None, "#7fb3c8"),
     ("ESMC", "esmc_single", "esmc_joint", None, "#5b8c5a"),
     ("ProGen2", "progen2_direction1", "progen2_joint_direction1", None, "#c58a3d"),
@@ -236,7 +236,9 @@ cx.set_xlabel("sequon retained in redesign  (proportion of sites)"
               + ("\n" + ", ".join(without) + ": no designer" if without else ""),
               fontsize=10)
 cx.set_title("Design: the sequon is usually not kept", pad=10)
-cx.legend(frameon=False, fontsize=9.5, loc="lower right")
+# Upper right, not lower: with ESM3 added the bottom row's occupied dot lands
+# beside the legend markers, and the two read as data on the same row.
+cx.legend(frameon=False, fontsize=9.5, loc="upper right")
 fig.tight_layout(pad=1.6)
 fig.savefig(OUT / "fig_retention.png", dpi=200, bbox_inches="tight")
 print("wrote", OUT / "fig_retention.png")
