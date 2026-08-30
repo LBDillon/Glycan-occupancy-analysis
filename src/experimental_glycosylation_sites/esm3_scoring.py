@@ -208,6 +208,40 @@ def chain_context(structure_path, chain_id: str, model,
 DESIGN_STEP_DIVISOR = 8
 DESIGN_MIN_STEPS, DESIGN_MAX_STEPS = 8, 64
 
+# ESM3 needs its own residue-slot budget, not ProteinMPNN's. That one is 6000,
+# calibrated against a small decoder; ESM3-open carries 1.4B parameters and far
+# larger activations per token, and reusing 6000 here put a median chain at 25
+# designs at once and lost 320 of 427 chains to CUDA OOM. 2000 puts a
+# 234-residue chain at 8 and a 1172-residue one at 1.
+#
+# The budget is a starting point, not a guarantee: it is a linear rule for a
+# cost that is not linear, so the batch is halved and retried on OOM as
+# ProteinMPNN's has always been.
+ESM3_DESIGN_SLOT_BUDGET = 2000
+
+
+def design_batch(length: int, n_designs: int,
+                 max_batch: "int | None" = None) -> int:
+    """How many designs to generate at once for a chain of this length."""
+    if max_batch:
+        return max(1, min(int(max_batch), int(n_designs)))
+    return max(1, min(int(n_designs),
+                      ESM3_DESIGN_SLOT_BUDGET // max(int(length), 1)))
+
+
+def free_device_memory(device: str = "cpu") -> None:
+    """Release cached blocks so the next chain starts from a clean allocator.
+
+    Without this the failures were dominated by attempts to allocate two
+    MEGAbytes on a 40 GB card: once one long chain had filled and fragmented
+    the cache, every later chain died regardless of its own size, so a single
+    bad chain took the rest of the run with it.
+    """
+    import torch
+
+    if str(device).startswith("cuda") and torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
 
 def design_steps(length: int, num_steps: "int | None" = None) -> int:
     """Unmasking passes for a chain of this length."""
@@ -241,9 +275,8 @@ def design_sequences(structure_path, chain_id: str, model, n_designs: int,
     import torch
     from esm.sdk.api import ESMProtein, GenerationConfig
 
-    from .retention import batch_for_length
-
     native_sequence, chain = checked_chain(structure_path, chain_id, pdb_id)
+    free_device_memory(device)
     length = len(native_sequence)
     steps = design_steps(length, num_steps)
     n_designs = int(n_designs)
@@ -285,18 +318,32 @@ def design_sequences(structure_path, chain_id: str, model, n_designs: int,
     designs: "list[str]" = []
 
     if batched:
-        size = batch_for_length(length, n_designs, max_batch)
-        for start in range(0, n_designs, size):
-            take = min(size, n_designs - start)
-            torch.manual_seed(int(seed) + start)
-            generated = model.batch_generate([masked() for _ in range(take)],
-                                             [config() for _ in range(take)])
+        size = design_batch(length, n_designs, max_batch)
+        while len(designs) < n_designs:
+            take = min(size, n_designs - len(designs))
+            torch.manual_seed(int(seed) + len(designs))
+            try:
+                with torch.no_grad():
+                    generated = model.batch_generate(
+                        [masked() for _ in range(take)],
+                        [config() for _ in range(take)])
+            except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
+                # Halve and retry rather than lose the chain, exactly as
+                # ProteinMPNN's decoding has always done. A CUDA OOM is a
+                # catchable Python exception, unlike the host OOM that the slot
+                # budget exists to prevent.
+                if size > 1 and "out of memory" in str(exc).lower():
+                    free_device_memory(device)
+                    size = max(1, size // 2)
+                    print(f"    OOM; retrying with batch {size}", flush=True)
+                    continue
+                raise
             if len(generated) != take:
                 raise DesignFailedError(
                     f"ESM3 returned {len(generated)} designs for a batch of "
                     f"{take} on chain {chain_id!r} of "
                     f"{Path(structure_path).name}")
-            designs += [checked(getattr(g, "sequence", None), start + i)
+            designs += [checked(getattr(g, "sequence", None), len(designs) + i)
                         for i, g in enumerate(generated)]
     else:
         for k in range(n_designs):
@@ -304,9 +351,11 @@ def design_sequences(structure_path, chain_id: str, model, n_designs: int,
             # rerun that resumes midway cannot silently draw a different
             # sequence for a site it already has.
             torch.manual_seed(int(seed) + k)
-            designs.append(checked(
-                getattr(model.generate(masked(), config()), "sequence", None), k))
+            with torch.no_grad():
+                generated = model.generate(masked(), config())
+            designs.append(checked(getattr(generated, "sequence", None), k))
 
+    free_device_memory(device)
     if len(designs) != n_designs:
         raise DesignFailedError(
             f"{len(designs)} designs for a request of {n_designs} on chain "

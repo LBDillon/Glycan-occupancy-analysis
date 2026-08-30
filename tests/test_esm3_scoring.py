@@ -500,3 +500,94 @@ def test_which_path_was_used_is_recorded(monkeypatch, fake_esm):
 
     assert ESM3Adapter().describe_generation()["batched"] is True
     assert ESM3Adapter(use_batch=False).describe_generation()["batched"] is False
+
+
+# --- OOM recovery ---------------------------------------------------------
+# A first full run lost 320 of 427 chains to CUDA OOM. Two causes: the batch
+# was sized by ProteinMPNN's slot budget, which is far too generous for a 1.4B
+# model, and an OOM lost the chain instead of halving and retrying as
+# ProteinMPNN's decoding has always done.
+
+class OomUntilSmallEnough(FakeBatchGenerator):
+    """Raises a CUDA-style OOM until the batch is at or below `fits`."""
+
+    def __init__(self, length, fits):
+        super().__init__(length)
+        self.fits, self.refused = fits, []
+
+    def batch_generate(self, proteins, configs):
+        if len(proteins) > self.fits:
+            self.refused.append(len(proteins))
+            raise RuntimeError(
+                "CUDA out of memory. Tried to allocate 9.07 GiB. GPU 0 has a "
+                "total capacity of 39.49 GiB")
+        return super().batch_generate(proteins, configs)
+
+
+def test_esm3_uses_its_own_slot_budget_not_proteinmpnns():
+    """6000 slots put a median chain at 25 designs at once and lost the run."""
+    from experimental_glycosylation_sites.retention import DESIGN_SLOT_BUDGET
+
+    assert e3.ESM3_DESIGN_SLOT_BUDGET < DESIGN_SLOT_BUDGET
+    assert e3.design_batch(234, 32) < 25          # what 6000 slots allowed
+    assert e3.design_batch(1172, 32) == 1         # the longest chains, one at a time
+    assert e3.design_batch(9, 32) == 32           # short chains still batch fully
+
+
+def test_max_batch_still_overrides_the_budget():
+    assert e3.design_batch(234, 32, max_batch=4) == 4
+
+
+def test_an_oom_halves_the_batch_instead_of_losing_the_chain(monkeypatch, fake_esm):
+    sequence = "A" * 200
+    _patch_chain(monkeypatch, sequence)
+    model = OomUntilSmallEnough(len(sequence), fits=2)
+
+    designs = e3.design_sequences("x.pdb", "A", model, n_designs=8,
+                                  temperature=0.1)
+
+    assert len(designs) == 8, "the chain was lost rather than retried"
+    assert model.refused, "the fake never had to refuse, so nothing was tested"
+    assert max(model.batches) <= 2
+
+
+def test_retrying_bottoms_out_at_one_design(monkeypatch, fake_esm):
+    """Even a chain where only one design fits at a time must complete."""
+    sequence = "A" * 200
+    _patch_chain(monkeypatch, sequence)
+    model = OomUntilSmallEnough(len(sequence), fits=1)
+
+    designs = e3.design_sequences("x.pdb", "A", model, n_designs=4,
+                                  temperature=0.1)
+
+    assert len(designs) == 4
+    assert model.batches == [1, 1, 1, 1]
+
+
+def test_an_oom_that_never_clears_is_raised_not_looped(monkeypatch, fake_esm):
+    """Batch 1 still failing is a real failure, not something to retry forever."""
+    sequence = "A" * 200
+    _patch_chain(monkeypatch, sequence)
+    model = OomUntilSmallEnough(len(sequence), fits=0)
+
+    with pytest.raises(RuntimeError, match="out of memory"):
+        e3.design_sequences("x.pdb", "A", model, n_designs=4, temperature=0.1)
+
+
+def test_a_non_memory_error_is_not_swallowed_by_the_retry(monkeypatch, fake_esm):
+    sequence = "A" * 200
+    _patch_chain(monkeypatch, sequence)
+
+    class Broken(FakeBatchGenerator):
+        def batch_generate(self, proteins, configs):
+            raise RuntimeError("shapes do not match")
+
+    with pytest.raises(RuntimeError, match="shapes do not match"):
+        e3.design_sequences("x.pdb", "A", Broken(len(sequence)), n_designs=4,
+                            temperature=0.1)
+
+
+def test_freeing_memory_is_harmless_without_a_gpu():
+    """Called around every chain, so it must be safe on the CPU test path."""
+    e3.free_device_memory("cpu")
+    e3.free_device_memory("cuda")     # no CUDA here; must not raise
