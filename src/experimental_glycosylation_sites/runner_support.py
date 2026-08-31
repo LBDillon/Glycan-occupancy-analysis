@@ -111,6 +111,13 @@ def parse_args(argv, default_manifest: str, default_out: str, *,
                         help="process only chain group K of N (0-based), for "
                              "SLURM job arrays. Each shard must write its own "
                              "output file; merge them afterwards.")
+    parser.add_argument("--save-sequences", action="store_true",
+                        help="also write every designed sequence to a sibling "
+                             "'<out>_sequences.csv'. The designs are generated "
+                             "either way and then discarded after the manifest "
+                             "sites are classified; persisting them turns every "
+                             "further position-level question into offline "
+                             "analysis instead of another model run.")
     return parser.parse_args(argv)
 
 

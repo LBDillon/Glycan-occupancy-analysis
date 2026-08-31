@@ -40,10 +40,21 @@ if "scoreable" in manifest.columns:
 sites = manifest.drop_duplicates(KEY).reset_index(drop=True)
 paths = structure_paths(tuple(args.structure_dir))
 
+SEQ_OUT = OUT.with_name(OUT.stem + "_sequences.csv") if args.save_sequences else None
+
 done = set()
 if OUT.exists():
     done = set(map(tuple, pd.read_csv(OUT, low_memory=False)[KEY].astype(str).values))
     print(f"resuming: {len(done)} sites already done", flush=True)
+    if SEQ_OUT is not None and done:
+        # Resume keys on manifest sites, not on sequences. A chain whose sites
+        # are already recorded is skipped entirely, so its designs are never
+        # generated and its sequences never written -- the sequence file would
+        # silently cover only the chains this invocation happened to reach.
+        print("  WARNING: --save-sequences resuming onto an existing site table. "
+              "Chains already done are skipped, so their sequences will be "
+              "MISSING. Use a fresh --out path for a complete sequence file.",
+              flush=True)
 
 device = resolve_device(args.device)
 adapter = build_adapter(args.model, device, max_batch=args.max_batch)
@@ -57,7 +68,7 @@ groups = list(sites.groupby(["structure_pdb_id", "structure_chain_id"]))
 groups = apply_shard(groups, args.shard)
 print(f"{len(sites)} sites in {len(groups)} chains; {N_STD} designs each at T={TEMP}", flush=True)
 
-rows, t0, failures = [], time.time(), []
+rows, t0, failures, seq_rows = [], time.time(), [], []
 for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
     todo = [r for r in group.itertuples(index=False)
             if tuple(str(getattr(r, k)) for k in KEY) not in done]
@@ -75,6 +86,15 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
                       "structure_pdb_id": pdb_id, "structure_chain_id": chain_id,
                       "reason": f"{type(exc).__name__}: {str(exc)[:120]}"} for r in todo]
         continue
+    if SEQ_OUT is not None:
+        # One row per design, not per site: a chain's 32 designs are shared by
+        # every sequon on it, and duplicating them per site would multiply the
+        # file by the sites-per-chain factor for no added information.
+        seq_rows += [{"structure_pdb_id": pdb_id, "structure_chain_id": chain_id,
+                      "model": provenance["model"], "seed": SEED,
+                      "temperature": TEMP, "design_idx": i, "sequence": s}
+                     for i, s in enumerate(designs)]
+
     for r in todo:
         idx = (int(r.n_model_index), int(r.plus1_model_index), int(r.plus2_model_index))
         std = classify_retention(designs, *idx)
@@ -91,9 +111,16 @@ for gi, ((pdb_id, chain_id), group) in enumerate(groups, 1):
         if rows:
             pd.DataFrame(rows).to_csv(OUT, mode="a", header=needs_header(OUT), index=False)
             rows = []
+        if seq_rows:
+            pd.DataFrame(seq_rows).to_csv(SEQ_OUT, mode="a",
+                                          header=needs_header(SEQ_OUT), index=False)
+            seq_rows = []
 
 if rows:
     pd.DataFrame(rows).to_csv(OUT, mode="a", header=needs_header(OUT), index=False)
+if seq_rows:
+    pd.DataFrame(seq_rows).to_csv(SEQ_OUT, mode="a",
+                                  header=needs_header(SEQ_OUT), index=False)
 frame = read_resumable_csv(OUT, empty_columns=KEY)
 frame = frame.drop_duplicates(KEY)
 frame.to_csv(OUT, index=False)
@@ -103,3 +130,8 @@ frame.to_csv(OUT, index=False)
 pd.DataFrame(failures).to_csv(OUT.with_name(OUT.stem + "_failures.csv"), index=False)
 print(f"\nretention recorded for {len(frame)} sites; {len(failures)} chain failures; "
       f"elapsed {(time.time()-t0)/60:.0f} min")
+if SEQ_OUT is not None and SEQ_OUT.exists():
+    seqs = pd.read_csv(SEQ_OUT, low_memory=False)
+    print(f"sequences: {len(seqs)} designs over "
+          f"{seqs.groupby(['structure_pdb_id','structure_chain_id']).ngroups} chains "
+          f"-> {SEQ_OUT}")
