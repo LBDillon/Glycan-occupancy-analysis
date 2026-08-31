@@ -497,7 +497,7 @@ Reproduce with `pipeline/06b_match_diagnostics.py`, then `pipeline/07_score.py` 
 >
 > Current figures: [`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md) and
 > [`diagnostic_controls.md`](control_sets.md). What changed and why:
-> [`correction_2026-08-18.md`](correction_2026-08-18.md).
+> [`correction_2026-08-18_SUPERSEDED_2026-08-31.md`](archive/correction_2026-08-18_SUPERSEDED_2026-08-31.md).
 
 Gate for model scoring. Nothing in Phase 2 onward may proceed on data that fails
 these checks.

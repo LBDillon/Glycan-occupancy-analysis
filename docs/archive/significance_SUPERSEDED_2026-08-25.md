@@ -13,8 +13,8 @@
 > before that date is superseded. Scores have since been regenerated; retention
 > has not. **The argument and the method here still stand — the specific
 > quantities do not.** See
-> [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) for
-> what changed and [`OVERVIEW.md`](OVERVIEW.md) for current numbers.
+> [`correction_2026-08-20_alphabet.md`](../correction_2026-08-20_alphabet.md) for
+> what changed and [`OVERVIEW.md`](../OVERVIEW.md) for current numbers.
 
 Eight tests: four control sets × two outcomes. Run with
 `python pipeline/11_significance.py`. Raw numbers in `results/analysis/significance.csv`.

@@ -1,6 +1,6 @@
 # Very brief summary of occupancy analyses — 23/08
 
-> **Superseded by [`summary_2026-08-26.md`](summary_2026-08-26.md).** Its
+> **Superseded by [`summary_2026-08-26.md`](summary_2026-08-26_SUPERSEDED_2026-08-31.md).** Its
 > ProteinMPNN figures predate the 2026-08-25 sequon-indexing correction, which
 > moved the secretory score from +0.09 SD to +0.282 SD and reversed the headline.
 > Kept as a dated record of what was concluded at the time.
@@ -16,7 +16,7 @@
 > +0.0700) but does not clear correction. **ESM-IF and ESMC are unaffected** —
 > ESM-IF reproduces +0.431 SD exactly. Any ProteinMPNN number below this line
 > predates the fix. Full account:
-> [`correction_2026-08-25_sequon_indexing.md`](correction_2026-08-25_sequon_indexing.md).
+> [`correction_2026-08-25_sequon_indexing.md`](../correction_2026-08-25_sequon_indexing.md).
 
 *Updates the 21/08 note. The change since then: **design retention now exists for
 both models**, so every comparison has two outcomes rather than one, and all
@@ -38,7 +38,7 @@ all eight tests.
 
 So the baseline is no longer uniformly negative. It is **architecture-dependent**.
 
-![](../results/figures/current/fig1_headline.png)
+![](../../results/figures/current/fig1_headline.png)
 
 | | ESM-IF1 | ProteinMPNN |
 |---|---|---|
@@ -71,7 +71,7 @@ when the motif is hidden — a change of **+0.113, 95% CI [+0.071, +0.147],
 p < 0.0001** over 72 independent units. Its signal depended on the interaction
 between the visible motif and its context.
 
-![](../results/figures/current/fig3_convergence.png)
+![](../../results/figures/current/fig3_convergence.png)
 
 **ProteinMPNN's does not.** The same test gives a change of **−0.007**
 [−0.016, −0.002] — sixteen times smaller and in the opposite direction. Its

@@ -210,7 +210,7 @@ what makes the `predicted` exclusion safe rather than merely conservative.
 That a site is unglycosylated. GlyGen's absence of a site means no aggregated
 source reported it, which is dominated by how much attention the protein has
 received. It is also taxonomically skewed toward human and mouse; see
-`analysis_options.md`.
+`archive/analysis_options_SUPERSEDED_2026-08-31.md`.
 
 ---
 
@@ -324,7 +324,7 @@ If nothing aligns credibly, the site is reported as
 `structure_residue_resolved` with `structure_detail = "low_confidence_chain_match"`
 and **no glycan is ever asserted from it**. The failure direction throughout is
 deliberate: a missed glycan, never a fabricated one. See the limitations section
-of `analysis_options.md` for two consequences of this design.
+of `archive/analysis_options_SUPERSEDED_2026-08-31.md` for two consequences of this design.
 
 ### The tier ladder
 
@@ -388,4 +388,4 @@ leak into an occupancy claim.
 
 Their real analytical use is downstream: `cluster_id` is what makes
 cluster-aware resampling possible, because sites within a cluster are not
-independent. See `analysis_options.md`.
+independent. See `archive/analysis_options_SUPERSEDED_2026-08-31.md`.

@@ -13,8 +13,8 @@
 > before that date is superseded. Scores have since been regenerated; retention
 > has not. **The argument and the method here still stand — the specific
 > quantities do not.** See
-> [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) for
-> what changed and [`OVERVIEW.md`](OVERVIEW.md) for current numbers.
+> [`correction_2026-08-20_alphabet.md`](../correction_2026-08-20_alphabet.md) for
+> what changed and [`OVERVIEW.md`](../OVERVIEW.md) for current numbers.
 
 > Given the native protein backbone and the surrounding native sequence, does
 > ProteinMPNN assign a higher conditional sequon score to experimentally
@@ -45,7 +45,7 @@ the matching algorithm rather than by the data.
 
 ## Result
 
-![primary comparison](../results/figures/primary_optimal.png)
+![primary comparison](../../results/figures/primary_optimal.png)
 
 Matching is deterministic: the assignment maximising the number of admissible
 pairs and, among those, minimising total distance. No seed, no ordering.
@@ -193,7 +193,7 @@ with a structure carry a glycoprotein keyword, so the unannotated half certainly
 holds unrecorded sites. A name audit found 32 of 1,543 control proteins suspect,
 8 of which reach the matched pairs; removing them changes nothing (+0.073 →
 +0.074 SD). See `pipeline/13_name_audit.py` and
-[`negative_controls.md`](control_sets.md).
+[`negative_controls.md`](../control_sets.md).
 
 ## Significance
 
@@ -201,7 +201,7 @@ Eight tests — four control sets × two outcomes — with a cluster-level permu
 test rather than Wilcoxon, because the pairs are not independent.
 **No test survives correction**: smallest raw p 0.030, smallest Holm 0.237,
 smallest Benjamini–Hochberg 0.120. Full detail in
-[`significance.md`](significance.md).
+[`significance.md`](significance_SUPERSEDED_2026-08-25.md).
 
 The pre-specified inference was never a p-value but the equivalence assessment
 above, which is unaffected.
@@ -210,7 +210,7 @@ above, which is unaffected.
 
 Rerun on validated scores; neither is part of the conclusion above.
 
-- **[Diagnostic controls](control_sets.md)** — bacterial (278 pairs,
+- **[Diagnostic controls](../control_sets.md)** — bacterial (278 pairs,
   −0.174 SD) and cytosolic (270 pairs, +0.062 SD). The three comparisons point
   in different directions, so the earlier "gradient" reading is withdrawn.
 - **Design retention** — sweep complete, scoreable sites only (2,423 of 2,526):

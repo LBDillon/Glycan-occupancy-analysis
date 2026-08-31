@@ -163,6 +163,11 @@ motif, rather than the motif's mere appearance, it should assign a higher
 site-level probability to sequons that are actually glycosylated than to matched
 sequons that are not.
 
+The hypothesis was written for one model and is now tested across several. That
+is not a change of question but a sharpening of it: a preference found in one
+architecture could be a property of that architecture, and only a spread of
+models can distinguish "design models behave this way" from "this model does".
+
 ## The cleanest experiment
 
 Compare **occupied** sites against **internal controls** — sequons with no
@@ -214,6 +219,32 @@ conclusion most.
 the earlier scoping analysis was about behaviour. It also provides the bridge: if the
 conditional score predicts retention, the two analyses describe one underlying
 quantity.
+
+**A spread of models along a conditioning spectrum**, because "a design model
+prefers occupied sequons" and "this particular network does" are different
+claims, and one model cannot separate them. The models were not chosen for
+variety but to fill a grid: what each conditions on (structure and sequence, or
+sequence alone) crossed with how it reads a position (masked, causal, or
+one-shot). Raw score magnitudes are never pooled across them — only the
+SD-standardised matched-pair contrast is comparable, and each model is scored on
+exactly the same pairs.
+
+The grid earns its cost in two specific places. Sequence-only models establish
+what can be recovered without any structure at all, which turns out to be the
+control that matters most. And one model — ESM3-open — can be run with its own
+structure track switched on and off, which is the only comparison here where
+conditioning changes and training data, scale and architecture do not.
+
+**A joint-masking variant for every model that can have one**, because both arms
+of a matched pair carry the motif, so motif recognition alone cannot separate
+them — but a model scoring the S/T position can see the native asparagine two
+residues upstream, and N-X-S/T is a heavily learned motif. Masking only the
+scored position therefore measures partly how well the motif completes itself.
+Masking all three asks what the surroundings alone say. Causal models are
+marginalised over the hidden residues rather than shown an off-distribution mask
+token, since a left-to-right decoder cannot hide an upstream residue from what
+follows it. CARBonAra has no such variant: being one-shot, it has no
+motif-visible arm to contrast against.
 
 ## The test, and how to read it
 
@@ -281,21 +312,54 @@ narrower family is straightforwardly better.
 
 ## What would settle it
 
-The binding constraint throughout is 16 pairs, and the corrections tightened it
-rather than loosening it — the earlier count included pairs it should not have
-had. Notably, the pair count is 16 under *every* matching, so the caliper rather
-than the algorithm is what limits it: 12 of the 28 scoreable controls have no
-admissible partner.
+The binding constraint on the *primary* comparison is 16 pairs, and the
+corrections tightened it rather than loosening it — the earlier count included
+pairs it should not have had. Notably, the pair count is 16 under *every*
+matching, so the caliper rather than the algorithm is what limits it: 12 of the
+28 scoreable controls have no admissible partner.
 
-Growing the internal-control class is the single change that would make this
-decisive, and the realistic route is occupancy glycoproteomics — a PNGase F
-digest in heavy-oxygen water converts occupied asparagines to labelled aspartate,
-so a sequon peptide detected with the asparagine intact is a genuine, quantified
-negative.
+Growing the internal-control class is the single change that would make the
+primary comparison decisive, and the realistic route is occupancy
+glycoproteomics — a PNGase F digest in heavy-oxygen water converts occupied
+asparagines to labelled aspartate, so a sequon peptide detected with the
+asparagine intact is a genuine, quantified negative. That is data acquisition
+rather than analysis, and nothing done with the models can substitute for it.
 
-That is data acquisition rather than analysis. It is also why no second model has
-been run: ESM-IF or TriFlow on 16 pairs would produce several imprecise answers
-instead of one, and none of them would address the constraint.
+Additional models were never a way around that constraint, and running them on 16
+pairs would only have produced several imprecise answers instead of one. What
+they address is a different question, on the well-powered secretory comparison:
+*given* that several models score occupied sequons higher there, what is that
+preference made of?
+
+Two designs answer it without needing better labels, because both are internal
+contrasts — the same sites, the same pairs, one thing changed.
+
+**Hiding the motif** separates a preference for the surroundings from a
+preference for the motif completing itself. This is the control that matters
+most, because the failure mode it catches is the one most likely to masquerade as
+the result: a model that is merely good at N-X-S/T will score the arm whose
+neighbours it can see more confidently, and both arms carry the motif.
+
+**Withholding a model's own structure track** separates what structure
+contributes from what sequence contributes, within one set of weights. Every
+cross-model version of this comparison confounds conditioning with training data,
+scale and architecture. The within-model version does not, which makes it worth
+more than its modest effect size suggests.
+
+Both have now been run, and between them they have moved the open question rather
+than closed it. What neither can do is distinguish *the model has learned
+something about glycosylation* from *occupied sequons sit on backbone geometry
+the model can already read*. A structure-conditioned model cannot be blinded to a
+sequon: masking hides residue identities while the backbone stays, and the
+backbone at an occupied sequon is not neutral — such sites are systematically
+exposed and often in loops and turns. Matching controls solvent accessibility,
+neighbour count and hydrophobic fraction, but imperfectly, and those are proxies
+for local geometry rather than a description of it.
+
+So the next thing that would settle something is not another model. It is either
+tighter geometric matching, or a set matched on geometry with occupancy labels
+shuffled — a negative control for the channel itself, which would say how much of
+the effect survives when occupancy is the only thing removed.
 
 
 ---
@@ -440,8 +504,18 @@ several percentage points remains compatible with the data.
 
 Designs drift away from natural occupied context with the motif fully protected,
 and further than composition-preserving random change. **But the composition
-shift driving it is global to the chain** — ProteinMPNN adds proline and glycine
-and removes aromatics everywhere, slightly *less* near the sequon than elsewhere.
+shift driving it is global to the chain** — ProteinMPNN reshapes amino-acid
+composition everywhere, and the sequon neighbourhood is part of everywhere rather
+than a place it treats differently.
+
+Of the seven chemical classes, only two separate the flanking window from the
+rest of the chain at all: hydrophobics are depleted near the sequon relative to
+elsewhere, and cysteine is slightly enriched. The rest — including proline, which
+is added across the whole chain — show no local excess distinguishable from
+zero. The cysteine result is worth holding lightly and remembering, because
+disulfide cysteines were not held fixed during design despite the
+pre-specification saying they would be, and that deviation sits in exactly this
+part of the panel.
 
 So the supported claim is narrow: *fixing three residues does not hold their
 surroundings in place, because redesign changes composition everywhere and the

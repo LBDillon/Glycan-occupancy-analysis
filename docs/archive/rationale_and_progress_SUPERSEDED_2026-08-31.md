@@ -8,8 +8,8 @@
 > before that date is superseded. Scores have since been regenerated; retention
 > has not. **The argument and the method here still stand — the specific
 > quantities do not.** See
-> [`correction_2026-08-20_alphabet.md`](correction_2026-08-20_alphabet.md) for
-> what changed and [`OVERVIEW.md`](OVERVIEW.md) for current numbers.
+> [`correction_2026-08-20_alphabet.md`](../correction_2026-08-20_alphabet.md) for
+> what changed and [`OVERVIEW.md`](../OVERVIEW.md) for current numbers.
 
 2026-08-14, after the observed-unmodified class and structural features were added. Technical detail appears only where the argument depends
 on it; the README covers how to run things and `evidence_sources.md` covers what each
@@ -139,8 +139,8 @@ what oligosaccharyltransferase access requires.
 
 The point of the resource is to ask whether protein models have learned the sequon motif or
 its biological use. That question has now been put to one model, and the answer is weak but
-honest. Full account in [`primary_result.md`](archive/primary_result_SUPERSEDED_2026-08-25.md); the plain-language version
-of what changed along the way is in [`correction_2026-08-18.md`](correction_2026-08-18.md).
+honest. Full account in [`primary_result.md`](primary_result_SUPERSEDED_2026-08-25.md); the plain-language version
+of what changed along the way is in [`correction_2026-08-18.md`](correction_2026-08-18_SUPERSEDED_2026-08-31.md).
 
 **What was run.** ProteinMPNN v_48_020, scored zero-shot on the native backbone and native
 surrounding sequence, with no training and no alteration of the sequon. The score is the mean

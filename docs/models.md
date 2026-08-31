@@ -950,10 +950,15 @@ N-X-S/T is a heavily learned motif — so a model can infer S/T from the N rathe
 than from anything about the site. Measured on ESMC, that is worth about 0.34
 log-odds of the score. It inflates both arms of a matched pair and therefore
 largely cancels in the paired contrast, but it compresses dynamic range, which
-matters when the effects under discussion are 0.1–0.4 SD. All three models now have a joint-masking
-variant: ESMC and ProteinMPNN by masking the positions, ESM-IF by marginalising
-over them, since a causal decoder cannot hide an upstream residue from what
-follows it. ESMC's and ProteinMPNN's have been run; ESM-IF's has not.
+matters when the effects under discussion are 0.1–0.4 SD. Every model that can
+have a joint-masking variant now has one and has been run: ESMC, ProteinMPNN and
+both ESM3 arms by masking the positions, ESM-IF and ProGen2 by marginalising over
+them, since a causal decoder cannot hide an upstream residue from what follows
+it. CARBonAra is the exception — being one-shot, it has no motif-visible arm to
+contrast against. The results split by conditioning rather than architecture:
+sequence-only models lose their preference when the motif is hidden,
+structure-conditioned models keep it. See
+[`OVERVIEW.md`](OVERVIEW.md).
 
 ## The operational lessons
 

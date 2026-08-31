@@ -22,7 +22,7 @@ gaps. **25.3% of sites were read at the wrong residue**, and a further 8.8%
 cannot be reconciled and are now refused. ESM-IF and ESMC were never affected —
 both already reconciled the two parses and checked the residues they landed on;
 the ProteinMPNN adapter accepted the same guard argument and ignored it. Full
-account in [`correction_2026-08-25_sequon_indexing.md`](correction_2026-08-25_sequon_indexing.md).
+account in [`correction_2026-08-25_sequon_indexing.md`](../correction_2026-08-25_sequon_indexing.md).
 
 That ESM-IF rerun through the corrected code reproduces **+0.431 SD exactly** is
 what makes the ProteinMPNN change attributable: both models were rerun, and only

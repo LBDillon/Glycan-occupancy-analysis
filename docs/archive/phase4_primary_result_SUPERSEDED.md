@@ -7,7 +7,7 @@
 > are wrong — including the primary estimate, whose sign reverses once the
 > invalid rows are removed.
 >
-> **Current result: [`primary_result.md`](primary_result.md).**
+> **Current result: [`primary_result.md`](primary_result_SUPERSEDED_2026-08-25.md).**
 > Correction record: `config/scoring_frozen.toml`, section `[amendment_1]`.
 
 # Phase 4 — occupied versus unoccupied sequons under ProteinMPNN

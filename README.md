@@ -1,7 +1,7 @@
 # experimental_glycosylation_sites
 
 > **Start at [`docs/OVERVIEW.md`](docs/OVERVIEW.md)** — current results across all
-> three models, what they mean, and what is running.
+> six models and seven scored configurations, what they mean, and what is running.
 >
 > **⚠ Correction, 2026-08-25 — ProteinMPNN's sequon indexing.** The manifest's
 > `model_index` counts observed residues; ProteinMPNN's parser walks the author
@@ -31,7 +31,7 @@ Site-level N-linked glycosylation occupancy evidence derived from the ortholog
 sequon-conservation database.
 
 - Evidence source guide: [`docs/evidence_sources.md`](docs/evidence_sources.md)
-- Downstream analysis options: [`docs/analysis_options.md`](docs/analysis_options.md)
+- Downstream analysis options: [`docs/archive/analysis_options_SUPERSEDED_2026-08-31.md`](docs/archive/analysis_options_SUPERSEDED_2026-08-31.md) *(archived; most options have since been built)*
 
 ---
 
@@ -313,10 +313,10 @@ isinstance(a, SequonScorer), isinstance(a, SequenceDesigner)   # (True, True)
 | [`docs/OVERVIEW.md`](docs/OVERVIEW.md) | **start here — current results, what they mean, what is running, what is next** |
 | [`docs/primary_result.md`](docs/archive/primary_result_SUPERSEDED_2026-08-25.md) | the result and its limits (pre-correction numbers) |
 | [`docs/figures.md`](docs/figures_and_captions.md) | all nine figures explained in prose |
-| [`docs/docs/glossary.md`](docs/docs/glossary.md) | what the terms mean, in plain language |
+| [`docs/glossary.md`](docs/glossary.md) | what the terms mean, in plain language |
 | [`docs/significance.md`](docs/archive/significance_SUPERSEDED_2026-08-25.md) | the eight tests and why none survives correction |
 | [`docs/negative_controls.md`](docs/control_sets.md) | the four control sets and what evidence stands behind each |
-| [`docs/correction_2026-08-18.md`](docs/correction_2026-08-18.md) | what was corrected and why |
+| [`docs/archive/correction_2026-08-18_SUPERSEDED_2026-08-31.md`](docs/archive/correction_2026-08-18_SUPERSEDED_2026-08-31.md) | what was corrected and why |
 | [`docs/correction_2026-08-20_alphabet.md`](docs/correction_2026-08-20_alphabet.md) | **the alphabet defect — read before quoting any ProteinMPNN number** |
 | [`docs/second_model_esm_if.md`](docs/models.md) | ESM-IF: what its conditional is, the index mapping, how to run it |
 | [`docs/third_model_esmc.md`](docs/models.md) | ESMC: sequence-only baseline, the two masking schemes, the environment split |
@@ -500,7 +500,7 @@ site appears exactly once across `experimental_sites_all.csv` and
 | `curator_inferred_sensitivity_sites.csv` | one per `manual_curator_inference` site | Sensitivity set: sites whose strongest UniProt tier is ECO:0000305. Written when `policy.curator_inferred_sensitivity` is true. |
 | `glygen_site_evidence.csv` | one per candidate site | GlyGen layer detail: tier, raw categories, evidence databases, PubMed ids, GlyTouCan ids. Written when the `glygen` layer is on. |
 | `glyconnect_site_evidence.csv` | one per candidate site | GlyConnect layer detail: supported flag, glycan count, compositions. Written when the `glyconnect` layer is on. |
-| `structure_site_evidence.csv` | one per candidate site | Structure layer detail: `structure_tier`, PDB id, chain, resseq, insertion code, the residue actually observed at the mapped position, and `structure_detail`. Read `structure_tier` **and** `structure_detail` together — see the limitations in `docs/analysis_options.md`. |
+| `structure_site_evidence.csv` | one per candidate site | Structure layer detail: `structure_tier`, PDB id, chain, resseq, insertion code, the residue actually observed at the mapped position, and `structure_detail`. Read `structure_tier` **and** `structure_detail` together — see the limitations in `docs/archive/analysis_options_SUPERSEDED_2026-08-31.md`. |
 | `summary.json` | — | All headline counts: candidates, exclusions, per-subset sites and proteins, baseline and enriched, and per-layer support totals. |
 | `provenance.json` | — | Everything needed to explain a result set: every input path with SHA-256, size and mtime; the effective config and its hash; git commit and dirty flag; all counts; and per-layer cache sizes. |
 
@@ -630,7 +630,7 @@ analysis/experimental_glycosylation_sites/
 ├── config/default.toml            # paths, layer toggles, evidence policy, API settings
 ├── docs/
 │   ├── evidence_sources.md        # what each source can and cannot establish
-│   └── analysis_options.md        # downstream analyses, controls, limitations
+│   └── archive/                   # superseded docs, with an index README
 ├── src/experimental_glycosylation_sites/
 │   ├── cli.py                     # four commands
 │   ├── config.py                  # load TOML, resolve paths, validate existence
