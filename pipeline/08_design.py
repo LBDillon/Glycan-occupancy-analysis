@@ -49,12 +49,23 @@ if OUT.exists():
     if SEQ_OUT is not None and done:
         # Resume keys on manifest sites, not on sequences. A chain whose sites
         # are already recorded is skipped entirely, so its designs are never
-        # generated and its sequences never written -- the sequence file would
-        # silently cover only the chains this invocation happened to reach.
-        print("  WARNING: --save-sequences resuming onto an existing site table. "
-              "Chains already done are skipped, so their sequences will be "
-              "MISSING. Use a fresh --out path for a complete sequence file.",
-              flush=True)
+        # regenerated -- and if its sequences are not already on disk they never
+        # will be. Warn only when the two are actually out of step: when both
+        # were written to the same place they stay in step, and a blanket
+        # warning there just teaches the reader to ignore it.
+        CH = ["structure_pdb_id", "structure_chain_id"]
+        site_chains = {tuple(str(getattr(r, c)) for c in CH)
+                       for r in pd.read_csv(OUT, low_memory=False).itertuples()}
+        seq_chains = set()
+        if SEQ_OUT.exists() and SEQ_OUT.stat().st_size:
+            seq_chains = {tuple(str(getattr(r, c)) for c in CH)
+                          for r in pd.read_csv(SEQ_OUT, low_memory=False).itertuples()}
+        orphaned = site_chains - seq_chains
+        if orphaned:
+            print(f"  WARNING: {len(orphaned)} chains are in the site table with no "
+                  "saved sequences. Resume skips them, so those sequences will "
+                  "stay MISSING -- use a fresh --out path for a complete "
+                  "sequence file.", flush=True)
 
 device = resolve_device(args.device)
 adapter = build_adapter(args.model, device, max_batch=args.max_batch)
