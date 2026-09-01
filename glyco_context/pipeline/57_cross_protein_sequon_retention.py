@@ -246,11 +246,33 @@ wide = per_chain.pivot_table(
     columns="site_class",
     values=["frac_n_retained", "frac_pattern_retained", "frac_exact_retained"])
 wide.columns = [f"{a}__{b}" for a, b in wide.columns]
-paired = wide.dropna().reset_index()
+# dropna() cannot drop on a column that does not exist: if no chain has a
+# motif-only sequon the pivot has no motif_only columns at all, and every
+# occupied-only chain would survive and be counted as paired. Require both
+# classes explicitly.
+NEEDED = [f"frac_{r}__{c}"
+          for r in ("n_retained", "pattern_retained", "exact_retained")
+          for c in ("occupied", "motif_only")]
+paired = (wide.iloc[0:0] if any(c not in wide.columns for c in NEEDED)
+          else wide.dropna(subset=NEEDED)).reset_index()
 paired.to_csv(OUT / f"{LABEL}_paired.csv", index=False)
 
+# No chain carrying both classes means no paired contrast -- which happens on a
+# shard, on a small subset, or when enough chains fail the mapping guard. Say so
+# rather than dying on a missing pivot column: the by-class and triplet results
+# above are still valid, and a crash here would throw them away too.
+READINGS = ("n_retained", "pattern_retained", "exact_retained")
+missing_cols = [c for r in READINGS for c in
+                (f"frac_{r}__occupied", f"frac_{r}__motif_only")
+                if c not in paired.columns]
 contrasts = {}
-for reading in ("n_retained", "pattern_retained", "exact_retained"):
+if len(paired) < 2 or missing_cols:
+    reason = ("no chain carries both an occupied and a motif-only sequon"
+              if missing_cols else f"only {len(paired)} chain carries both classes")
+    print(f"\nwithin-protein paired contrast unavailable: {reason}")
+    contrasts = {"unavailable": reason, "n_chains": int(len(paired))}
+
+for reading in READINGS if not contrasts else ():
     o, m = f"frac_{reading}__occupied", f"frac_{reading}__motif_only"
     diff = paired[o] - paired[m]
     tmp = paired.assign(_d=diff)
@@ -346,13 +368,14 @@ print("-" * 84)
 for label, s in by_class.items():
     print(f"{label:32s} {s['n_sites']:>6d} {s['n_proteins']:>9d} {s['mean']:>11.4f} "
           f"[{s['ci95'][0]:>+7.4f},{s['ci95'][1]:>+7.4f}]")
-print(f"\nwithin-protein paired contrast (occupied - motif-only), "
-      f"{contrasts['n_retained']['n_chains']} chains:")
-for reading, c in contrasts.items():
-    star = "  *" if c["excludes_zero"] else ""
-    print(f"  {reading:18s} {c['occupied_mean']:.4f} vs {c['motif_only_mean']:.4f}  "
-          f"diff {c['paired_difference']:+.4f} "
-          f"[{c['ci95'][0]:+.4f},{c['ci95'][1]:+.4f}]{star}")
+if "unavailable" not in contrasts:
+    print(f"\nwithin-protein paired contrast (occupied - motif-only), "
+          f"{contrasts['n_retained']['n_chains']} chains:")
+    for reading, c in contrasts.items():
+        star = "  *" if c["excludes_zero"] else ""
+        print(f"  {reading:18s} {c['occupied_mean']:.4f} vs {c['motif_only_mean']:.4f}  "
+              f"diff {c['paired_difference']:+.4f} "
+              f"[{c['ci95'][0]:+.4f},{c['ci95'][1]:+.4f}]{star}")
 print(f"\nexact vs control triplet: sequon {triplet['sequon_exact']:.4f}, "
       f"control {triplet['control_triplet_exact']:.4f}, "
       f"control-sequon {triplet['control_minus_sequon']:+.4f} "
